@@ -256,6 +256,31 @@ total_score = (smile_score * ai_score / 100) * similarity_penalty
 
 ## スコアリング処理フロー
 
+```mermaid
+graph TD
+    Start([score_image 開始]) --> Step1[1. 笑顔スコア算出<br/>calculate_smile_score]
+    Step1 --> Step2[2. AI評価<br/>evaluate_theme]
+    Step2 --> Step3[3. Average Hash計算<br/>calculate_average_hash]
+    Step3 --> Step4[4. 既存ハッシュ取得<br/>get_all_hashes_from_firestore]
+    Step4 --> Step5[5. 類似判定<br/>is_similar_image<br/>threshold=8]
+    Step5 --> Step6{類似画像?}
+    Step6 -->|Yes| Penalty1[6. ペナルティ = 1/3]
+    Step6 -->|No| Penalty2[6. ペナルティ = 1]
+    Penalty1 --> Step7[7. 総合スコア計算<br/>笑顔スコア × AI評価 ÷ 100<br/>× ペナルティ]
+    Penalty2 --> Step7
+    Step7 --> Step8[8. Firestoreに保存<br/>save_score_to_firestore]
+    Step8 --> Step9[9. LINE Botに結果返信<br/>reply_to_line]
+    Step9 --> End([処理完了])
+
+    style Start fill:#e1f5ff
+    style End fill:#e1f5ff
+    style Step6 fill:#fff4e1
+    style Penalty1 fill:#ffe1e1
+    style Penalty2 fill:#e1ffe1
+    style Step7 fill:#fff4e1
+```
+
+**処理の詳細（Python実装例）:**
 ```python
 async def score_image(image_id, image_bytes, user_id):
     """

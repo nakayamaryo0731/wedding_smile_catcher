@@ -2,78 +2,43 @@
 
 ## システムアーキテクチャ図
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         参列者（LINEユーザー）                      │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ 写真投稿
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      LINE Messaging API                          │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ Webhook
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│               Cloud Functions (Webhook Handler)                  │
-│  - メッセージ受信                                                  │
-│  - ユーザー登録                                                    │
-│  - 画像取得                                                        │
-└───┬─────────────┬─────────────┬──────────────────────────────┘
-    │             │             │
-    │             │             └──────────────┐
-    │             │                            ▼
-    │             │              ┌──────────────────────────┐
-    │             │              │   Cloud Storage          │
-    │             │              │  - 画像保存               │
-    │             │              └──────────────────────────┘
-    │             │
-    │             ▼
-    │  ┌──────────────────────────┐
-    │  │   Firestore              │
-    │  │  - ユーザー情報            │
-    │  │  - 画像メタデータ          │
-    │  │  - スコア情報              │
-    │  │  - ランキング              │
-    │  └──────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│             Cloud Functions (Scoring Handler)                    │
-│                                                                   │
-│  ┌────────────┐  ┌────────────┐  ┌────────────────────────┐    │
-│  │ Vision API │  │ Vertex AI  │  │ Average Hash           │    │
-│  │ 笑顔検出    │  │ テーマ評価  │  │ 類似画像検出            │    │
-│  └────────────┘  └────────────┘  └────────────────────────┘    │
-│                                                                   │
-│  - 笑顔スコア算出                                                  │
-│  - 生成AI評価                                                     │
-│  - 類似画像チェック                                                │
-│  - 総合スコア計算                                                  │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    LINE Messaging API                            │
-│                   (スコア結果を返信)                               │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph guests["参列者（LINEユーザー）"]
+        User[ユーザー]
+    end
 
+    User -->|写真投稿| LINE1[LINE Messaging API]
 
-┌─────────────────────────────────────────────────────────────────┐
-│                    式場担当者（フロントエンド）                      │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Cloud Run (Next.js)                            │
-│  ┌──────────────────┐  ┌────────────────────────────┐          │
-│  │ リアルタイム表示  │  │ ランキング表示               │          │
-│  │ モード           │  │ モード                      │          │
-│  └──────────────────┘  └────────────────────────────┘          │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-                    Firestore
-                  (リアルタイム同期)
+    LINE1 -->|Webhook| WebhookFunc[Cloud Functions<br/>Webhook Handler]
+
+    WebhookFunc -->|メッセージ受信<br/>ユーザー登録<br/>画像取得| Storage[Cloud Storage<br/>画像保存]
+    WebhookFunc --> Firestore[(Firestore<br/>・ユーザー情報<br/>・画像メタデータ<br/>・スコア情報<br/>・ランキング)]
+    WebhookFunc --> ScoringFunc
+
+    subgraph ScoringFunc[Cloud Functions - Scoring Handler]
+        Vision[Vision API<br/>笑顔検出]
+        VertexAI[Vertex AI<br/>テーマ評価]
+        AvgHash[Average Hash<br/>類似画像検出]
+    end
+
+    Storage -.画像取得.-> ScoringFunc
+    ScoringFunc -->|スコア保存| Firestore
+    ScoringFunc -->|結果返信| LINE2[LINE Messaging API]
+    LINE2 -->|スコア通知| User
+
+    subgraph frontend["式場担当者（フロントエンド）"]
+        Staff[スタッフ]
+    end
+
+    Staff --> CloudRun[Cloud Run - Next.js<br/>ランキング表示]
+
+    Firestore <-->|リアルタイム同期| CloudRun
+
+    style guests fill:#e1f5ff
+    style frontend fill:#fff4e1
+    style ScoringFunc fill:#f0f0f0
+    style CloudRun fill:#f0f0f0
 ```
 
 ## コンポーネント説明
@@ -169,14 +134,21 @@
 **役割**: 画像の永続化ストレージ
 
 **バケット構成**:
-```
-wedding-smile-images/
-├── original/          # 元画像
-│   └── {user_id}/
-│       └── {timestamp}_{image_id}.jpg
-└── thumbnails/        # サムネイル（オプション）
-    └── {user_id}/
-        └── {timestamp}_{image_id}_thumb.jpg
+```mermaid
+graph TD
+    Bucket[wedding-smile-images/]
+    Bucket --> Original[original/<br/>元画像]
+    Bucket --> Thumbnails[thumbnails/<br/>サムネイル オプション]
+
+    Original --> UserDir1["{user_id}/"]
+    UserDir1 --> Image1["{timestamp}_{image_id}.jpg"]
+
+    Thumbnails --> UserDir2["{user_id}/"]
+    UserDir2 --> Thumb1["{timestamp}_{image_id}_thumb.jpg"]
+
+    style Bucket fill:#e1f5ff
+    style Original fill:#fff4e1
+    style Thumbnails fill:#fff4e1
 ```
 
 ### 8. Firestore
@@ -184,90 +156,100 @@ wedding-smile-images/
 **役割**: メタデータ・スコア・ユーザー情報の保存
 
 **コレクション構成**:
-```
-users/
-  {user_id}/
-    - name: string
-    - line_user_id: string
-    - created_at: timestamp
+```mermaid
+graph TD
+    subgraph Users[users コレクション]
+        UserDoc["{user_id}"]
+        UserDoc --> UserFields["・name: string<br/>・line_user_id: string<br/>・created_at: timestamp"]
+    end
 
-images/
-  {image_id}/
-    - user_id: string
-    - storage_path: string
-    - upload_timestamp: timestamp
-    - smile_score: number
-    - ai_score: number
-    - total_score: number
-    - comment: string
-    - average_hash: string
-    - is_similar: boolean
+    subgraph Images[images コレクション]
+        ImageDoc["{image_id}"]
+        ImageDoc --> ImageFields["・user_id: string<br/>・storage_path: string<br/>・upload_timestamp: timestamp<br/>・smile_score: number<br/>・ai_score: number<br/>・total_score: number<br/>・comment: string<br/>・average_hash: string<br/>・is_similar: boolean"]
+    end
 
-ranking/
-  current/
-    - top_images: array
-    - updated_at: timestamp
+    subgraph Ranking[ranking コレクション]
+        RankingDoc["current"]
+        RankingDoc --> RankingFields["・top_images: array<br/>・updated_at: timestamp"]
+    end
+
+    style Users fill:#e1f5ff
+    style Images fill:#fff4e1
+    style Ranking fill:#ffe1f5
 ```
 
 ### 9. Cloud Run (Next.js)
 
 **役割**: 式中のスクリーン表示用フロントエンド
 
-**画面モード**:
-1. **リアルタイムモード**: 投稿された写真を5秒ごとに更新表示
-2. **ランキングモード**: 最終順位を発表
+**画面表示**:
+- **ランキング表示**: トップ3をリアルタイム表示
+  - トップ1: 大きく表示（メイン表示）
+  - トップ2・3: 小さく並べて表示（サブ表示）
+- **自動更新**: Firestoreリアルタイムリスナーで即座に反映
 
 **実装**:
 - Next.js (App Router)
 - Firestoreリアルタイムリスナー
 - TailwindCSS
+- レスポンシブデザイン
 
-**デプロイ先**: Cloud Run または Firebase Hosting
+**デプロイ先**: Cloud Run
 
 ## データフロー
 
 ### 写真投稿フロー
 
-```
-1. ユーザーがLINE Botに写真送信
-   ↓
-2. LINE APIがWebhook URLにPOST
-   ↓
-3. Cloud Function (Webhook Handler)が受信
-   - Reply Tokenを保存
-   - ローディングインジケーター表示
-   ↓
-4. 画像をCloud Storageに保存
-   ↓
-5. Cloud Function (Scoring Handler)を非同期起動
-   ↓
-6. 並列処理:
-   ├─ Cloud Vision APIで笑顔検出
-   ├─ Vertex AIでテーマ評価
-   └─ Firestoreから既存ハッシュ取得 → 類似判定
-   ↓
-7. スコア計算
-   総合スコア = (笑顔スコア × AI評価 ÷ 100) × 類似ペナルティ
-   ↓
-8. Firestoreにスコア保存
-   ↓
-9. LINE APIでユーザーに結果返信
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant LINE as LINE API
+    participant Webhook as Cloud Functions<br/>(Webhook Handler)
+    participant Storage as Cloud Storage
+    participant Scoring as Cloud Functions<br/>(Scoring Handler)
+    participant Vision as Vision API
+    participant Vertex as Vertex AI
+    participant DB as Firestore
+
+    User->>LINE: 写真送信
+    LINE->>Webhook: Webhook POST
+    Webhook->>Webhook: Reply Token保存
+    Webhook->>User: ローディング表示
+    Webhook->>Storage: 画像保存
+    Webhook->>Scoring: 非同期起動
+
+    par 並列処理
+        Scoring->>Vision: 笑顔検出リクエスト
+        Vision-->>Scoring: 笑顔スコア
+    and
+        Scoring->>Vertex: テーマ評価リクエスト
+        Vertex-->>Scoring: AI評価スコア
+    and
+        Scoring->>DB: 既存ハッシュ取得
+        DB-->>Scoring: ハッシュリスト
+        Scoring->>Scoring: 類似判定
+    end
+
+    Scoring->>Scoring: 総合スコア計算<br/>(笑顔スコア × AI評価 ÷ 100)<br/>× 類似ペナルティ
+    Scoring->>DB: スコア保存
+    Scoring->>LINE: 結果返信リクエスト
+    LINE->>User: スコア通知
 ```
 
 ### ランキング表示フロー
 
-```
-1. フロントエンド（Next.js）がマウント
-   ↓
-2. Firestoreリアルタイムリスナー設定
-   ↓
-3. 新しい画像投稿を検知
-   ↓
-4. リアルタイムモード: 最新投稿を表示
-   または
-   ランキングモード: Top 3を表示（ユーザー重複なし）
-   ↓
-5. 5秒ごとに画面更新
+```mermaid
+graph TD
+    A[フロントエンド<br/>Next.js マウント] --> B[Firestoreリアルタイム<br/>リスナー設定]
+    B --> C[imagesコレクション監視<br/>status=completed<br/>order by total_score]
+    C --> D[Top 100取得]
+    D --> E[ユーザー重複除外<br/>Top 3選出]
+    E --> F[画面描画]
+    F --> G[トップ1: 大きく表示<br/>トップ2・3: 小さく表示]
+    G --> C
+
+    style F fill:#fff4e1
+    style G fill:#ffe1e1
 ```
 
 ## スケーラビリティ
