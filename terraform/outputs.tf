@@ -1,4 +1,5 @@
 # Project Information
+# Basic GCP project configuration outputs
 output "project_id" {
   description = "GCP Project ID"
   value       = var.project_id
