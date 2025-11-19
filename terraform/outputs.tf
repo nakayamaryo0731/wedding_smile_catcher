@@ -11,6 +11,7 @@ output "region" {
 }
 
 # Secret Manager
+# Outputs for Secret Manager resources
 output "secret_manager_secrets" {
   description = "Secret Manager secret names"
   value       = module.secret_manager.secret_names
