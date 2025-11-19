@@ -29,7 +29,8 @@ output "line_channel_access_token_id" {
   sensitive   = true
 }
 
-# Future outputs (commented out for now):
+# Future outputs (commented out for now)
+# These outputs will be enabled when respective modules are implemented:
 #
 # output "storage_bucket_name" {
 #   description = "Cloud Storage bucket name"
