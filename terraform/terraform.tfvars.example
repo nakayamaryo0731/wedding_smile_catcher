@@ -1,0 +1,31 @@
+# GCP Project Configuration
+project_id = "wedding-smile-catcher"
+region     = "asia-northeast1"
+zone       = "asia-northeast1-a"
+
+# Storage Configuration
+storage_bucket_name  = "wedding-smile-images-wedding-smile-catcher"
+tfstate_bucket_name  = "wedding-smile-catcher-tfstate"
+
+# Firestore Configuration
+firestore_location = "asia-northeast1"
+
+# LINE Bot Configuration
+# Note: These values should be stored in terraform.tfvars (not committed)
+# or passed via environment variables (TF_VAR_line_channel_secret)
+line_channel_secret       = "your-line-channel-secret"
+line_channel_access_token = "your-line-channel-access-token"
+
+# Vertex AI Configuration
+vertex_ai_model = "gemini-1.5-flash"
+
+# Scoring Parameters
+similarity_threshold = 8
+similarity_penalty   = 0.33
+
+# Labels
+labels = {
+  project     = "wedding-smile-catcher"
+  environment = "production"
+  managed_by  = "terraform"
+}

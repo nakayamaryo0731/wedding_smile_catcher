@@ -2,7 +2,7 @@
 
 このファイルは、GCPセットアップの進捗を記録しています。
 
-**最終更新**: 2025-11-18
+**最終更新**: 2025-11-19
 
 ---
 
@@ -70,18 +70,62 @@
 
 ---
 
+---
+
+## ✅ Terraformセットアップ開始！（2025-11-18）
+
+### 完了内容
+- ✅ Terraform構成設計（モジュール構成）
+- ✅ Secret Managerモジュール実装
+- ✅ Terraform初期化（terraform init）
+- ✅ GCP認証設定（Application Default Credentials）
+- ✅ Terraform Plan実行（5リソース作成予定を確認）
+
+詳細: [Terraformセットアップ進捗](./TERRAFORM_SETUP_PROGRESS.md)
+
+**次回のセッション**: terraform import → apply → GitHub Actions設定
+
+---
+
+## ✅ Terraformデプロイ完了！（2025-11-19）
+
+### 完了内容
+- ✅ 既存Secret ManagerリソースをTerraformにインポート
+- ✅ terraform apply実行（Secret Manager API有効化、ラベル追加、新バージョン作成）
+- ✅ GCS backend設定（tfstate保存用バケット作成・バージョニング有効化）
+- ✅ tfstateをローカルからGCSに移行
+- ✅ GitHub Actions用Service Account作成（terraform-github-actions）
+- ✅ Service Accountに`roles/editor`権限を付与
+- ✅ Service Account鍵（JSON）を作成
+- ✅ `.github/workflows/terraform.yml`作成
+- ✅ GitHub Secretsに認証情報追加（GCP_SA_KEY、LINE認証情報）
+- ✅ セキュリティ対策（ローカル鍵ファイル削除）
+
+詳細: [Terraformセットアップ進捗](./TERRAFORM_SETUP_PROGRESS.md)
+
+**Terraformの基本セットアップが完了しました！** 🎉
+
+次は、GitHub Actionsのデプロイテストを実行するか、他のTerraformモジュール（Storage, Firestore, Functions, Cloud Run）の実装に進みます。
+
+---
+
 ## 📋 次のフェーズ
 
-### Phase 1: Webhook URL設定（Cloud Functionsデプロイ後）
-1. Cloud Functions（Webhook Handler）のデプロイ
-2. デプロイされたURLをLINE Developersに設定
-3. 応答設定の調整
+### オプション1: GitHub Actionsデプロイテスト
+PR作成 → `terraform plan`実行確認 → mainマージ → `terraform apply`自動実行確認
+
+### オプション2: 追加のTerraformモジュール実装
+1. **IAMモジュール** - Service Accountsとロール管理
+2. **Storageモジュール** - Cloud Storage バケット（画像保存用）
+3. **Firestoreモジュール** - Firestore データベース設定
+4. **Functionsモジュール** - Cloud Functions（webhook, scoring）
+5. **Cloud Runモジュール** - Next.js フロントエンドのデプロイ
 
 ### Phase 2: アプリケーション実装
-1. Cloud Functions実装（Webhook Handler, Scoring Handler）
-2. Next.jsフロントエンド実装
-3. ローカルでのテスト
-4. GCPへのデプロイ
+1. 残りのTerraformモジュール実装（Storage, Firestore, Functions, Cloud Run）
+2. Cloud Functions実装（Webhook Handler, Scoring Handler）
+3. Next.jsフロントエンド実装
+4. ローカルでのテスト
 
 ## 📋 次のタスク（オプション）
 
