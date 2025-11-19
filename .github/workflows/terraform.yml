@@ -51,7 +51,7 @@ jobs:
 
       - name: Run tflint
         run: |
-          tflint --init
+          tflint --init --config=../.tflint.hcl
           tflint --config=../.tflint.hcl
 
       - name: Terraform Plan
