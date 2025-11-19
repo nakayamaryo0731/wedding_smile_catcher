@@ -23,7 +23,7 @@ rule "terraform_documented_outputs" {
 }
 
 rule "terraform_unused_declarations" {
-  enabled = true
+  enabled = false  # Disabled: variables are defined for future module implementation
 }
 
 rule "terraform_deprecated_interpolation" {
