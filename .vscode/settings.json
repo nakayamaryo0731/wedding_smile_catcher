@@ -1,0 +1,115 @@
+{
+  // Makefile
+  "makefile.configureOnOpen": false,
+
+  // Editor settings
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "editor.rulers": [80, 120],
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Terraform
+  "[terraform]": {
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+  "[terraform-vars]": {
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+  "terraform.languageServer": {
+    "enabled": true,
+    "args": []
+  },
+
+  // Python (for future backend)
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.tabSize": 4
+  },
+  "python.linting.enabled": true,
+  "python.linting.ruffEnabled": true,
+
+  // TypeScript/JavaScript (for future frontend)
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+
+  // JSON
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+
+  // YAML
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.tabSize": 2
+  },
+
+  // Markdown
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.wordWrap": "on",
+    "files.trimTrailingWhitespace": false
+  },
+
+  // File associations
+  "files.associations": {
+    "*.tfvars": "terraform",
+    "*.hcl": "terraform",
+    ".tflint.hcl": "terraform"
+  },
+
+  // Exclude from search/files
+  "files.exclude": {
+    "**/.git": true,
+    "**/.terraform": true,
+    "**/__pycache__": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true
+  },
+
+  // Search exclude
+  "search.exclude": {
+    "**/.git": true,
+    "**/.terraform": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/venv": true,
+    "**/.venv": true
+  }
+}

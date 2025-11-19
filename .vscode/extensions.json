@@ -1,0 +1,30 @@
+{
+  "recommendations": [
+    // Terraform
+    "hashicorp.terraform",
+
+    // Python (for future backend)
+    "ms-python.python",
+    "charliermarsh.ruff",
+
+    // JavaScript/TypeScript (for future frontend)
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+
+    // YAML
+    "redhat.vscode-yaml",
+
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+
+    // Git
+    "eamodio.gitlens",
+
+    // EditorConfig
+    "editorconfig.editorconfig",
+
+    // Makefile
+    "ms-vscode.makefile-tools"
+  ]
+}

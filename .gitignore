@@ -28,12 +28,19 @@ build/
 dist/
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+
+# VSCode (allow settings.json and extensions.json, but exclude personal settings)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.vscode/*.code-workspace
 
 # Terraform
 *.tfstate
@@ -67,3 +74,27 @@ temp/
 
 # OS
 Thumbs.db
+
+# Secret detection
+.gitleaksignore
+.secrets.baseline
+
+# Additional sensitive files
+*secret*
+*credentials*
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+*password*
+*token*
+# But allow terraform files with these names
+!terraform/**/*.tf
+!*.tfvars.example
+
+# Backup files
+*.bak
+*.backup
+*~

@@ -13,6 +13,7 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: ./terraform
@@ -35,6 +36,19 @@ jobs:
 
       - name: Terraform Format
         run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Setup tflint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Run tflint
+        run: |
+          tflint --init
+          tflint --config=../.tflint.hcl
 
       - name: Terraform Plan
         if: github.event_name == 'pull_request'

@@ -1,0 +1,59 @@
+version: 2
+updates:
+  # Terraform dependencies
+  - package-ecosystem: "terraform"
+    directory: "/terraform"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "terraform"
+    commit-message:
+      prefix: "chore(terraform)"
+      include: "scope"
+
+  # Python dependencies (when backend is implemented)
+  # Uncomment when requirements.txt or pyproject.toml is added
+  # - package-ecosystem: "pip"
+  #   directory: "/src/functions"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #   open-pull-requests-limit: 5
+  #   labels:
+  #     - "dependencies"
+  #     - "python"
+  #   commit-message:
+  #     prefix: "chore(python)"
+  #     include: "scope"
+
+  # Node.js dependencies (when frontend is implemented)
+  # Uncomment when package.json is added
+  # - package-ecosystem: "npm"
+  #   directory: "/src/frontend"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #   open-pull-requests-limit: 5
+  #   labels:
+  #     - "dependencies"
+  #     - "npm"
+  #   commit-message:
+  #     prefix: "chore(npm)"
+  #     include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(actions)"
+      include: "scope"
