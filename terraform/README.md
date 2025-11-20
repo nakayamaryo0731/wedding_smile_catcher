@@ -1,1 +1,3 @@
-# Terraform configuration for Wedding Smile Catcher infrastructure
+# Terraform Configuration
+
+Wedding Smile Catcher infrastructure as code.
