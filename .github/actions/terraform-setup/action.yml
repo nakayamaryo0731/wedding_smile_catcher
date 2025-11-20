@@ -1,0 +1,34 @@
+name: Terraform Setup
+description: Setup Terraform, authenticate to GCP, and initialize
+
+inputs:
+  gcp_credentials:
+    description: GCP service account credentials JSON
+    required: true
+  terraform_version:
+    description: Terraform version to use
+    required: false
+    default: '1.5.0'
+  working_directory:
+    description: Directory containing Terraform configuration
+    required: false
+    default: './terraform'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+        terraform_wrapper: false
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ inputs.gcp_credentials }}
+
+    - name: Terraform Init
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: terraform init
