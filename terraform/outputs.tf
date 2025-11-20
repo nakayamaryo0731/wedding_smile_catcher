@@ -52,6 +52,18 @@ output "firestore_database_location" {
   value       = module.firestore.database_location
 }
 
+# IAM
+# Outputs for IAM service accounts
+output "webhook_service_account_email" {
+  description = "Email address of the webhook function service account"
+  value       = module.iam.webhook_service_account_email
+}
+
+output "scoring_service_account_email" {
+  description = "Email address of the scoring function service account"
+  value       = module.iam.scoring_service_account_email
+}
+
 # Test Output (for CI/CD verification)
 output "terraform_workspace" {
   description = "Current Terraform workspace"

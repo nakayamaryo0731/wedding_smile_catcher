@@ -58,23 +58,45 @@ jobs:
       - name: Terraform Show
         id: show
         if: always() && steps.plan.outcome != 'skipped'
-        run: |
-          PLAN_OUTPUT=$(terraform show -no-color tfplan 2>&1)
-          {
-            echo 'plan_output<<EOF'
-            echo "$PLAN_OUTPUT"
-            echo EOF
-          } >> $GITHUB_OUTPUT
+        run: terraform show -no-color tfplan > plan.txt 2>&1
 
       - name: Comment PR with Plan
-        uses: robburger/terraform-pr-commenter@v1
         if: github.event_name == 'pull_request'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          commenter_type: plan
-          commenter_input: ${{ steps.show.outputs.plan_output }}
-          commenter_exitcode: ${{ steps.plan.outputs.exitcode }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          EXITCODE="${{ steps.plan.outputs.exitcode }}"
+
+          if [ "$EXITCODE" -eq 0 ]; then
+            STATUS="✅ Plan succeeded"
+          else
+            STATUS="❌ Plan failed"
+          fi
+
+          cat > comment.md <<'COMMENT_EOF'
+          ## Terraform Plan Results
+
+          COMMENT_EOF
+          echo "$STATUS" >> comment.md
+          cat >> comment.md <<'COMMENT_EOF'
+
+          <details>
+          <summary>Show Plan</summary>
+
+          ```terraform
+          COMMENT_EOF
+          cat plan.txt >> comment.md
+          cat >> comment.md <<'COMMENT_EOF'
+          ```
+
+          </details>
+
+          **Pusher**: @${{ github.actor }}
+          **Action**: ${{ github.event_name }}
+          COMMENT_EOF
+
+          gh pr comment "$PR_NUMBER" --body-file comment.md
 
       - name: Fail if Plan Failed
         if: steps.plan.outcome == 'failure'
