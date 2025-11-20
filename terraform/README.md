@@ -30,6 +30,7 @@ These roles are required for the currently implemented modules:
 | `roles/editor` | Basic resource management (Compute, Storage, APIs) | All modules |
 | `roles/datastore.owner` | Firestore database creation and management | Firestore module |
 | `roles/secretmanager.secretAccessor` | Access to Secret Manager secrets | Secret Manager module |
+| `roles/iam.securityAdmin` | Manage IAM policies and service account permissions | IAM module |
 
 #### Future Requirements (Not Yet Needed)
 These roles will be required when implementing additional modules:
