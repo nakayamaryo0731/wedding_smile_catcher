@@ -73,8 +73,8 @@ module "firestore" {
   database_name = "(default)"
 
   # Development settings (adjust for production)
-  deletion_policy                 = "DELETE"
-  point_in_time_recovery_enabled  = false
+  deletion_policy                = "DELETE"
+  point_in_time_recovery_enabled = false
 
   depends_on = [google_project_service.required_apis]
 }
