@@ -1,0 +1,19 @@
+output "webhook_function_url" {
+  description = "URL of the webhook Cloud Function"
+  value       = google_cloudfunctions2_function.webhook.service_config[0].uri
+}
+
+output "scoring_function_url" {
+  description = "URL of the scoring Cloud Function"
+  value       = google_cloudfunctions2_function.scoring.service_config[0].uri
+}
+
+output "webhook_function_name" {
+  description = "Name of the webhook Cloud Function"
+  value       = google_cloudfunctions2_function.webhook.name
+}
+
+output "scoring_function_name" {
+  description = "Name of the scoring Cloud Function"
+  value       = google_cloudfunctions2_function.scoring.name
+}

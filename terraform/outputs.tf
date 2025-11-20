@@ -70,13 +70,20 @@ output "terraform_workspace" {
   value       = terraform.workspace
 }
 
+# Cloud Functions
+# Outputs for Cloud Functions
+output "webhook_function_url" {
+  description = "Webhook function URL (configure this in LINE Developers Console)"
+  value       = module.functions.webhook_function_url
+}
+
+output "scoring_function_url" {
+  description = "Scoring function URL (internal use)"
+  value       = module.functions.scoring_function_url
+}
+
 # Future outputs (commented out for now)
 # These outputs will be enabled when respective modules are implemented:
-#
-# output "webhook_function_url" {
-#   description = "Webhook function URL"
-#   value       = module.functions.webhook_url
-# }
 #
 # output "frontend_url" {
 #   description = "Frontend Cloud Run URL"
