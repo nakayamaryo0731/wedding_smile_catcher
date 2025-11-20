@@ -3,11 +3,6 @@ variable "project_id" {
   type        = string
 }
 
-variable "region" {
-  description = "GCP Region"
-  type        = string
-}
-
 variable "line_channel_secret" {
   description = "LINE Channel Secret"
   type        = string

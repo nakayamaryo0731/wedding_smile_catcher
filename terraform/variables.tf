@@ -11,30 +11,11 @@ variable "region" {
   default     = "asia-northeast1"
 }
 
-variable "zone" {
-  description = "GCP Zone"
-  type        = string
-  default     = "asia-northeast1-a"
-}
-
 # Storage Configuration
 variable "storage_bucket_name" {
   description = "Cloud Storage bucket name for images"
   type        = string
   default     = "wedding-smile-images-wedding-smile-catcher"
-}
-
-variable "tfstate_bucket_name" {
-  description = "Cloud Storage bucket name for Terraform state"
-  type        = string
-  default     = "wedding-smile-catcher-tfstate"
-}
-
-# Firestore Configuration
-variable "firestore_location" {
-  description = "Firestore database location"
-  type        = string
-  default     = "asia-northeast1"
 }
 
 # LINE Bot Configuration
@@ -52,26 +33,6 @@ variable "line_channel_access_token" {
   type        = string
   sensitive   = true
   default     = "placeholder-managed-externally"
-}
-
-# Vertex AI Configuration
-variable "vertex_ai_model" {
-  description = "Vertex AI model name"
-  type        = string
-  default     = "gemini-1.5-flash"
-}
-
-# Scoring Parameters
-variable "similarity_threshold" {
-  description = "Average Hash similarity threshold"
-  type        = number
-  default     = 8
-}
-
-variable "similarity_penalty" {
-  description = "Penalty for similar images"
-  type        = number
-  default     = 0.33
 }
 
 # Labels (for resource organization)

@@ -28,7 +28,6 @@ module "secret_manager" {
   source = "./modules/secret_manager"
 
   project_id = var.project_id
-  region     = var.region
 
   line_channel_secret       = var.line_channel_secret
   line_channel_access_token = var.line_channel_access_token
