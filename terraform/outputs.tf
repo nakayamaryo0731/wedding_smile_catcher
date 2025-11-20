@@ -1,6 +1,5 @@
 # Project Information
 # Basic GCP project configuration outputs
-# Testing workflow fix for apply skip logic
 output "project_id" {
   description = "GCP Project ID"
   value       = var.project_id
