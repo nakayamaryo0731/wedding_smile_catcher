@@ -18,6 +18,13 @@ variable "storage_bucket_name" {
   default     = "wedding-smile-images-wedding-smile-catcher"
 }
 
+# Firestore Configuration
+variable "firestore_location" {
+  description = "Firestore database location"
+  type        = string
+  default     = "asia-northeast1"
+}
+
 # LINE Bot Configuration
 # NOTE: These variables have lifecycle ignore_changes, so default values are safe to use
 # Actual secrets are managed separately and won't be overwritten

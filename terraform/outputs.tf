@@ -40,6 +40,18 @@ output "storage_bucket_url" {
   value       = module.storage.bucket_url
 }
 
+# Firestore
+# Outputs for Firestore resources
+output "firestore_database_name" {
+  description = "Firestore database name"
+  value       = module.firestore.database_name
+}
+
+output "firestore_database_location" {
+  description = "Firestore database location"
+  value       = module.firestore.database_location
+}
+
 # Test Output (for CI/CD verification)
 output "terraform_workspace" {
   description = "Current Terraform workspace"

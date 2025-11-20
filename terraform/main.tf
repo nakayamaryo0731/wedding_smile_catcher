@@ -6,13 +6,13 @@ resource "google_project_service" "required_apis" {
   for_each = toset([
     "secretmanager.googleapis.com",
     "storage.googleapis.com",
+    "firestore.googleapis.com",
     # Uncomment as modules are implemented:
     # "cloudfunctions.googleapis.com",
     # "run.googleapis.com",
     # "cloudbuild.googleapis.com",
     # "vision.googleapis.com",
     # "aiplatform.googleapis.com",
-    # "firestore.googleapis.com",
     # "logging.googleapis.com",
     # "monitoring.googleapis.com",
   ])
@@ -58,6 +58,23 @@ module "storage" {
   versioning_enabled = false
 
   labels = var.labels
+
+  depends_on = [google_project_service.required_apis]
+}
+
+# Firestore Module - Database for users, images, and rankings
+module "firestore" {
+  source = "./modules/firestore"
+
+  project_id  = var.project_id
+  location_id = var.firestore_location
+
+  # Use default database name
+  database_name = "(default)"
+
+  # Development settings (adjust for production)
+  deletion_policy                 = "DELETE"
+  point_in_time_recovery_enabled  = false
 
   depends_on = [google_project_service.required_apis]
 }
