@@ -64,7 +64,6 @@ jobs:
           terraform plan -detailed-exitcode -no-color -input=false -out=tfplan
           exitcode=$?
           set -e
-          echo "DEBUG: Terraform plan exit code: $exitcode"
           echo "plan_exitcode=$exitcode" >> $GITHUB_OUTPUT
           if [ "$exitcode" == "1" ]; then
             echo "Terraform plan failed"
@@ -75,7 +74,6 @@ jobs:
       - name: Check Plan Status
         run: |
           exitcode="${{ steps.plan.outputs.plan_exitcode }}"
-          echo "DEBUG: Received exit code from output: $exitcode"
           if [ "$exitcode" == "2" ]; then
             echo "Changes detected - terraform apply will run"
           else
