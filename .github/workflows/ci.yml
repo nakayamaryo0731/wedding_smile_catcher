@@ -67,14 +67,40 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Comment PR with Plan
-        uses: robburger/terraform-pr-commenter@v1
         if: github.event_name == 'pull_request'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          commenter_type: plan
-          commenter_input: ${{ steps.show.outputs.plan_output }}
-          commenter_exitcode: ${{ steps.plan.outputs.exitcode }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PLAN_OUTPUT="${{ steps.show.outputs.plan_output }}"
+          EXITCODE="${{ steps.plan.outputs.exitcode }}"
+
+          if [ "$EXITCODE" -eq 0 ]; then
+            STATUS="✅ Plan succeeded"
+          else
+            STATUS="❌ Plan failed"
+          fi
+
+          COMMENT=$(cat <<EOF
+          ## Terraform Plan Results
+
+          $STATUS
+
+          <details>
+          <summary>Show Plan</summary>
+
+          \`\`\`terraform
+          $PLAN_OUTPUT
+          \`\`\`
+
+          </details>
+
+          **Pusher**: @${{ github.actor }}
+          **Action**: ${{ github.event_name }}
+          EOF
+          )
+
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
 
       - name: Fail if Plan Failed
         if: steps.plan.outcome == 'failure'
