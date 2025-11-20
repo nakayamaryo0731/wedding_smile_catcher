@@ -49,13 +49,22 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color -input=false -out=tfplan
+        run: |
+          set +e
+          terraform plan -no-color -input=false -out=tfplan
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Terraform Show
         id: show
         if: always() && steps.plan.outcome != 'skipped'
-        run: terraform show -no-color tfplan 2>&1 | tee plan_output.txt
+        run: |
+          PLAN_OUTPUT=$(terraform show -no-color tfplan 2>&1)
+          {
+            echo 'plan_output<<EOF'
+            echo "$PLAN_OUTPUT"
+            echo EOF
+          } >> $GITHUB_OUTPUT
 
       - name: Comment PR with Plan
         uses: robburger/terraform-pr-commenter@v1
@@ -64,7 +73,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           commenter_type: plan
-          commenter_input: ${{ format('{0}{1}', steps.plan.outputs.stdout, steps.plan.outputs.stderr) }}
+          commenter_input: ${{ steps.show.outputs.plan_output }}
           commenter_exitcode: ${{ steps.plan.outputs.exitcode }}
 
       - name: Fail if Plan Failed
