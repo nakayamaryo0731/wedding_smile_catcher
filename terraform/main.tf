@@ -10,10 +10,10 @@ resource "google_project_service" "required_apis" {
     "iam.googleapis.com",
     "vision.googleapis.com",
     "aiplatform.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com",
     # Uncomment as modules are implemented:
-    # "cloudfunctions.googleapis.com",
     # "run.googleapis.com",
-    # "cloudbuild.googleapis.com",
     # "logging.googleapis.com",
     # "monitoring.googleapis.com",
   ])
@@ -93,12 +93,29 @@ module "iam" {
   ]
 }
 
+# Cloud Functions Module - Webhook and Scoring functions
+module "functions" {
+  source = "./modules/functions"
+
+  project_id          = var.project_id
+  region              = var.region
+  storage_bucket_name = var.storage_bucket_name
+
+  webhook_service_account_email = module.iam.webhook_service_account_email
+  scoring_service_account_email = module.iam.scoring_service_account_email
+
+  line_channel_secret_name       = "line-channel-secret"
+  line_channel_access_token_name = "line-channel-access-token"
+
+  depends_on = [
+    google_project_service.required_apis,
+    module.iam,
+    module.secret_manager,
+    module.storage
+  ]
+}
+
 # Future modules (commented out for now):
-#
-# module "functions" {
-#   source = "./modules/functions"
-#   ...
-# }
 #
 # module "cloud_run" {
 #   source = "./modules/cloud_run"
