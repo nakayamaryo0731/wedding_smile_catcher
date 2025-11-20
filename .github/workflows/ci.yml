@@ -20,7 +20,7 @@ jobs:
         working-directory: ./terraform
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Terraform
         uses: ./.github/actions/terraform-setup
@@ -50,6 +50,6 @@ jobs:
   # test:
   #   runs-on: ubuntu-latest
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v5
   #     - name: Run tests
   #       run: make test
