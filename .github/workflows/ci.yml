@@ -58,13 +58,7 @@ jobs:
       - name: Terraform Show
         id: show
         if: always() && steps.plan.outcome != 'skipped'
-        run: |
-          PLAN_OUTPUT=$(terraform show -no-color tfplan 2>&1)
-          {
-            echo 'plan_output<<EOF'
-            echo "$PLAN_OUTPUT"
-            echo EOF
-          } >> $GITHUB_OUTPUT
+        run: terraform show -no-color tfplan > plan.txt 2>&1
 
       - name: Comment PR with Plan
         if: github.event_name == 'pull_request'
@@ -72,7 +66,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          PLAN_OUTPUT="${{ steps.show.outputs.plan_output }}"
           EXITCODE="${{ steps.plan.outputs.exitcode }}"
 
           if [ "$EXITCODE" -eq 0 ]; then
@@ -81,26 +74,29 @@ jobs:
             STATUS="❌ Plan failed"
           fi
 
-          COMMENT=$(cat <<EOF
+          cat > comment.md <<'COMMENT_EOF'
           ## Terraform Plan Results
 
-          $STATUS
+          COMMENT_EOF
+          echo "$STATUS" >> comment.md
+          cat >> comment.md <<'COMMENT_EOF'
 
           <details>
           <summary>Show Plan</summary>
 
-          \`\`\`terraform
-          $PLAN_OUTPUT
-          \`\`\`
+          ```terraform
+          COMMENT_EOF
+          cat plan.txt >> comment.md
+          cat >> comment.md <<'COMMENT_EOF'
+          ```
 
           </details>
 
           **Pusher**: @${{ github.actor }}
           **Action**: ${{ github.event_name }}
-          EOF
-          )
+          COMMENT_EOF
 
-          gh pr comment "$PR_NUMBER" --body "$COMMENT"
+          gh pr comment "$PR_NUMBER" --body-file comment.md
 
       - name: Fail if Plan Failed
         if: steps.plan.outcome == 'failure'
