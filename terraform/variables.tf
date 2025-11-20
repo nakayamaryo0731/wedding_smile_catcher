@@ -38,16 +38,20 @@ variable "firestore_location" {
 }
 
 # LINE Bot Configuration
+# NOTE: These variables have lifecycle ignore_changes, so default values are safe to use
+# Actual secrets are managed separately and won't be overwritten
 variable "line_channel_secret" {
   description = "LINE Channel Secret (stored in Secret Manager)"
   type        = string
   sensitive   = true
+  default     = "placeholder-managed-externally"
 }
 
 variable "line_channel_access_token" {
   description = "LINE Channel Access Token (stored in Secret Manager)"
   type        = string
   sensitive   = true
+  default     = "placeholder-managed-externally"
 }
 
 # Vertex AI Configuration

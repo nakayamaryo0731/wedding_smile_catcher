@@ -59,21 +59,26 @@ jobs:
         run: |
           # Run plan with -detailed-exitcode to detect changes
           # Exit codes: 0 = no changes, 1 = error, 2 = changes detected
-          terraform plan -detailed-exitcode -no-color -out=tfplan || echo "plan_exitcode=$?" >> $GITHUB_OUTPUT
-        continue-on-error: true
+          set +e
+          terraform plan -detailed-exitcode -no-color -input=false -out=tfplan
+          exitcode=$?
+          set -e
+          echo "plan_exitcode=$exitcode" >> $GITHUB_OUTPUT
+          if [ "$exitcode" == "1" ]; then
+            echo "Terraform plan failed"
+            exit 1
+          fi
+          exit 0
 
       - name: Check Plan Status
         run: |
-          exitcode=$(grep plan_exitcode $GITHUB_OUTPUT | cut -d'=' -f2 || echo "0")
-          if [ "$exitcode" == "1" ]; then
-            echo "Terraform plan failed with an error"
-            exit 1
-          elif [ "$exitcode" == "2" ]; then
-            echo "Changes detected, will apply"
+          exitcode="${{ steps.plan.outputs.plan_exitcode }}"
+          if [ "$exitcode" == "2" ]; then
+            echo "Changes detected - terraform apply will run"
           else
-            echo "No changes detected"
+            echo "No changes detected - skipping terraform apply"
           fi
 
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.plan.outputs.plan_exitcode == '2'
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve -input=false tfplan
