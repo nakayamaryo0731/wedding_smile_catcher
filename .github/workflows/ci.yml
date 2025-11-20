@@ -43,6 +43,8 @@ jobs:
           tflint_version: latest
 
       - name: Run tflint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tflint --init --config=../.tflint.hcl
           tflint --config=../.tflint.hcl
