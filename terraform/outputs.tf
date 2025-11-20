@@ -28,6 +28,18 @@ output "line_channel_access_token_id" {
   sensitive   = true
 }
 
+# Cloud Storage
+# Outputs for Cloud Storage resources
+output "storage_bucket_name" {
+  description = "Cloud Storage bucket name"
+  value       = module.storage.bucket_name
+}
+
+output "storage_bucket_url" {
+  description = "Cloud Storage bucket URL"
+  value       = module.storage.bucket_url
+}
+
 # Test Output (for CI/CD verification)
 output "terraform_workspace" {
   description = "Current Terraform workspace"
@@ -36,11 +48,6 @@ output "terraform_workspace" {
 
 # Future outputs (commented out for now)
 # These outputs will be enabled when respective modules are implemented:
-#
-# output "storage_bucket_name" {
-#   description = "Cloud Storage bucket name"
-#   value       = module.storage.bucket_name
-# }
 #
 # output "webhook_function_url" {
 #   description = "Webhook function URL"
