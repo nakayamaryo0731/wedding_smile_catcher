@@ -39,6 +39,7 @@ module "secret_manager" {
 }
 
 # Cloud Storage Module - Image Storage
+# Stores wedding smile images with public read access
 module "storage" {
   source = "./modules/storage"
 
