@@ -82,5 +82,6 @@ variable "labels" {
     project     = "wedding-smile-catcher"
     environment = "production"
     managed_by  = "terraform"
+    team        = "wedding-tech"
   }
 }

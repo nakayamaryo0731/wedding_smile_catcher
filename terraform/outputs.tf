@@ -29,6 +29,12 @@ output "line_channel_access_token_id" {
   sensitive   = true
 }
 
+# Test Output (for CI/CD verification)
+output "terraform_workspace" {
+  description = "Current Terraform workspace"
+  value       = terraform.workspace
+}
+
 # Future outputs (commented out for now)
 # These outputs will be enabled when respective modules are implemented:
 #
