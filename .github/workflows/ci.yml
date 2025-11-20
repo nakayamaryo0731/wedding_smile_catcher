@@ -49,40 +49,26 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: |
-          terraform plan -no-color -input=false | tee plan_output.txt
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
+        run: terraform plan -no-color -input=false -out=tfplan
         continue-on-error: true
 
+      - name: Terraform Show
+        id: show
+        if: always() && steps.plan.outcome != 'skipped'
+        run: terraform show -no-color tfplan 2>&1 | tee plan_output.txt
+
       - name: Comment PR with Plan
-        uses: actions/github-script@v7
+        uses: robburger/terraform-pr-commenter@v1
         if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          script: |
-            const fs = require('fs');
-            const planOutput = fs.readFileSync('terraform/plan_output.txt', 'utf8');
-
-            const output = `### Terraform Plan Results
-
-            <details><summary>Show Plan</summary>
-
-            \`\`\`terraform
-            ${planOutput}
-            \`\`\`
-
-            </details>
-
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
+          commenter_type: plan
+          commenter_input: ${{ format('{0}{1}', steps.plan.outputs.stdout, steps.plan.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.plan.outputs.exitcode }}
 
       - name: Fail if Plan Failed
-        if: steps.plan.outputs.exitcode != '0'
+        if: steps.plan.outcome == 'failure'
         run: exit 1
 
   # TODO: Add backend/frontend tests when implemented
