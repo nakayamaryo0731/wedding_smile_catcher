@@ -55,9 +55,25 @@ jobs:
           tflint --config=../.tflint.hcl
 
       - name: Terraform Plan
-        if: github.event_name == 'pull_request'
-        run: terraform plan -no-color
+        id: plan
+        run: |
+          # Run plan with -detailed-exitcode to detect changes
+          # Exit codes: 0 = no changes, 1 = error, 2 = changes detected
+          terraform plan -detailed-exitcode -no-color -out=tfplan || echo "plan_exitcode=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Check Plan Status
+        run: |
+          exitcode=$(grep plan_exitcode $GITHUB_OUTPUT | cut -d'=' -f2 || echo "0")
+          if [ "$exitcode" == "1" ]; then
+            echo "Terraform plan failed with an error"
+            exit 1
+          elif [ "$exitcode" == "2" ]; then
+            echo "Changes detected, will apply"
+          else
+            echo "No changes detected"
+          fi
 
       - name: Terraform Apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.plan.outputs.plan_exitcode == '2'
+        run: terraform apply -auto-approve tfplan
