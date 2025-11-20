@@ -56,6 +56,16 @@ gcloud projects add-iam-policy-binding wedding-smile-catcher \
 
 **Note:** The Terraform service account itself cannot be managed by Terraform (bootstrapping problem). Manual configuration is required for the service account's IAM roles.
 
+### Checking Permissions
+
+**IMPORTANT:** Always run the permission check script before `terraform apply` to avoid permission errors:
+
+```bash
+./scripts/check-permissions.sh
+```
+
+This script validates that the Terraform service account has all required IAM roles. If any roles are missing, it will display the exact commands needed to grant them.
+
 ## Project Structure
 
 ```
