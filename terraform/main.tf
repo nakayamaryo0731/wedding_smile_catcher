@@ -7,12 +7,13 @@ resource "google_project_service" "required_apis" {
     "secretmanager.googleapis.com",
     "storage.googleapis.com",
     "firestore.googleapis.com",
+    "iam.googleapis.com",
+    "vision.googleapis.com",
+    "aiplatform.googleapis.com",
     # Uncomment as modules are implemented:
     # "cloudfunctions.googleapis.com",
     # "run.googleapis.com",
     # "cloudbuild.googleapis.com",
-    # "vision.googleapis.com",
-    # "aiplatform.googleapis.com",
     # "logging.googleapis.com",
     # "monitoring.googleapis.com",
   ])
@@ -79,17 +80,20 @@ module "firestore" {
   depends_on = [google_project_service.required_apis]
 }
 
+# IAM Module - Service accounts and permissions for Cloud Functions
+module "iam" {
+  source = "./modules/iam"
+
+  project_id          = var.project_id
+  storage_bucket_name = var.storage_bucket_name
+
+  depends_on = [
+    google_project_service.required_apis,
+    module.storage
+  ]
+}
+
 # Future modules (commented out for now):
-#
-# module "iam" {
-#   source = "./modules/iam"
-#   ...
-# }
-#
-# module "firestore" {
-#   source = "./modules/firestore"
-#   ...
-# }
 #
 # module "functions" {
 #   source = "./modules/functions"
