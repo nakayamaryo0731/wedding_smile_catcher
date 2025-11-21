@@ -86,7 +86,17 @@ function updateRankCard(rank, imageData) {
 
   // Update AI comment for rank 1 only
   if (card.comment) {
-    const comment = imageData.comment || imageData.ai_comment || 'すばらしい笑顔です！';
+    // Debug: log available fields
+    if (rank === 1) {
+      console.log('Rank 1 imageData:', imageData);
+      console.log('Available comment fields:', {
+        comment: imageData.comment,
+        ai_comment: imageData.ai_comment,
+        gemini_comment: imageData.gemini_comment
+      });
+    }
+
+    const comment = imageData.comment || imageData.ai_comment || imageData.gemini_comment || 'すばらしい笑顔です！';
     card.comment.textContent = comment;
   }
 
