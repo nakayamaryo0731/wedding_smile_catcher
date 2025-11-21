@@ -143,6 +143,15 @@ resource "google_cloudfunctions2_function_iam_member" "webhook_invoker" {
   member         = "allUsers"
 }
 
+# Make underlying Cloud Run service publicly accessible
+resource "google_cloud_run_service_iam_member" "webhook_run_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.webhook.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 # Allow webhook function to invoke scoring function
 resource "google_cloudfunctions2_function_iam_member" "scoring_invoker" {
   project        = var.project_id
