@@ -72,7 +72,7 @@ body {
     gap: 0.8rem;
     animation: fadeIn 1.5s ease-out;
     flex: 1;
-    align-items: start;
+    align-items: stretch;
 }
 
 /* Rank 1 Container */
