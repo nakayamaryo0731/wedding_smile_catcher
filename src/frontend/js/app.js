@@ -1,8 +1,7 @@
-import { collection, query, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, query, orderBy, limit, onSnapshot, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // State
 let currentTop3 = [];
-let confettiTriggered = false;
 
 // DOM Elements
 const loadingEl = document.getElementById('loading');
@@ -18,17 +17,33 @@ const rankCards = {
     card: document.getElementById('rank-2'),
     image: document.getElementById('rank-2-image'),
     name: document.getElementById('rank-2-name'),
-    score: document.getElementById('rank-2-score'),
-    comment: document.getElementById('rank-2-comment')
+    score: document.getElementById('rank-2-score')
   },
   3: {
     card: document.getElementById('rank-3'),
     image: document.getElementById('rank-3-image'),
     name: document.getElementById('rank-3-name'),
-    score: document.getElementById('rank-3-score'),
-    comment: document.getElementById('rank-3-comment')
+    score: document.getElementById('rank-3-score')
   }
 };
+
+/**
+ * Fetch user name from users collection
+ */
+async function fetchUserName(userId) {
+  try {
+    const userRef = doc(window.db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      return userSnap.data().name || userId;
+    }
+    return userId;
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+    return userId;
+  }
+}
 
 /**
  * Filter to unique users from image list
@@ -60,13 +75,15 @@ function updateRankCard(rank, imageData) {
   const card = rankCards[rank];
 
   if (!imageData) {
-    // Empty state
+    // Empty state - show frame but no data
     card.card.classList.add('empty');
-    card.card.classList.remove('visible');
+    card.card.classList.add('visible'); // Keep visible to show empty frame
     card.image.src = '';
     card.name.textContent = '-';
     card.score.textContent = '0';
-    card.comment.textContent = '-';
+    if (card.comment) {
+      card.comment.textContent = '-';
+    }
     return;
   }
 
@@ -84,7 +101,22 @@ function updateRankCard(rank, imageData) {
   card.image.alt = `${userName}'s smile`;
   card.name.textContent = userName;
   card.score.textContent = Math.round(imageData.total_score);
-  card.comment.textContent = imageData.comment || imageData.ai_comment || 'すばらしい笑顔です！';
+
+  // Update AI comment for rank 1 only
+  if (card.comment) {
+    // Debug: log available fields
+    if (rank === 1) {
+      console.log('Rank 1 imageData:', imageData);
+      console.log('Available comment fields:', {
+        comment: imageData.comment,
+        ai_comment: imageData.ai_comment,
+        gemini_comment: imageData.gemini_comment
+      });
+    }
+
+    const comment = imageData.comment || imageData.ai_comment || imageData.gemini_comment || 'すばらしい笑顔です！';
+    card.comment.textContent = comment;
+  }
 
   // Trigger fade-in animation
   setTimeout(() => {
@@ -93,59 +125,23 @@ function updateRankCard(rank, imageData) {
 }
 
 /**
- * Trigger confetti effect for rank 1
- */
-function triggerConfetti() {
-  if (confettiTriggered) return;
-
-  confettiTriggered = true;
-
-  const duration = 3000;
-  const end = Date.now() + duration;
-
-  const colors = ['#f8b4d9', '#a8d5e2', '#ffd700', '#764ba2', '#667eea'];
-
-  (function frame() {
-    confetti({
-      particleCount: 3,
-      angle: 60,
-      spread: 55,
-      origin: { x: 0 },
-      colors: colors
-    });
-    confetti({
-      particleCount: 3,
-      angle: 120,
-      spread: 55,
-      origin: { x: 1 },
-      colors: colors
-    });
-
-    if (Date.now() < end) {
-      requestAnimationFrame(frame);
-    }
-  }());
-
-  // Reset after 5 seconds so it can trigger again for new #1
-  setTimeout(() => {
-    confettiTriggered = false;
-  }, 5000);
-}
-
-/**
  * Update the ranking display
  */
-function updateRankings(images) {
+async function updateRankings(images) {
   console.log(`Received ${images.length} images, filtering to unique users...`);
 
   // Filter to unique users (same user can't appear twice)
   const uniqueImages = filterToUniqueUsers(images);
   console.log(`Top 3 unique users:`, uniqueImages);
 
-  // Check if rank 1 changed
-  const newRank1Id = uniqueImages[0]?.id;
-  const oldRank1Id = currentTop3[0]?.id;
-  const rank1Changed = newRank1Id && newRank1Id !== oldRank1Id;
+  // Fetch user names for all unique users
+  const userNamesPromises = uniqueImages.map(img => fetchUserName(img.user_id));
+  const userNames = await Promise.all(userNamesPromises);
+
+  // Add user_name to each image data
+  uniqueImages.forEach((img, index) => {
+    img.user_name = userNames[index];
+  });
 
   // Update state
   currentTop3 = uniqueImages;
@@ -153,12 +149,6 @@ function updateRankings(images) {
   // Update all three ranks
   for (let i = 1; i <= 3; i++) {
     updateRankCard(i, uniqueImages[i - 1]);
-  }
-
-  // Trigger confetti if rank 1 changed
-  if (rank1Changed) {
-    console.log('Rank 1 changed! Triggering confetti...');
-    triggerConfetti();
   }
 
   // Hide loading
