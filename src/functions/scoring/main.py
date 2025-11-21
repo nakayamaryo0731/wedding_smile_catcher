@@ -1,7 +1,7 @@
 """
-Wedding Smile Catcher - Scoring Function (Dummy Implementation)
-This is a simplified version for integration testing.
-Returns dummy scores without calling Vision API or Vertex AI.
+Wedding Smile Catcher - Scoring Function
+Analyzes uploaded images using Vision API for smile detection.
+AI evaluation (Vertex AI) and similarity detection (Average Hash) are still TODO.
 """
 
 import os
@@ -14,18 +14,21 @@ from flask import Request, jsonify
 from linebot import LineBotApi
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
-from google.cloud import firestore
+from google.cloud import firestore, storage, vision
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Firestore client
+# Initialize Google Cloud clients
 db = firestore.Client()
+storage_client = storage.Client()
+vision_client = vision.ImageAnnotatorClient()
 
 # Environment variables
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
 GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', 'wedding-smile-catcher')
+STORAGE_BUCKET = os.environ.get('STORAGE_BUCKET', 'wedding-smile-images')
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -36,11 +39,11 @@ def scoring(request: Request):
     """
     Cloud Functions HTTP entrypoint for scoring.
 
-    This is a dummy implementation that returns fixed scores
-    for integration testing purposes.
+    Analyzes uploaded images using Vision API for smile detection.
+    Calculates scores and sends results back to LINE Bot.
 
     Args:
-        request: Flask Request object
+        request: Flask Request object with image_id and user_id
 
     Returns:
         JSON response with scoring results
@@ -60,20 +63,20 @@ def scoring(request: Request):
     logger.info(f"Scoring request: image_id={image_id}, user_id={user_id}")
 
     try:
-        # Generate dummy scores
-        dummy_scores = generate_dummy_scores()
+        # Generate scores using Vision API
+        scores = generate_scores_with_vision_api(image_id)
 
         # Update Firestore
-        update_firestore(image_id, user_id, dummy_scores)
+        update_firestore(image_id, user_id, scores)
 
         # Send result to LINE
-        send_result_to_line(user_id, dummy_scores)
+        send_result_to_line(user_id, scores)
 
         # Return success response
         return jsonify({
             'status': 'success',
             'image_id': image_id,
-            'scores': dummy_scores
+            'scores': scores
         }), 200
 
     except Exception as e:
@@ -92,9 +95,167 @@ def scoring(request: Request):
         }), 500
 
 
+def get_joy_likelihood_score(joy_likelihood) -> float:
+    """
+    Convert joy likelihood enum to numeric score.
+
+    Args:
+        joy_likelihood: Vision API joy likelihood enum
+
+    Returns:
+        Numeric score (0-95)
+    """
+    likelihood_map = {
+        vision.Likelihood.VERY_LIKELY: 95.0,
+        vision.Likelihood.LIKELY: 75.0,
+        vision.Likelihood.POSSIBLE: 50.0,
+        vision.Likelihood.UNLIKELY: 25.0,
+        vision.Likelihood.VERY_UNLIKELY: 5.0,
+        vision.Likelihood.UNKNOWN: 0.0,
+    }
+    return likelihood_map.get(joy_likelihood, 0.0)
+
+
+def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
+    """
+    Calculate smile score using Vision API.
+
+    Args:
+        image_bytes: Image binary data
+
+    Returns:
+        Dictionary with smile_score and face_count
+    """
+    try:
+        # Create Vision API image object
+        image = vision.Image(content=image_bytes)
+
+        # Detect faces
+        response = vision_client.face_detection(image=image)
+
+        if response.error.message:
+            raise Exception(f"Vision API error: {response.error.message}")
+
+        # Calculate total smile score
+        total_smile_score = 0.0
+        smiling_faces = 0
+
+        for face in response.face_annotations:
+            # Only count faces with LIKELY or VERY_LIKELY joy
+            if face.joy_likelihood >= vision.Likelihood.LIKELY:
+                score = get_joy_likelihood_score(face.joy_likelihood)
+                total_smile_score += score
+                smiling_faces += 1
+                logger.info(
+                    f"Face detected: joy={face.joy_likelihood.name}, score={score}"
+                )
+
+        face_count = len(response.face_annotations)
+
+        logger.info(
+            f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, "
+            f"total score={total_smile_score}"
+        )
+
+        return {
+            'smile_score': round(total_smile_score, 2),
+            'face_count': face_count,
+            'smiling_faces': smiling_faces
+        }
+
+    except Exception as e:
+        logger.error(f"Vision API error: {str(e)}")
+        raise
+
+
+def download_image_from_storage(storage_path: str) -> bytes:
+    """
+    Download image from Cloud Storage.
+
+    Args:
+        storage_path: Path to image in Cloud Storage bucket
+
+    Returns:
+        Image binary data
+    """
+    try:
+        bucket = storage_client.bucket(STORAGE_BUCKET)
+        blob = bucket.blob(storage_path)
+        image_bytes = blob.download_as_bytes()
+
+        logger.info(f"Downloaded image from Storage: {storage_path}")
+        return image_bytes
+
+    except Exception as e:
+        logger.error(f"Failed to download image: {str(e)}")
+        raise
+
+
+def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
+    """
+    Generate scores using Vision API for smile detection.
+    AI evaluation and similarity detection are still dummy values.
+
+    Args:
+        image_id: Image document ID in Firestore
+
+    Returns:
+        Dictionary with scoring data
+    """
+    # Get image document from Firestore
+    image_ref = db.collection('images').document(image_id)
+    image_doc = image_ref.get()
+
+    if not image_doc.exists:
+        raise Exception(f"Image document not found: {image_id}")
+
+    image_data = image_doc.to_dict()
+    storage_path = image_data.get('storage_path')
+
+    if not storage_path:
+        raise Exception(f"Storage path not found in image document: {image_id}")
+
+    # Download image from Cloud Storage
+    image_bytes = download_image_from_storage(storage_path)
+
+    # Calculate smile score using Vision API
+    vision_result = calculate_smile_score(image_bytes)
+    smile_score = vision_result['smile_score']
+    face_count = vision_result['face_count']
+
+    # TODO: Implement Vertex AI evaluation (currently dummy)
+    ai_score = random.randint(70, 95)
+
+    # TODO: Implement Average Hash similarity detection (currently dummy)
+    is_similar = False
+    average_hash = 'dummy_hash_' + str(random.randint(1000, 9999))
+
+    # Calculate penalty
+    penalty = 0.33 if is_similar else 1.0
+
+    # Calculate total score
+    total_score = round((smile_score * ai_score / 100) * penalty, 2)
+
+    comment = (
+        f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！\n"
+        f"※ AI評価と類似判定は現在ダミー値です"
+    )
+
+    return {
+        'smile_score': smile_score,
+        'ai_score': ai_score,
+        'total_score': total_score,
+        'comment': comment,
+        'face_count': face_count,
+        'is_similar': is_similar,
+        'average_hash': average_hash
+    }
+
+
 def generate_dummy_scores() -> Dict[str, Any]:
     """
     Generate dummy scores for testing.
+    This function is kept for backwards compatibility.
 
     Returns:
         Dictionary with dummy score data
@@ -201,8 +362,7 @@ def send_result_to_line(user_id: str, scores: Dict[str, Any]):
             f"【最終スコア】{scores['total_score']}点\n\n"
             f"😊 笑顔スコア: {scores['smile_score']}点（{scores['face_count']}人）\n"
             f"🤖 AIテーマ評価: {scores['ai_score']}点\n"
-            f"💬 {scores['comment']}\n\n"
-            f"※ダミーデータによるテスト結果です"
+            f"💬 {scores['comment']}"
         )
 
     try:
