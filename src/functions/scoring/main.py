@@ -1,12 +1,15 @@
 """
 Wedding Smile Catcher - Scoring Function
-Analyzes uploaded images using Vision API for smile detection.
-AI evaluation (Vertex AI) and similarity detection (Average Hash) are still TODO.
+Analyzes uploaded images using:
+- Vision API for smile detection (face count + joy likelihood)
+- Vertex AI (Gemini) for theme evaluation (0-100 score + comment)
+Similarity detection (Average Hash) is still TODO.
 """
 
 import os
 import logging
 import random
+import json
 from typing import Dict, Any
 
 import functions_framework
@@ -15,6 +18,8 @@ from linebot import LineBotApi
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part, Image
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -28,10 +33,14 @@ vision_client = vision.ImageAnnotatorClient()
 # Environment variables
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
 GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', 'wedding-smile-catcher')
+GCP_REGION = os.environ.get('GCP_REGION', 'asia-northeast1')
 STORAGE_BUCKET = os.environ.get('STORAGE_BUCKET', 'wedding-smile-images')
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+
+# Initialize Vertex AI
+vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
 
 
 @functions_framework.http
@@ -191,10 +200,119 @@ def download_image_from_storage(storage_path: str) -> bytes:
         raise
 
 
+def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
+    """
+    Evaluate image theme relevance using Vertex AI (Gemini).
+
+    Args:
+        image_bytes: Image binary data
+
+    Returns:
+        Dictionary with score (0-100) and comment
+    """
+    try:
+        prompt = """
+あなたは結婚式写真の専門家です。提供された写真を分析し、以下の基準に従って笑顔の評価を行ってください：
+
+## 分析対象
+- 新郎新婦を中心に、写真に写っている全ての人物の表情を評価
+- グループショットの場合は、全体的な雰囲気も考慮
+
+## 評価基準（100点満点）
+1. 自然さ（30点）
+   - 作り笑いではなく、自然な表情かどうか
+   - 緊張が感じられず、リラックスしているか
+   - 目元の表情が自然か
+
+2. 幸福度（40点）
+   - 純粋な喜びが表現されているか
+   - 目が笑っているか（クローズドスマイル）
+   - 歯が見える程度の適度な笑顔か
+
+3. 周囲との調和（30点）
+   - 周りの人々と笑顔が調和しているか
+   - 場面に相応しい表情の大きさか
+   - グループ全体で統一感のある雰囲気が出ているか
+
+## 採点方法
+コメントについて：
+- 具体的な改善点があれば提案
+- 特に優れている点は強調
+
+## 注意事項
+- 文化的背景や結婚式のスタイルを考慮
+- 否定的な表現は避け、建設的なフィードバックを心がける
+- プライバシーに配慮した表現を使用
+
+## 出力
+JSON形式でscoreとcommentのキーで返却する。JSONのみを出力すること。
+
+例:
+{
+  "score": 85,
+  "comment": "新郎新婦の目元から溢れる自然な喜びが印象的で、周囲の参列者との一体感も素晴らしい"
+}
+"""
+
+        # Initialize Gemini model
+        model = GenerativeModel("gemini-1.5-flash")
+
+        # Create image part from bytes
+        image_part = Part.from_data(image_bytes, mime_type="image/jpeg")
+
+        # Generate content
+        response = model.generate_content([image_part, prompt])
+
+        logger.info(f"Gemini response: {response.text}")
+
+        # Parse JSON response
+        # Remove markdown code blocks if present
+        response_text = response.text.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]  # Remove ```json
+        if response_text.startswith("```"):
+            response_text = response_text[3:]  # Remove ```
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]  # Remove ```
+        response_text = response_text.strip()
+
+        result = json.loads(response_text)
+
+        # Validate response structure
+        if 'score' not in result or 'comment' not in result:
+            raise ValueError("Invalid response format from Gemini")
+
+        # Ensure score is an integer
+        result['score'] = int(result['score'])
+
+        logger.info(
+            f"Theme evaluation complete: score={result['score']}, "
+            f"comment={result['comment'][:50]}..."
+        )
+
+        return result
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse Gemini response as JSON: {str(e)}")
+        logger.error(f"Response text: {response.text}")
+        # Return fallback score
+        return {
+            'score': 50,
+            'comment': 'AI評価の解析に失敗しました。デフォルトスコアを適用しています。'
+        }
+    except Exception as e:
+        logger.error(f"Gemini API error: {str(e)}")
+        # Return fallback score
+        return {
+            'score': 50,
+            'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+        }
+
+
 def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     """
-    Generate scores using Vision API for smile detection.
-    AI evaluation and similarity detection are still dummy values.
+    Generate scores using Vision API for smile detection and Vertex AI for theme evaluation.
+    Similarity detection is still a dummy value.
 
     Args:
         image_id: Image document ID in Firestore
@@ -223,8 +341,10 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     smile_score = vision_result['smile_score']
     face_count = vision_result['face_count']
 
-    # TODO: Implement Vertex AI evaluation (currently dummy)
-    ai_score = random.randint(70, 95)
+    # Evaluate theme using Vertex AI (Gemini)
+    theme_result = evaluate_theme(image_bytes)
+    ai_score = theme_result['score']
+    ai_comment = theme_result['comment']
 
     # TODO: Implement Average Hash similarity detection (currently dummy)
     is_similar = False
@@ -237,8 +357,8 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     total_score = round((smile_score * ai_score / 100) * penalty, 2)
 
     comment = (
-        f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！\n"
-        f"※ AI評価と類似判定は現在ダミー値です"
+        f"{ai_comment}\n\n"
+        f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！"
     )
 
     return {
