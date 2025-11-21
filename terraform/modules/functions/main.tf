@@ -117,6 +117,7 @@ resource "google_cloudfunctions2_function" "scoring" {
 
     environment_variables = {
       GCP_PROJECT_ID = var.project_id
+      STORAGE_BUCKET = var.storage_bucket_name
     }
 
     secret_environment_variables {
