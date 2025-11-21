@@ -1,0 +1,64 @@
+name: Deploy Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/functions/**'
+
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy webhook function
+        if: contains(github.event.head_commit.modified, 'src/functions/webhook/')
+        run: |
+          gcloud functions deploy webhook \
+            --gen2 \
+            --region=asia-northeast1 \
+            --runtime=python311 \
+            --source=./src/functions/webhook \
+            --entry-point=webhook \
+            --trigger-http \
+            --allow-unauthenticated \
+            --service-account=webhook-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars=GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},STORAGE_BUCKET=${{ secrets.STORAGE_BUCKET }},SCORING_FUNCTION_URL=https://asia-northeast1-${{ secrets.GCP_PROJECT_ID }}.cloudfunctions.net/scoring \
+            --set-secrets=LINE_CHANNEL_SECRET=line-channel-secret:latest,LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest \
+            --memory=512M \
+            --timeout=60s \
+            --max-instances=100
+
+      - name: Deploy scoring function
+        if: contains(github.event.head_commit.modified, 'src/functions/scoring/')
+        run: |
+          gcloud functions deploy scoring \
+            --gen2 \
+            --region=asia-northeast1 \
+            --runtime=python311 \
+            --source=./src/functions/scoring \
+            --entry-point=scoring \
+            --trigger-http \
+            --no-allow-unauthenticated \
+            --service-account=scoring-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars=GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} \
+            --set-secrets=LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest \
+            --memory=1Gi \
+            --timeout=300s \
+            --max-instances=100
