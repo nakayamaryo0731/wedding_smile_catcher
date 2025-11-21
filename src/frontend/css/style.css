@@ -206,7 +206,8 @@ body {
 /* Rank 2 & 3 Specific - Smaller size */
 .rank-2 .image-container,
 .rank-3 .image-container {
-    height: 145px;
+    flex: 1;
+    min-height: 120px;
     margin-bottom: 0.5rem;
 }
 
