@@ -4,8 +4,9 @@ on:
   pull_request:
     paths:
       - 'terraform/**'
-      # Add other paths when backend/frontend are implemented
-      # - 'src/**'
+      - 'src/**'
+      - '.github/workflows/**'
+      - 'Makefile'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -104,10 +105,33 @@ jobs:
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
-  # TODO: Add backend/frontend tests when implemented
-  # test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Run tests
-  #       run: make test
+  python:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files, 'src/')
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install black flake8 pip-tools
+
+      - name: Check Python formatting
+        run: |
+          black --check src/
+
+      - name: Lint Python code
+        run: |
+          flake8 src/ --max-line-length=100 --extend-ignore=E203
+
+      - name: Validate Python dependencies
+        run: |
+          echo "Validating webhook requirements..."
+          pip-compile --dry-run --quiet src/functions/webhook/requirements.txt
+          echo "Validating scoring requirements..."
+          pip-compile --dry-run --quiet src/functions/scoring/requirements.txt
