@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'src/functions/**'
+      - '.github/workflows/deploy-functions.yml'
 
 concurrency:
   group: deploy-functions
