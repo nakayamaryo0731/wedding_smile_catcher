@@ -86,7 +86,8 @@ body {
 .rank-2-3-container {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.5rem;
+    height: 100%;
 }
 
 /* Ranking Card Base */
@@ -104,11 +105,7 @@ body {
     transform: translateY(20px);
 }
 
-/* Rank 2 & 3 smaller padding */
-.rank-2,
-.rank-3 {
-    padding: 0.5rem;
-}
+/* Rank 2 & 3 smaller padding - merged with flex settings */
 
 .ranking-card.visible {
     opacity: 1;
@@ -195,6 +192,15 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Rank 2 & 3 cards should split the height equally */
+.rank-2,
+.rank-3 {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem;
 }
 
 /* Rank 2 & 3 Specific - Smaller size */
