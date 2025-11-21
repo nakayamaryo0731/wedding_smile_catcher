@@ -160,3 +160,12 @@ resource "google_cloudfunctions2_function_iam_member" "scoring_invoker" {
   role           = "roles/cloudfunctions.invoker"
   member         = "serviceAccount:${var.webhook_service_account_email}"
 }
+
+# Make underlying Cloud Run service accessible to webhook service account
+resource "google_cloud_run_service_iam_member" "scoring_run_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.scoring.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.webhook_service_account_email}"
+}
