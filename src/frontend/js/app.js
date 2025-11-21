@@ -10,22 +10,19 @@ const rankCards = {
     card: document.getElementById('rank-1'),
     image: document.getElementById('rank-1-image'),
     name: document.getElementById('rank-1-name'),
-    score: document.getElementById('rank-1-score'),
-    comment: document.getElementById('rank-1-comment')
+    score: document.getElementById('rank-1-score')
   },
   2: {
     card: document.getElementById('rank-2'),
     image: document.getElementById('rank-2-image'),
     name: document.getElementById('rank-2-name'),
-    score: document.getElementById('rank-2-score'),
-    comment: document.getElementById('rank-2-comment')
+    score: document.getElementById('rank-2-score')
   },
   3: {
     card: document.getElementById('rank-3'),
     image: document.getElementById('rank-3-image'),
     name: document.getElementById('rank-3-name'),
-    score: document.getElementById('rank-3-score'),
-    comment: document.getElementById('rank-3-comment')
+    score: document.getElementById('rank-3-score')
   }
 };
 
@@ -59,13 +56,12 @@ function updateRankCard(rank, imageData) {
   const card = rankCards[rank];
 
   if (!imageData) {
-    // Empty state
+    // Empty state - show frame but no data
     card.card.classList.add('empty');
-    card.card.classList.remove('visible');
+    card.card.classList.add('visible'); // Keep visible to show empty frame
     card.image.src = '';
     card.name.textContent = '-';
     card.score.textContent = '0';
-    card.comment.textContent = '-';
     return;
   }
 
@@ -83,7 +79,6 @@ function updateRankCard(rank, imageData) {
   card.image.alt = `${userName}'s smile`;
   card.name.textContent = userName;
   card.score.textContent = Math.round(imageData.total_score);
-  card.comment.textContent = imageData.comment || imageData.ai_comment || 'すばらしい笑顔です！';
 
   // Trigger fade-in animation
   setTimeout(() => {
