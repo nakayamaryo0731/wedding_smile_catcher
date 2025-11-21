@@ -93,7 +93,7 @@ body {
     background: var(--gradient-card);
     backdrop-filter: blur(20px);
     border-radius: 16px;
-    padding: 0.8rem;
+    padding: 1rem;
     box-shadow: 0 8px 32px var(--shadow-medium);
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -101,6 +101,12 @@ body {
     overflow: hidden;
     opacity: 0;
     transform: translateY(20px);
+}
+
+/* Rank 2 & 3 smaller padding */
+.rank-2,
+.rank-3 {
+    padding: 0.6rem;
 }
 
 .ranking-card.visible {
@@ -136,15 +142,15 @@ body {
 }
 
 .rank-1 .image-container {
-    height: 300px;
+    height: 350px;
 }
 
 .rank-1 .user-name {
-    font-size: 1.8rem;
+    font-size: 2rem;
 }
 
 .rank-1 .score {
-    font-size: 2.5rem;
+    font-size: 3rem;
 }
 
 /* Rank Badge */
@@ -193,28 +199,28 @@ body {
 /* Rank 2 & 3 Specific - Smaller size */
 .rank-2 .image-container,
 .rank-3 .image-container {
-    height: 150px;
-    margin-bottom: 0.6rem;
+    height: 110px;
+    margin-bottom: 0.4rem;
 }
 
 .rank-2 .user-name,
 .rank-3 .user-name {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
 }
 
 .rank-2 .score,
 .rank-3 .score {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
 }
 
 .rank-2 .rank-number,
 .rank-3 .rank-number {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .rank-2 .score-container,
 .rank-3 .score-container {
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
 }
 
 /* Image Container */
