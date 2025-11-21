@@ -11,5 +11,9 @@ google-cloud-logging==3.10.0
 google-cloud-vision==3.7.2
 google-cloud-aiplatform==1.73.0
 
+# Image processing for Average Hash
+Pillow==11.1.0
+imagehash==4.3.1
+
 # Utilities
 python-dotenv==1.0.1

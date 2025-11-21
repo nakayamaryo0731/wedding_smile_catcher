@@ -3,7 +3,7 @@ Wedding Smile Catcher - Scoring Function
 Analyzes uploaded images using:
 - Vision API for smile detection (face count + joy likelihood)
 - Vertex AI (Gemini) for theme evaluation (0-100 score + comment)
-Similarity detection (Average Hash) is still TODO.
+- Average Hash for similarity detection (prevents spam uploads)
 """
 
 import os
@@ -11,7 +11,8 @@ import logging
 import random
 import json
 import time
-from typing import Dict, Any
+import io
+from typing import Dict, Any, List
 
 import functions_framework
 from flask import Request, jsonify
@@ -21,6 +22,8 @@ from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Image
+from PIL import Image as PILImage
+import imagehash
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -201,6 +204,117 @@ def download_image_from_storage(storage_path: str) -> bytes:
         raise
 
 
+def calculate_average_hash(image_bytes: bytes) -> str:
+    """
+    Calculate Average Hash for similarity detection.
+
+    Args:
+        image_bytes: Image binary data
+
+    Returns:
+        str: 64-bit hash value as hexadecimal string
+    """
+    try:
+        img = PILImage.open(io.BytesIO(image_bytes))
+        hash_value = imagehash.average_hash(img, hash_size=8)
+        hash_str = str(hash_value)
+
+        logger.info(f"Calculated average hash: {hash_str}")
+        return hash_str
+
+    except Exception as e:
+        logger.error(f"Failed to calculate average hash: {str(e)}")
+        # Return a random hash as fallback to avoid blocking the process
+        return f"error_{random.randint(1000, 9999)}"
+
+
+def is_similar_image(new_hash: str, existing_hashes: List[str], threshold: int = 8) -> bool:
+    """
+    Check if the image is similar to any existing images.
+
+    Args:
+        new_hash: Hash of the new image
+        existing_hashes: List of hashes from existing images
+        threshold: Hamming distance threshold (default: 8)
+
+    Returns:
+        bool: True if similar image exists
+    """
+    # Skip similarity check if new hash is an error hash
+    if new_hash.startswith("error_"):
+        logger.warning("Skipping similarity check due to hash calculation error")
+        return False
+
+    try:
+        new_hash_obj = imagehash.hex_to_hash(new_hash)
+
+        for existing_hash in existing_hashes:
+            # Skip error hashes
+            if existing_hash.startswith("error_"):
+                continue
+
+            try:
+                existing_hash_obj = imagehash.hex_to_hash(existing_hash)
+                hamming_distance = new_hash_obj - existing_hash_obj
+
+                logger.info(
+                    f"Comparing hashes: new={new_hash}, existing={existing_hash}, "
+                    f"distance={hamming_distance}"
+                )
+
+                if hamming_distance <= threshold:
+                    logger.warning(
+                        f"Similar image detected! Distance={hamming_distance} <= {threshold}"
+                    )
+                    return True
+
+            except Exception as e:
+                logger.error(f"Error comparing hash {existing_hash}: {str(e)}")
+                continue
+
+        logger.info(f"No similar images found (checked {len(existing_hashes)} hashes)")
+        return False
+
+    except Exception as e:
+        logger.error(f"Error in similarity check: {str(e)}")
+        # On error, assume not similar to avoid blocking uploads
+        return False
+
+
+def get_existing_hashes_for_user(user_id: str) -> List[str]:
+    """
+    Get all existing average hashes for a user's uploaded images.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        List of average hash strings
+    """
+    try:
+        # Query images collection for this user with status 'completed'
+        images_query = (
+            db.collection('images')
+            .where('user_id', '==', user_id)
+            .where('status', '==', 'completed')
+            .get()
+        )
+
+        hashes = []
+        for doc in images_query:
+            data = doc.to_dict()
+            if 'average_hash' in data:
+                hashes.append(data['average_hash'])
+
+        logger.info(f"Retrieved {len(hashes)} existing hashes for user {user_id}")
+        return hashes
+
+    except Exception as e:
+        logger.error(f"Failed to get existing hashes: {str(e)}")
+        # Return empty list on error to avoid blocking the process
+        return []
+
+
 def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
     """
     Evaluate image theme relevance using Vertex AI (Gemini).
@@ -352,8 +466,8 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 
 def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     """
-    Generate scores using Vision API for smile detection and Vertex AI for theme evaluation.
-    Similarity detection is still a dummy value.
+    Generate scores using Vision API for smile detection, Vertex AI for theme evaluation,
+    and Average Hash for similarity detection.
 
     Args:
         image_id: Image document ID in Firestore
@@ -370,9 +484,13 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
 
     image_data = image_doc.to_dict()
     storage_path = image_data.get('storage_path')
+    user_id = image_data.get('user_id')
 
     if not storage_path:
         raise Exception(f"Storage path not found in image document: {image_id}")
+
+    if not user_id:
+        raise Exception(f"User ID not found in image document: {image_id}")
 
     # Download image from Cloud Storage
     image_bytes = download_image_from_storage(storage_path)
@@ -387,9 +505,14 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     ai_score = theme_result['score']
     ai_comment = theme_result['comment']
 
-    # TODO: Implement Average Hash similarity detection (currently dummy)
-    is_similar = False
-    average_hash = 'dummy_hash_' + str(random.randint(1000, 9999))
+    # Calculate Average Hash for similarity detection
+    average_hash = calculate_average_hash(image_bytes)
+
+    # Get existing hashes for this user
+    existing_hashes = get_existing_hashes_for_user(user_id)
+
+    # Check if similar image exists
+    is_similar = is_similar_image(average_hash, existing_hashes, threshold=8)
 
     # Calculate penalty
     penalty = 0.33 if is_similar else 1.0
