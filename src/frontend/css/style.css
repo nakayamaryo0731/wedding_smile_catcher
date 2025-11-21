@@ -72,13 +72,14 @@ body {
     gap: 0.8rem;
     animation: fadeIn 1.5s ease-out;
     flex: 1;
+    align-items: start;
 }
 
 /* Rank 1 Container */
 .rank-1-container {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
 }
 
 /* Rank 2 & 3 Container */
