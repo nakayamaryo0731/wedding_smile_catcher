@@ -10,6 +10,7 @@ import os
 import logging
 import random
 import json
+import time
 from typing import Dict, Any
 
 import functions_framework
@@ -203,6 +204,7 @@ def download_image_from_storage(storage_path: str) -> bytes:
 def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
     """
     Evaluate image theme relevance using Vertex AI (Gemini).
+    Implements exponential backoff retry for rate limit and server errors.
 
     Args:
         image_bytes: Image binary data
@@ -210,8 +212,7 @@ def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
     Returns:
         Dictionary with score (0-100) and comment
     """
-    try:
-        prompt = """
+    prompt = """
 あなたは結婚式写真の専門家です。提供された写真を分析し、以下の基準に従って笑顔の評価を行ってください：
 
 ## 分析対象
@@ -254,59 +255,99 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 }
 """
 
-        # Initialize Gemini model (using latest Flash model)
-        model = GenerativeModel("gemini-2.5-flash")
+    # Retry configuration
+    max_retries = 3
+    base_delay = 1.0  # seconds
+    max_delay = 10.0  # seconds
 
-        # Create image part from bytes
-        image_part = Part.from_data(image_bytes, mime_type="image/jpeg")
+    for attempt in range(max_retries):
+        try:
+            # Initialize Gemini model (using latest Flash model)
+            model = GenerativeModel("gemini-2.5-flash")
 
-        # Generate content
-        response = model.generate_content([image_part, prompt])
+            # Create image part from bytes
+            image_part = Part.from_data(image_bytes, mime_type="image/jpeg")
 
-        logger.info(f"Gemini response: {response.text}")
+            # Generate content
+            response = model.generate_content([image_part, prompt])
 
-        # Parse JSON response
-        # Remove markdown code blocks if present
-        response_text = response.text.strip()
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]  # Remove ```json
-        if response_text.startswith("```"):
-            response_text = response_text[3:]  # Remove ```
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]  # Remove ```
-        response_text = response_text.strip()
+            logger.info(f"Gemini response: {response.text}")
 
-        result = json.loads(response_text)
+            # Parse JSON response
+            # Remove markdown code blocks if present
+            response_text = response.text.strip()
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]  # Remove ```json
+            if response_text.startswith("```"):
+                response_text = response_text[3:]  # Remove ```
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]  # Remove ```
+            response_text = response_text.strip()
 
-        # Validate response structure
-        if 'score' not in result or 'comment' not in result:
-            raise ValueError("Invalid response format from Gemini")
+            result = json.loads(response_text)
 
-        # Ensure score is an integer
-        result['score'] = int(result['score'])
+            # Validate response structure
+            if 'score' not in result or 'comment' not in result:
+                raise ValueError("Invalid response format from Gemini")
 
-        logger.info(
-            f"Theme evaluation complete: score={result['score']}, "
-            f"comment={result['comment'][:50]}..."
-        )
+            # Ensure score is an integer
+            result['score'] = int(result['score'])
 
-        return result
+            logger.info(
+                f"Theme evaluation complete: score={result['score']}, "
+                f"comment={result['comment'][:50]}..."
+            )
 
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse Gemini response as JSON: {str(e)}")
-        logger.error(f"Response text: {response.text}")
-        # Return fallback score
-        return {
-            'score': 50,
-            'comment': 'AI評価の解析に失敗しました。デフォルトスコアを適用しています。'
-        }
-    except Exception as e:
-        logger.error(f"Gemini API error: {str(e)}")
-        # Return fallback score
-        return {
-            'score': 50,
-            'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
-        }
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Gemini response as JSON: {str(e)}")
+            if 'response' in locals():
+                logger.error(f"Response text: {response.text}")
+            # JSON parse errors are not retryable
+            return {
+                'score': 50,
+                'comment': 'AI評価の解析に失敗しました。デフォルトスコアを適用しています。'
+            }
+
+        except Exception as e:
+            error_message = str(e)
+            logger.warning(
+                f"Gemini API error (attempt {attempt + 1}/{max_retries}): {error_message}"
+            )
+
+            # Check if error is retryable (rate limit or server error)
+            is_retryable = (
+                '429' in error_message or  # Rate limit
+                '500' in error_message or  # Internal server error
+                '502' in error_message or  # Bad gateway
+                '503' in error_message or  # Service unavailable
+                '504' in error_message or  # Gateway timeout
+                'ResourceExhausted' in error_message or
+                'DeadlineExceeded' in error_message
+            )
+
+            # If not retryable or last attempt, return fallback
+            if not is_retryable or attempt == max_retries - 1:
+                logger.error(f"Gemini API error (final): {error_message}")
+                return {
+                    'score': 50,
+                    'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+                }
+
+            # Calculate exponential backoff delay with jitter
+            delay = min(base_delay * (2 ** attempt), max_delay)
+            jitter = random.uniform(0, delay * 0.1)  # Add 10% jitter
+            sleep_time = delay + jitter
+
+            logger.info(f"Retrying after {sleep_time:.2f} seconds...")
+            time.sleep(sleep_time)
+
+    # Should not reach here, but return fallback just in case
+    return {
+        'score': 50,
+        'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+    }
 
 
 def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
