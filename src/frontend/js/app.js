@@ -2,8 +2,6 @@ import { collection, query, orderBy, limit, onSnapshot } from 'https://www.gstat
 
 // State
 let currentTop3 = [];
-let confettiTriggered = false;
-let isInitialLoad = true;
 
 // DOM Elements
 const loadingEl = document.getElementById('loading');
@@ -94,46 +92,6 @@ function updateRankCard(rank, imageData) {
 }
 
 /**
- * Trigger confetti effect for rank 1
- */
-function triggerConfetti() {
-  if (confettiTriggered) return;
-
-  confettiTriggered = true;
-
-  const duration = 3000;
-  const end = Date.now() + duration;
-
-  const colors = ['#f8b4d9', '#a8d5e2', '#ffd700', '#764ba2', '#667eea'];
-
-  (function frame() {
-    confetti({
-      particleCount: 3,
-      angle: 60,
-      spread: 55,
-      origin: { x: 0 },
-      colors: colors
-    });
-    confetti({
-      particleCount: 3,
-      angle: 120,
-      spread: 55,
-      origin: { x: 1 },
-      colors: colors
-    });
-
-    if (Date.now() < end) {
-      requestAnimationFrame(frame);
-    }
-  }());
-
-  // Reset after 5 seconds so it can trigger again for new #1
-  setTimeout(() => {
-    confettiTriggered = false;
-  }, 5000);
-}
-
-/**
  * Update the ranking display
  */
 function updateRankings(images) {
@@ -143,28 +101,12 @@ function updateRankings(images) {
   const uniqueImages = filterToUniqueUsers(images);
   console.log(`Top 3 unique users:`, uniqueImages);
 
-  // Check if rank 1 changed
-  const newRank1Id = uniqueImages[0]?.id;
-  const oldRank1Id = currentTop3[0]?.id;
-  const rank1Changed = newRank1Id && newRank1Id !== oldRank1Id;
-
   // Update state
   currentTop3 = uniqueImages;
 
   // Update all three ranks
   for (let i = 1; i <= 3; i++) {
     updateRankCard(i, uniqueImages[i - 1]);
-  }
-
-  // Trigger confetti if rank 1 changed (but not on initial load)
-  if (rank1Changed && !isInitialLoad) {
-    console.log('Rank 1 changed! Triggering confetti...');
-    triggerConfetti();
-  }
-
-  // Mark initial load as complete
-  if (isInitialLoad) {
-    isInitialLoad = false;
   }
 
   // Hide loading
