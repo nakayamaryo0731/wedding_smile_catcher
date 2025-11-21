@@ -1,13 +1,18 @@
 """
 Wedding Smile Catcher - Scoring Function
-Analyzes uploaded images using Vision API for smile detection.
-AI evaluation (Vertex AI) and similarity detection (Average Hash) are still TODO.
+Analyzes uploaded images using:
+- Vision API for smile detection (face count + joy likelihood)
+- Vertex AI (Gemini) for theme evaluation (0-100 score + comment)
+- Average Hash for similarity detection (prevents spam uploads)
 """
 
 import os
 import logging
 import random
-from typing import Dict, Any
+import json
+import time
+import io
+from typing import Dict, Any, List
 
 import functions_framework
 from flask import Request, jsonify
@@ -15,6 +20,10 @@ from linebot import LineBotApi
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part, Image
+from PIL import Image as PILImage
+import imagehash
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -28,10 +37,14 @@ vision_client = vision.ImageAnnotatorClient()
 # Environment variables
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
 GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', 'wedding-smile-catcher')
+GCP_REGION = os.environ.get('GCP_REGION', 'asia-northeast1')
 STORAGE_BUCKET = os.environ.get('STORAGE_BUCKET', 'wedding-smile-images')
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+
+# Initialize Vertex AI
+vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
 
 
 @functions_framework.http
@@ -191,10 +204,270 @@ def download_image_from_storage(storage_path: str) -> bytes:
         raise
 
 
+def calculate_average_hash(image_bytes: bytes) -> str:
+    """
+    Calculate Average Hash for similarity detection.
+
+    Args:
+        image_bytes: Image binary data
+
+    Returns:
+        str: 64-bit hash value as hexadecimal string
+    """
+    try:
+        img = PILImage.open(io.BytesIO(image_bytes))
+        hash_value = imagehash.average_hash(img, hash_size=8)
+        hash_str = str(hash_value)
+
+        logger.info(f"Calculated average hash: {hash_str}")
+        return hash_str
+
+    except Exception as e:
+        logger.error(f"Failed to calculate average hash: {str(e)}")
+        # Return a random hash as fallback to avoid blocking the process
+        return f"error_{random.randint(1000, 9999)}"
+
+
+def is_similar_image(new_hash: str, existing_hashes: List[str], threshold: int = 8) -> bool:
+    """
+    Check if the image is similar to any existing images.
+
+    Args:
+        new_hash: Hash of the new image
+        existing_hashes: List of hashes from existing images
+        threshold: Hamming distance threshold (default: 8)
+
+    Returns:
+        bool: True if similar image exists
+    """
+    # Skip similarity check if new hash is an error hash
+    if new_hash.startswith("error_"):
+        logger.warning("Skipping similarity check due to hash calculation error")
+        return False
+
+    try:
+        new_hash_obj = imagehash.hex_to_hash(new_hash)
+
+        for existing_hash in existing_hashes:
+            # Skip error hashes
+            if existing_hash.startswith("error_"):
+                continue
+
+            try:
+                existing_hash_obj = imagehash.hex_to_hash(existing_hash)
+                hamming_distance = new_hash_obj - existing_hash_obj
+
+                logger.info(
+                    f"Comparing hashes: new={new_hash}, existing={existing_hash}, "
+                    f"distance={hamming_distance}"
+                )
+
+                if hamming_distance <= threshold:
+                    logger.warning(
+                        f"Similar image detected! Distance={hamming_distance} <= {threshold}"
+                    )
+                    return True
+
+            except Exception as e:
+                logger.error(f"Error comparing hash {existing_hash}: {str(e)}")
+                continue
+
+        logger.info(f"No similar images found (checked {len(existing_hashes)} hashes)")
+        return False
+
+    except Exception as e:
+        logger.error(f"Error in similarity check: {str(e)}")
+        # On error, assume not similar to avoid blocking uploads
+        return False
+
+
+def get_existing_hashes_for_user(user_id: str) -> List[str]:
+    """
+    Get all existing average hashes for a user's uploaded images.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        List of average hash strings
+    """
+    try:
+        # Query images collection for this user with status 'completed'
+        images_query = (
+            db.collection('images')
+            .where('user_id', '==', user_id)
+            .where('status', '==', 'completed')
+            .get()
+        )
+
+        hashes = []
+        for doc in images_query:
+            data = doc.to_dict()
+            if 'average_hash' in data:
+                hashes.append(data['average_hash'])
+
+        logger.info(f"Retrieved {len(hashes)} existing hashes for user {user_id}")
+        return hashes
+
+    except Exception as e:
+        logger.error(f"Failed to get existing hashes: {str(e)}")
+        # Return empty list on error to avoid blocking the process
+        return []
+
+
+def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
+    """
+    Evaluate image theme relevance using Vertex AI (Gemini).
+    Implements exponential backoff retry for rate limit and server errors.
+
+    Args:
+        image_bytes: Image binary data
+
+    Returns:
+        Dictionary with score (0-100) and comment
+    """
+    prompt = """
+あなたは結婚式写真の専門家です。提供された写真を分析し、以下の基準に従って笑顔の評価を行ってください：
+
+## 分析対象
+- 新郎新婦を中心に、写真に写っている全ての人物の表情を評価
+- グループショットの場合は、全体的な雰囲気も考慮
+
+## 評価基準（100点満点）
+1. 自然さ（30点）
+   - 作り笑いではなく、自然な表情かどうか
+   - 緊張が感じられず、リラックスしているか
+   - 目元の表情が自然か
+
+2. 幸福度（40点）
+   - 純粋な喜びが表現されているか
+   - 目が笑っているか（クローズドスマイル）
+   - 歯が見える程度の適度な笑顔か
+
+3. 周囲との調和（30点）
+   - 周りの人々と笑顔が調和しているか
+   - 場面に相応しい表情の大きさか
+   - グループ全体で統一感のある雰囲気が出ているか
+
+## 採点方法
+コメントについて：
+- 具体的な改善点があれば提案
+- 特に優れている点は強調
+
+## 注意事項
+- 文化的背景や結婚式のスタイルを考慮
+- 否定的な表現は避け、建設的なフィードバックを心がける
+- プライバシーに配慮した表現を使用
+
+## 出力
+JSON形式でscoreとcommentのキーで返却する。JSONのみを出力すること。
+
+例:
+{
+  "score": 85,
+  "comment": "新郎新婦の目元から溢れる自然な喜びが印象的で、周囲の参列者との一体感も素晴らしい"
+}
+"""
+
+    # Retry configuration
+    max_retries = 3
+    base_delay = 1.0  # seconds
+    max_delay = 10.0  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            # Initialize Gemini model (using latest Flash model)
+            model = GenerativeModel("gemini-2.5-flash")
+
+            # Create image part from bytes
+            image_part = Part.from_data(image_bytes, mime_type="image/jpeg")
+
+            # Generate content
+            response = model.generate_content([image_part, prompt])
+
+            logger.info(f"Gemini response: {response.text}")
+
+            # Parse JSON response
+            # Remove markdown code blocks if present
+            response_text = response.text.strip()
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]  # Remove ```json
+            if response_text.startswith("```"):
+                response_text = response_text[3:]  # Remove ```
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]  # Remove ```
+            response_text = response_text.strip()
+
+            result = json.loads(response_text)
+
+            # Validate response structure
+            if 'score' not in result or 'comment' not in result:
+                raise ValueError("Invalid response format from Gemini")
+
+            # Ensure score is an integer
+            result['score'] = int(result['score'])
+
+            logger.info(
+                f"Theme evaluation complete: score={result['score']}, "
+                f"comment={result['comment'][:50]}..."
+            )
+
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Gemini response as JSON: {str(e)}")
+            if 'response' in locals():
+                logger.error(f"Response text: {response.text}")
+            # JSON parse errors are not retryable
+            return {
+                'score': 50,
+                'comment': 'AI評価の解析に失敗しました。デフォルトスコアを適用しています。'
+            }
+
+        except Exception as e:
+            error_message = str(e)
+            logger.warning(
+                f"Gemini API error (attempt {attempt + 1}/{max_retries}): {error_message}"
+            )
+
+            # Check if error is retryable (rate limit or server error)
+            is_retryable = (
+                '429' in error_message or  # Rate limit
+                '500' in error_message or  # Internal server error
+                '502' in error_message or  # Bad gateway
+                '503' in error_message or  # Service unavailable
+                '504' in error_message or  # Gateway timeout
+                'ResourceExhausted' in error_message or
+                'DeadlineExceeded' in error_message
+            )
+
+            # If not retryable or last attempt, return fallback
+            if not is_retryable or attempt == max_retries - 1:
+                logger.error(f"Gemini API error (final): {error_message}")
+                return {
+                    'score': 50,
+                    'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+                }
+
+            # Calculate exponential backoff delay with jitter
+            delay = min(base_delay * (2 ** attempt), max_delay)
+            jitter = random.uniform(0, delay * 0.1)  # Add 10% jitter
+            sleep_time = delay + jitter
+
+            logger.info(f"Retrying after {sleep_time:.2f} seconds...")
+            time.sleep(sleep_time)
+
+    # Should not reach here, but return fallback just in case
+    return {
+        'score': 50,
+        'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+    }
+
+
 def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     """
-    Generate scores using Vision API for smile detection.
-    AI evaluation and similarity detection are still dummy values.
+    Generate scores using Vision API for smile detection, Vertex AI for theme evaluation,
+    and Average Hash for similarity detection.
 
     Args:
         image_id: Image document ID in Firestore
@@ -211,9 +484,13 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
 
     image_data = image_doc.to_dict()
     storage_path = image_data.get('storage_path')
+    user_id = image_data.get('user_id')
 
     if not storage_path:
         raise Exception(f"Storage path not found in image document: {image_id}")
+
+    if not user_id:
+        raise Exception(f"User ID not found in image document: {image_id}")
 
     # Download image from Cloud Storage
     image_bytes = download_image_from_storage(storage_path)
@@ -223,12 +500,19 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     smile_score = vision_result['smile_score']
     face_count = vision_result['face_count']
 
-    # TODO: Implement Vertex AI evaluation (currently dummy)
-    ai_score = random.randint(70, 95)
+    # Evaluate theme using Vertex AI (Gemini)
+    theme_result = evaluate_theme(image_bytes)
+    ai_score = theme_result['score']
+    ai_comment = theme_result['comment']
 
-    # TODO: Implement Average Hash similarity detection (currently dummy)
-    is_similar = False
-    average_hash = 'dummy_hash_' + str(random.randint(1000, 9999))
+    # Calculate Average Hash for similarity detection
+    average_hash = calculate_average_hash(image_bytes)
+
+    # Get existing hashes for this user
+    existing_hashes = get_existing_hashes_for_user(user_id)
+
+    # Check if similar image exists
+    is_similar = is_similar_image(average_hash, existing_hashes, threshold=8)
 
     # Calculate penalty
     penalty = 0.33 if is_similar else 1.0
@@ -237,8 +521,8 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     total_score = round((smile_score * ai_score / 100) * penalty, 2)
 
     comment = (
-        f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！\n"
-        f"※ AI評価と類似判定は現在ダミー値です"
+        f"{ai_comment}\n\n"
+        f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！"
     )
 
     return {
