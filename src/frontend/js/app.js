@@ -10,7 +10,8 @@ const rankCards = {
     card: document.getElementById('rank-1'),
     image: document.getElementById('rank-1-image'),
     name: document.getElementById('rank-1-name'),
-    score: document.getElementById('rank-1-score')
+    score: document.getElementById('rank-1-score'),
+    comment: document.getElementById('rank-1-comment')
   },
   2: {
     card: document.getElementById('rank-2'),
@@ -62,6 +63,9 @@ function updateRankCard(rank, imageData) {
     card.image.src = '';
     card.name.textContent = '-';
     card.score.textContent = '0';
+    if (card.comment) {
+      card.comment.textContent = '-';
+    }
     return;
   }
 
@@ -79,6 +83,12 @@ function updateRankCard(rank, imageData) {
   card.image.alt = `${userName}'s smile`;
   card.name.textContent = userName;
   card.score.textContent = Math.round(imageData.total_score);
+
+  // Update AI comment for rank 1 only
+  if (card.comment) {
+    const comment = imageData.comment || imageData.ai_comment || 'すばらしい笑顔です！';
+    card.comment.textContent = comment;
+  }
 
   // Trigger fade-in animation
   setTimeout(() => {
