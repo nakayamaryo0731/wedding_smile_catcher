@@ -38,3 +38,11 @@ resource "google_storage_bucket" "images" {
 
 # Note: Public read access removed for security.
 # Frontend will use signed URLs to access images.
+
+# Grant Terraform service account permission to manage objects
+# This is needed for Cloud Functions deployment (uploading source code)
+resource "google_storage_bucket_iam_member" "terraform_object_admin" {
+  bucket = google_storage_bucket.images.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:terraform-github-actions@${var.project_id}.iam.gserviceaccount.com"
+}

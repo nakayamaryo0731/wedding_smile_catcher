@@ -44,6 +44,7 @@ module "secret_manager" {
 module "storage" {
   source = "./modules/storage"
 
+  project_id  = var.project_id
   bucket_name = var.storage_bucket_name
   region      = var.region
 
