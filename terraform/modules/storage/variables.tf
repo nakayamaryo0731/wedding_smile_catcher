@@ -37,3 +37,8 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "project_id" {
+  description = "GCP project ID (for service account permissions)"
+  type        = string
+}
