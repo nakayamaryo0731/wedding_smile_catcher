@@ -76,7 +76,6 @@ temp/
 Thumbs.db
 
 # Secret detection
-.gitleaksignore
 .secrets.baseline
 
 # Additional sensitive files
