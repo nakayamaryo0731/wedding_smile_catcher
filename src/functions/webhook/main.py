@@ -21,6 +21,9 @@ from linebot.models import (
     TextSendMessage,
 )
 from google.cloud import firestore, storage
+from google.auth.transport.requests import Request as AuthRequest
+from google.auth import default
+from google.oauth2 import id_token
 import requests
 
 # Initialize logging
@@ -343,7 +346,7 @@ def handle_image_message(event: MessageEvent):
 
 def trigger_scoring_function(image_id: str, user_id: str):
     """
-    Trigger scoring function via HTTP.
+    Trigger scoring function via HTTP with authentication.
 
     Args:
         image_id: Image document ID
@@ -355,9 +358,19 @@ def trigger_scoring_function(image_id: str, user_id: str):
             'user_id': user_id
         }
 
+        # Get ID token for authenticating to the scoring function
+        auth_req = AuthRequest()
+        id_token_value = id_token.fetch_id_token(auth_req, SCORING_FUNCTION_URL)
+
+        headers = {
+            'Authorization': f'Bearer {id_token_value}',
+            'Content-Type': 'application/json'
+        }
+
         response = requests.post(
             SCORING_FUNCTION_URL,
             json=payload,
+            headers=headers,
             timeout=5  # Don't wait for response
         )
 
