@@ -6,8 +6,7 @@ on:
       - main
     paths:
       - 'terraform/**'
-      # Add other paths when backend/frontend are implemented
-      # - 'src/**'
+      - 'src/**'
 
 concurrency:
   group: ${{ github.workflow }}
