@@ -51,7 +51,7 @@ body {
 
 .title {
     font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: 700;
     color: var(--white);
     text-shadow: 2px 4px 8px var(--shadow-heavy);
@@ -60,7 +60,7 @@ body {
 }
 
 .subtitle {
-    font-size: 0.8rem;
+    font-size: 1rem;
     color: rgba(255, 255, 255, 0.9);
     font-weight: 300;
     text-shadow: 1px 2px 4px var(--shadow-medium);
@@ -293,6 +293,15 @@ body {
     font-size: 1.7rem;
 }
 
+.ai-comment-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+    margin-left: 0.2rem;
+    text-align: left;
+}
+
 .ai-comment {
     font-size: 0.9rem;
     color: var(--text-secondary);
@@ -302,12 +311,14 @@ body {
     background: rgba(255, 255, 255, 0.3);
     border-radius: 10px;
     border-left: 3px solid var(--primary-color);
-    height: 120px;
+    min-height: 120px;
+    max-height: 200px;
     overflow-y: auto;
 }
 
 .rank-1 .ai-comment {
-    height: 110px;
+    min-height: 110px;
+    max-height: 180px;
 }
 
 /* Loading State */
