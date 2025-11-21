@@ -73,12 +73,18 @@ function updateRankCard(rank, imageData) {
   // Remove empty state
   card.card.classList.remove('empty');
 
+  // Construct full image URL from storage_path
+  const bucketName = 'wedding-smile-images-wedding-smile-catcher';
+  const imageUrl = imageData.storage_url ||
+                   `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
+
   // Update content
-  card.image.src = imageData.storage_url;
-  card.image.alt = `${imageData.user_name}'s smile`;
-  card.name.textContent = imageData.user_name;
+  card.image.src = imageUrl;
+  const userName = imageData.user_name || imageData.user_id || 'ゲスト';
+  card.image.alt = `${userName}'s smile`;
+  card.name.textContent = userName;
   card.score.textContent = Math.round(imageData.total_score);
-  card.comment.textContent = imageData.ai_comment || 'すばらしい笑顔です！';
+  card.comment.textContent = imageData.comment || imageData.ai_comment || 'すばらしい笑顔です！';
 
   // Trigger fade-in animation
   setTimeout(() => {
