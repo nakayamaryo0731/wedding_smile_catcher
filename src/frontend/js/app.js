@@ -3,6 +3,7 @@ import { collection, query, orderBy, limit, onSnapshot } from 'https://www.gstat
 // State
 let currentTop3 = [];
 let confettiTriggered = false;
+let isInitialLoad = true;
 
 // DOM Elements
 const loadingEl = document.getElementById('loading');
@@ -155,10 +156,15 @@ function updateRankings(images) {
     updateRankCard(i, uniqueImages[i - 1]);
   }
 
-  // Trigger confetti if rank 1 changed
-  if (rank1Changed) {
+  // Trigger confetti if rank 1 changed (but not on initial load)
+  if (rank1Changed && !isInitialLoad) {
     console.log('Rank 1 changed! Triggering confetti...');
     triggerConfetti();
+  }
+
+  // Mark initial load as complete
+  if (isInitialLoad) {
+    isInitialLoad = false;
   }
 
   // Hide loading
