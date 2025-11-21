@@ -206,12 +206,12 @@ body {
 
 .rank-2 .user-name,
 .rank-3 .user-name {
-    font-size: 0.95rem;
+    font-size: 1.1rem;
 }
 
 .rank-2 .score,
 .rank-3 .score {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
 }
 
 .rank-2 .rank-number,
@@ -219,9 +219,9 @@ body {
     font-size: 0.8rem;
 }
 
-.rank-2 .score-container,
-.rank-3 .score-container {
-    margin-top: 0.2rem;
+.rank-2 .label,
+.rank-3 .label {
+    font-size: 0.75rem;
 }
 
 /* Image Container */
@@ -251,37 +251,45 @@ body {
     text-align: center;
 }
 
-.user-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 1rem;
-}
-
-.score-container {
+.user-score-row {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    gap: 0.3rem;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
 }
 
-.score-label {
+.label {
     font-size: 0.9rem;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-weight: 400;
+}
+
+.user-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .score {
     font-family: 'Playfair Display', serif;
-    font-size: 3rem;
+    font-size: 1.8rem;
     font-weight: 700;
     background: linear-gradient(135deg, #667eea, #764ba2);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* Rank 1 specific sizes */
+.rank-1 .user-name {
+    font-size: 1.5rem;
+}
+
+.rank-1 .score {
+    font-size: 2rem;
 }
 
 .ai-comment {
