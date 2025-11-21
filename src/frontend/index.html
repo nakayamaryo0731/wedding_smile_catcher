@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Smile Ranking</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">Smile Ranking</h1>
+            <p class="subtitle">最高の笑顔をありがとう</p>
+        </header>
+
+        <!-- Main Ranking Display -->
+        <main class="ranking-container">
+            <!-- Top 1 - Large Display -->
+            <div class="rank-1-container">
+                <div id="rank-1" class="ranking-card rank-1">
+                    <div class="rank-badge">
+                        <span class="crown">👑</span>
+                        <span class="rank-number">1st</span>
+                    </div>
+                    <div class="image-container">
+                        <img id="rank-1-image" src="" alt="Top 1" class="ranking-image">
+                    </div>
+                    <div class="ranking-info">
+                        <h2 id="rank-1-name" class="user-name">-</h2>
+                        <div class="score-container">
+                            <span class="score-label">Score</span>
+                            <span id="rank-1-score" class="score">0</span>
+                        </div>
+                        <p id="rank-1-comment" class="ai-comment">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top 2 & 3 - Smaller Side by Side -->
+            <div class="rank-2-3-container">
+                <!-- Rank 2 -->
+                <div id="rank-2" class="ranking-card rank-2">
+                    <div class="rank-badge">
+                        <span class="rank-number">2nd</span>
+                    </div>
+                    <div class="image-container">
+                        <img id="rank-2-image" src="" alt="Top 2" class="ranking-image">
+                    </div>
+                    <div class="ranking-info">
+                        <h3 id="rank-2-name" class="user-name">-</h3>
+                        <div class="score-container">
+                            <span class="score-label">Score</span>
+                            <span id="rank-2-score" class="score">0</span>
+                        </div>
+                        <p id="rank-2-comment" class="ai-comment">-</p>
+                    </div>
+                </div>
+
+                <!-- Rank 3 -->
+                <div id="rank-3" class="ranking-card rank-3">
+                    <div class="rank-badge">
+                        <span class="rank-number">3rd</span>
+                    </div>
+                    <div class="image-container">
+                        <img id="rank-3-image" src="" alt="Top 3" class="ranking-image">
+                    </div>
+                    <div class="ranking-info">
+                        <h3 id="rank-3-name" class="user-name">-</h3>
+                        <div class="score-container">
+                            <span class="score-label">Score</span>
+                            <span id="rank-3-score" class="score">0</span>
+                        </div>
+                        <p id="rank-3-comment" class="ai-comment">-</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading rankings...</p>
+        </div>
+    </div>
+
+    <!-- Canvas for Confetti -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration will be loaded from config
+        window.firebaseApp = initializeApp(window.FIREBASE_CONFIG);
+        window.db = getFirestore(window.firebaseApp);
+    </script>
+
+    <!-- Firebase Config (will be populated) -->
+    <script src="js/config.js"></script>
+
+    <!-- Main Application Logic -->
+    <script type="module" src="js/app.js"></script>
+
+    <!-- Confetti Effect -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+</body>
+</html>
