@@ -255,7 +255,7 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 """
 
         # Initialize Gemini model
-        model = GenerativeModel("gemini-1.5-flash")
+        model = GenerativeModel("gemini-1.5-flash-001")
 
         # Create image part from bytes
         image_part = Part.from_data(image_bytes, mime_type="image/jpeg")
