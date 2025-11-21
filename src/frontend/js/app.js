@@ -1,4 +1,4 @@
-import { collection, query, orderBy, limit, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, query, orderBy, limit, onSnapshot, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // State
 let currentTop3 = [];
@@ -26,6 +26,24 @@ const rankCards = {
     score: document.getElementById('rank-3-score')
   }
 };
+
+/**
+ * Fetch user name from users collection
+ */
+async function fetchUserName(userId) {
+  try {
+    const userRef = doc(window.db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      return userSnap.data().name || userId;
+    }
+    return userId;
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+    return userId;
+  }
+}
 
 /**
  * Filter to unique users from image list
@@ -109,12 +127,21 @@ function updateRankCard(rank, imageData) {
 /**
  * Update the ranking display
  */
-function updateRankings(images) {
+async function updateRankings(images) {
   console.log(`Received ${images.length} images, filtering to unique users...`);
 
   // Filter to unique users (same user can't appear twice)
   const uniqueImages = filterToUniqueUsers(images);
   console.log(`Top 3 unique users:`, uniqueImages);
+
+  // Fetch user names for all unique users
+  const userNamesPromises = uniqueImages.map(img => fetchUserName(img.user_id));
+  const userNames = await Promise.all(userNamesPromises);
+
+  // Add user_name to each image data
+  uniqueImages.forEach((img, index) => {
+    img.user_name = userNames[index];
+  });
 
   // Update state
   currentTop3 = uniqueImages;
