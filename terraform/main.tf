@@ -7,6 +7,7 @@ resource "google_project_service" "required_apis" {
     "secretmanager.googleapis.com",
     "storage.googleapis.com",
     "firestore.googleapis.com",
+    "firebaserules.googleapis.com", # Required for Firestore security rules
     "iam.googleapis.com",
     "vision.googleapis.com",
     "aiplatform.googleapis.com",

@@ -36,9 +36,5 @@ resource "google_storage_bucket" "images" {
   labels = var.labels
 }
 
-# Make bucket publicly readable (for displaying images)
-resource "google_storage_bucket_iam_member" "public_read" {
-  bucket = google_storage_bucket.images.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
-}
+# Note: Public read access removed for security.
+# Frontend will use signed URLs to access images.
