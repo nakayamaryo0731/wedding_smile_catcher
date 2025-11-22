@@ -133,6 +133,7 @@ def get_joy_likelihood_score(joy_likelihood) -> float:
 def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
     """
     Calculate smile score using Vision API.
+    Implements exponential backoff retry for rate limit and server errors.
 
     Args:
         image_bytes: Image binary data
@@ -140,46 +141,92 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
     Returns:
         Dictionary with smile_score and face_count
     """
-    try:
-        # Create Vision API image object
-        image = vision.Image(content=image_bytes)
+    # Retry configuration
+    max_retries = 3
+    base_delay = 1.0  # seconds
+    max_delay = 10.0  # seconds
 
-        # Detect faces
-        response = vision_client.face_detection(image=image)
+    for attempt in range(max_retries):
+        try:
+            # Create Vision API image object
+            image = vision.Image(content=image_bytes)
 
-        if response.error.message:
-            raise Exception(f"Vision API error: {response.error.message}")
+            # Detect faces
+            response = vision_client.face_detection(image=image)
 
-        # Calculate total smile score
-        total_smile_score = 0.0
-        smiling_faces = 0
+            if response.error.message:
+                raise Exception(f"Vision API error: {response.error.message}")
 
-        for face in response.face_annotations:
-            # Only count faces with LIKELY or VERY_LIKELY joy
-            if face.joy_likelihood >= vision.Likelihood.LIKELY:
-                score = get_joy_likelihood_score(face.joy_likelihood)
-                total_smile_score += score
-                smiling_faces += 1
-                logger.info(
-                    f"Face detected: joy={face.joy_likelihood.name}, score={score}"
-                )
+            # Calculate total smile score
+            total_smile_score = 0.0
+            smiling_faces = 0
 
-        face_count = len(response.face_annotations)
+            for face in response.face_annotations:
+                # Only count faces with LIKELY or VERY_LIKELY joy
+                if face.joy_likelihood >= vision.Likelihood.LIKELY:
+                    score = get_joy_likelihood_score(face.joy_likelihood)
+                    total_smile_score += score
+                    smiling_faces += 1
+                    logger.info(
+                        f"Face detected: joy={face.joy_likelihood.name}, score={score}"
+                    )
 
-        logger.info(
-            f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, "
-            f"total score={total_smile_score}"
-        )
+            face_count = len(response.face_annotations)
 
-        return {
-            'smile_score': round(total_smile_score, 2),
-            'face_count': face_count,
-            'smiling_faces': smiling_faces
-        }
+            logger.info(
+                f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, "
+                f"total score={total_smile_score}"
+            )
 
-    except Exception as e:
-        logger.error(f"Vision API error: {str(e)}")
-        raise
+            return {
+                'smile_score': round(total_smile_score, 2),
+                'face_count': face_count,
+                'smiling_faces': smiling_faces
+            }
+
+        except Exception as e:
+            error_message = str(e)
+            logger.warning(
+                f"Vision API error (attempt {attempt + 1}/{max_retries}): {error_message}"
+            )
+
+            # Check if error is retryable (rate limit or server error)
+            is_retryable = (
+                '429' in error_message or  # Rate limit
+                '500' in error_message or  # Internal server error
+                '502' in error_message or  # Bad gateway
+                '503' in error_message or  # Service unavailable
+                '504' in error_message or  # Gateway timeout
+                'ResourceExhausted' in error_message or
+                'DeadlineExceeded' in error_message
+            )
+
+            # If not retryable or last attempt, return fallback
+            if not is_retryable or attempt == max_retries - 1:
+                logger.error(f"Vision API error (final): {error_message}")
+                # Return fallback values
+                return {
+                    'smile_score': 300.0,  # Default fallback score
+                    'face_count': 3,       # Assume average group size
+                    'smiling_faces': 3,    # Assume all are smiling
+                    'error': 'vision_api_failed'
+                }
+
+            # Calculate exponential backoff delay with jitter
+            delay = min(base_delay * (2 ** attempt), max_delay)
+            jitter = random.uniform(0, delay * 0.1)  # Add 10% jitter
+            sleep_time = delay + jitter
+
+            logger.info(f"Retrying Vision API after {sleep_time:.2f} seconds...")
+            time.sleep(sleep_time)
+
+    # Should not reach here, but return fallback just in case
+    return {
+        'smile_score': 300.0,
+        'face_count': 3,
+        'smiling_faces': 3,
+        'error': 'vision_api_failed'
+    }
 
 
 def download_image_from_storage(storage_path: str) -> bytes:
@@ -422,7 +469,8 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
             # JSON parse errors are not retryable
             return {
                 'score': 50,
-                'comment': 'AI評価の解析に失敗しました。デフォルトスコアを適用しています。'
+                'comment': 'AI評価の解析に失敗しました。デフォルトスコアを適用しています。',
+                'error': 'vertex_ai_parse_failed'
             }
 
         except Exception as e:
@@ -447,7 +495,8 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
                 logger.error(f"Gemini API error (final): {error_message}")
                 return {
                     'score': 50,
-                    'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+                    'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。',
+                    'error': 'vertex_ai_failed'
                 }
 
             # Calculate exponential backoff delay with jitter
@@ -461,7 +510,8 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
     # Should not reach here, but return fallback just in case
     return {
         'score': 50,
-        'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+        'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。',
+        'error': 'vertex_ai_failed'
     }
 
 
@@ -519,8 +569,11 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
 
     smile_score = vision_result['smile_score']
     face_count = vision_result['face_count']
+    vision_error = vision_result.get('error')
+
     ai_score = theme_result['score']
     ai_comment = theme_result['comment']
+    ai_error = theme_result.get('error')
 
     # Get existing hashes for this user
     existing_hashes = get_existing_hashes_for_user(user_id)
@@ -534,12 +587,29 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     # Calculate total score
     total_score = round((smile_score * ai_score / 100) * penalty, 2)
 
-    comment = (
-        f"{ai_comment}\n\n"
-        f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！"
-    )
+    # Build comment with error warnings if any
+    error_warnings = []
+    if vision_error:
+        logger.warning(f"Vision API error occurred: {vision_error}")
+        error_warnings.append("⚠️ 笑顔検出でエラーが発生しました。推定値を使用しています。")
+    if ai_error:
+        logger.warning(f"Vertex AI error occurred: {ai_error}")
+        error_warnings.append("⚠️ AI評価でエラーが発生しました。デフォルト値を使用しています。")
 
-    return {
+    if error_warnings:
+        warning_text = "\n".join(error_warnings)
+        comment = (
+            f"{warning_text}\n\n"
+            f"{ai_comment}\n\n"
+            f"笑顔検出: {vision_result.get('smiling_faces', face_count)}人/{face_count}人が笑顔です！"
+        )
+    else:
+        comment = (
+            f"{ai_comment}\n\n"
+            f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！"
+        )
+
+    result = {
         'smile_score': smile_score,
         'ai_score': ai_score,
         'total_score': total_score,
@@ -548,6 +618,22 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
         'is_similar': is_similar,
         'average_hash': average_hash
     }
+
+    # Add error flags if any occurred
+    if vision_error or ai_error:
+        result['has_errors'] = True
+        if vision_error:
+            result['vision_error'] = vision_error
+        if ai_error:
+            result['ai_error'] = ai_error
+        logger.error(
+            f"Scoring completed with errors: vision_error={vision_error}, "
+            f"ai_error={ai_error}, total_score={total_score}"
+        )
+    else:
+        logger.info(f"Scoring completed successfully: total_score={total_score}")
+
+    return result
 
 
 def generate_dummy_scores() -> Dict[str, Any]:
