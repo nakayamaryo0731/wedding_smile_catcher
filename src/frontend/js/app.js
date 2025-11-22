@@ -1,4 +1,4 @@
-import { collection, query, orderBy, limit, onSnapshot, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // State
 let currentTop3 = [];
@@ -156,11 +156,11 @@ async function updateRankings(images) {
 }
 
 /**
- * Set up real-time listener for rankings
+ * Fetch latest rankings from Firestore (one-time fetch)
  */
-function setupRealtimeListener() {
+async function fetchRankings() {
   try {
-    console.log('Setting up Firestore real-time listener...');
+    console.log('Fetching latest rankings from Firestore...');
 
     const imagesRef = collection(window.db, 'images');
     const q = query(
@@ -169,36 +169,43 @@ function setupRealtimeListener() {
       limit(100) // Fetch top 100 to ensure we can filter to 3 unique users
     );
 
-    // Real-time listener
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log(`Snapshot received: ${snapshot.docs.length} documents`);
+    const snapshot = await getDocs(q);
+    console.log(`Fetched ${snapshot.docs.length} documents`);
 
-      const images = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    const images = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-      updateRankings(images);
-    }, (error) => {
-      console.error('Error in real-time listener:', error);
-      loadingEl.innerHTML = `
-        <div class="spinner"></div>
-        <p style="color: #ff6b6b;">Error loading rankings: ${error.message}</p>
-      `;
-    });
-
-    // Store unsubscribe function for cleanup
-    window.unsubscribeRankings = unsubscribe;
-
-    console.log('Real-time listener set up successfully');
+    await updateRankings(images);
   } catch (error) {
-    console.error('Failed to setup real-time listener:', error);
+    console.error('Error fetching rankings:', error);
     loadingEl.innerHTML = `
       <div class="spinner"></div>
-      <p style="color: #ff6b6b;">Failed to connect: ${error.message}</p>
-      <p style="font-size: 0.9rem; margin-top: 1rem;">Please check Firebase configuration in config.js</p>
+      <p style="color: #ff6b6b;">Error loading rankings: ${error.message}</p>
     `;
   }
+}
+
+/**
+ * Set up periodic polling (fetch rankings every 1 minute)
+ */
+function setupPeriodicPolling() {
+  console.log('Setting up periodic polling (every 1 minute)...');
+
+  // Initial fetch
+  fetchRankings();
+
+  // Fetch every 60 seconds
+  const intervalId = setInterval(() => {
+    console.log('Periodic update: fetching rankings...');
+    fetchRankings();
+  }, 60000); // 60000ms = 1 minute
+
+  // Store interval ID for cleanup
+  window.rankingIntervalId = intervalId;
+
+  console.log('Periodic polling set up successfully');
 }
 
 /**
@@ -218,14 +225,14 @@ function init() {
     return;
   }
 
-  // Set up real-time listener
-  setupRealtimeListener();
+  // Set up periodic polling (every 1 minute)
+  setupPeriodicPolling();
 }
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
-  if (window.unsubscribeRankings) {
-    window.unsubscribeRankings();
+  if (window.rankingIntervalId) {
+    clearInterval(window.rankingIntervalId);
   }
 });
 
