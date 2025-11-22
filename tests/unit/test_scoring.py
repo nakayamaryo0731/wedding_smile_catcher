@@ -21,14 +21,14 @@ from scoring.main import (
     evaluate_theme,
     calculate_average_hash,
     is_similar_image,
-    generate_scores_with_vision_api
+    generate_scores_with_vision_api,
 )
 
 
 class TestCalculateSmileScore:
     """Tests for calculate_smile_score function."""
 
-    @patch('scoring.main.vision_client')
+    @patch("scoring.main.vision_client")
     def test_calculate_smile_score_two_happy_faces(self, mock_vision_client):
         """Test with 2 very likely smiling faces (expected score: ~190)."""
         # Setup mock
@@ -49,12 +49,12 @@ class TestCalculateSmileScore:
         result = calculate_smile_score(b"fake_image_bytes")
 
         # Assert
-        assert result['face_count'] == 2
-        assert result['smiling_faces'] == 2
-        assert result['smile_score'] == 190.0  # 95.0 × 2
-        assert 'error' not in result
+        assert result["face_count"] == 2
+        assert result["smiling_faces"] == 2
+        assert result["smile_score"] == 190.0  # 95.0 × 2
+        assert "error" not in result
 
-    @patch('scoring.main.vision_client')
+    @patch("scoring.main.vision_client")
     def test_calculate_smile_score_no_smiles(self, mock_vision_client):
         """Test with no smiling faces (expected score: 0)."""
         # Setup mock
@@ -75,11 +75,11 @@ class TestCalculateSmileScore:
         result = calculate_smile_score(b"fake_image_bytes")
 
         # Assert
-        assert result['face_count'] == 2
-        assert result['smiling_faces'] == 0
-        assert result['smile_score'] == 0.0
+        assert result["face_count"] == 2
+        assert result["smiling_faces"] == 0
+        assert result["smile_score"] == 0.0
 
-    @patch('scoring.main.vision_client')
+    @patch("scoring.main.vision_client")
     def test_calculate_smile_score_no_faces(self, mock_vision_client):
         """Test with no faces detected (expected score: 0)."""
         # Setup mock
@@ -93,11 +93,11 @@ class TestCalculateSmileScore:
         result = calculate_smile_score(b"fake_image_bytes")
 
         # Assert
-        assert result['face_count'] == 0
-        assert result['smiling_faces'] == 0
-        assert result['smile_score'] == 0.0
+        assert result["face_count"] == 0
+        assert result["smiling_faces"] == 0
+        assert result["smile_score"] == 0.0
 
-    @patch('scoring.main.vision_client')
+    @patch("scoring.main.vision_client")
     def test_calculate_smile_score_api_error_fallback(self, mock_vision_client):
         """Test Vision API error triggers fallback score."""
         # Setup mock to raise exception
@@ -107,16 +107,16 @@ class TestCalculateSmileScore:
         result = calculate_smile_score(b"fake_image_bytes")
 
         # Assert fallback values
-        assert result['smile_score'] == 300.0  # Fallback
-        assert result['face_count'] == 3
-        assert result['smiling_faces'] == 3
-        assert result['error'] == 'vision_api_failed'
+        assert result["smile_score"] == 300.0  # Fallback
+        assert result["face_count"] == 3
+        assert result["smiling_faces"] == 3
+        assert result["error"] == "vision_api_failed"
 
 
 class TestEvaluateTheme:
     """Tests for evaluate_theme function."""
 
-    @patch('scoring.main.GenerativeModel')
+    @patch("scoring.main.GenerativeModel")
     def test_evaluate_theme_high_score(self, mock_model):
         """Test with high score evaluation (on-theme image)."""
         # Setup mock
@@ -129,11 +129,11 @@ class TestEvaluateTheme:
         result = evaluate_theme(b"fake_image_bytes")
 
         # Assert
-        assert result['score'] == 85
-        assert '素晴らしい' in result['comment']
-        assert 'error' not in result
+        assert result["score"] == 85
+        assert "素晴らしい" in result["comment"]
+        assert "error" not in result
 
-    @patch('scoring.main.GenerativeModel')
+    @patch("scoring.main.GenerativeModel")
     def test_evaluate_theme_low_score(self, mock_model):
         """Test with low score evaluation (off-theme image)."""
         # Setup mock
@@ -146,15 +146,15 @@ class TestEvaluateTheme:
         result = evaluate_theme(b"fake_image_bytes")
 
         # Assert
-        assert result['score'] == 20
-        assert '風景' in result['comment']
+        assert result["score"] == 20
+        assert "風景" in result["comment"]
 
-    @patch('scoring.main.GenerativeModel')
+    @patch("scoring.main.GenerativeModel")
     def test_evaluate_theme_json_parse_error(self, mock_model):
         """Test JSON parse error triggers fallback."""
         # Setup mock with invalid JSON
         mock_response = Mock()
-        mock_response.text = 'This is not JSON'
+        mock_response.text = "This is not JSON"
 
         mock_model.return_value.generate_content.return_value = mock_response
 
@@ -162,11 +162,11 @@ class TestEvaluateTheme:
         result = evaluate_theme(b"fake_image_bytes")
 
         # Assert fallback values
-        assert result['score'] == 50  # Fallback
-        assert '解析' in result['comment'] or 'エラー' in result['comment']
-        assert result['error'] == 'vertex_ai_parse_failed'
+        assert result["score"] == 50  # Fallback
+        assert "解析" in result["comment"] or "エラー" in result["comment"]
+        assert result["error"] == "vertex_ai_parse_failed"
 
-    @patch('scoring.main.GenerativeModel')
+    @patch("scoring.main.GenerativeModel")
     def test_evaluate_theme_api_error(self, mock_model):
         """Test Vertex AI error triggers fallback."""
         # Setup mock to raise exception
@@ -176,8 +176,8 @@ class TestEvaluateTheme:
         result = evaluate_theme(b"fake_image_bytes")
 
         # Assert fallback values
-        assert result['score'] == 50  # Fallback
-        assert 'error' in result
+        assert result["score"] == 50  # Fallback
+        assert "error" in result
 
 
 class TestCalculateAverageHash:
@@ -191,7 +191,9 @@ class TestCalculateAverageHash:
         # Assert
         assert isinstance(hash_value, str)
         assert len(hash_value) == 16
-        assert hash_value.replace('_', '').replace('error', '').isalnum() or hash_value.startswith('error_')
+        assert hash_value.replace("_", "").replace(
+            "error", ""
+        ).isalnum() or hash_value.startswith("error_")
 
     def test_calculate_average_hash_same_image_same_hash(self, test_image_bytes):
         """Test that same image produces same hash (reproducibility)."""
@@ -259,7 +261,7 @@ class TestIsSimilarImage:
         existing_hashes = [
             "0000000000000000",  # Not similar
             "0123456789abcdee",  # Distance = 1 (similar)
-            "ffffffffffffffff"   # Not similar
+            "ffffffffffffffff",  # Not similar
         ]
 
         # Test (should match the second hash)
@@ -283,12 +285,12 @@ class TestIsSimilarImage:
 class TestGenerateScoresWithVisionAPI:
     """Tests for generate_scores_with_vision_api integration function."""
 
-    @patch('scoring.main.download_image_from_storage')
-    @patch('scoring.main.get_existing_hashes_for_user')
-    @patch('scoring.main.calculate_average_hash')
-    @patch('scoring.main.evaluate_theme')
-    @patch('scoring.main.calculate_smile_score')
-    @patch('scoring.main.db')
+    @patch("scoring.main.download_image_from_storage")
+    @patch("scoring.main.get_existing_hashes_for_user")
+    @patch("scoring.main.calculate_average_hash")
+    @patch("scoring.main.evaluate_theme")
+    @patch("scoring.main.calculate_smile_score")
+    @patch("scoring.main.db")
     def test_generate_scores_normal_flow(
         self,
         mock_db,
@@ -296,20 +298,17 @@ class TestGenerateScoresWithVisionAPI:
         mock_eval_theme,
         mock_calc_hash,
         mock_get_hashes,
-        mock_download
+        mock_download,
     ):
         """Test normal flow with all APIs succeeding."""
         # Setup mocks
         mock_download.return_value = b"fake_image"
         mock_calc_smile.return_value = {
-            'smile_score': 450.0,
-            'face_count': 5,
-            'smiling_faces': 5
+            "smile_score": 450.0,
+            "face_count": 5,
+            "smiling_faces": 5,
         }
-        mock_eval_theme.return_value = {
-            'score': 80,
-            'comment': 'Great!'
-        }
+        mock_eval_theme.return_value = {"score": 80, "comment": "Great!"}
         mock_calc_hash.return_value = "0123456789abcdef"
         mock_get_hashes.return_value = []  # No similar images
 
@@ -317,8 +316,8 @@ class TestGenerateScoresWithVisionAPI:
         mock_image_doc = Mock()
         mock_image_doc.exists = True
         mock_image_doc.to_dict.return_value = {
-            'storage_path': 'test/path.jpg',
-            'user_id': 'test_user_001'
+            "storage_path": "test/path.jpg",
+            "user_id": "test_user_001",
         }
         mock_image_ref = Mock()
         mock_image_ref.get.return_value = mock_image_doc
@@ -328,19 +327,19 @@ class TestGenerateScoresWithVisionAPI:
         result = generate_scores_with_vision_api("img_001", "req_001")
 
         # Assert returned values (Firestore update happens in separate update_firestore() function)
-        assert result['smile_score'] == 450.0
-        assert result['ai_score'] == 80
-        assert result['total_score'] == 360.0  # 450 × 80 / 100
-        assert 'has_errors' not in result
-        assert result['average_hash'] == "0123456789abcdef"
-        assert result['is_similar'] is False
+        assert result["smile_score"] == 450.0
+        assert result["ai_score"] == 80
+        assert result["total_score"] == 360.0  # 450 × 80 / 100
+        assert "has_errors" not in result
+        assert result["average_hash"] == "0123456789abcdef"
+        assert result["is_similar"] is False
 
-    @patch('scoring.main.download_image_from_storage')
-    @patch('scoring.main.get_existing_hashes_for_user')
-    @patch('scoring.main.calculate_average_hash')
-    @patch('scoring.main.evaluate_theme')
-    @patch('scoring.main.calculate_smile_score')
-    @patch('scoring.main.db')
+    @patch("scoring.main.download_image_from_storage")
+    @patch("scoring.main.get_existing_hashes_for_user")
+    @patch("scoring.main.calculate_average_hash")
+    @patch("scoring.main.evaluate_theme")
+    @patch("scoring.main.calculate_smile_score")
+    @patch("scoring.main.db")
     def test_generate_scores_with_similar_image_penalty(
         self,
         mock_db,
@@ -348,18 +347,22 @@ class TestGenerateScoresWithVisionAPI:
         mock_eval_theme,
         mock_calc_hash,
         mock_get_hashes,
-        mock_download
+        mock_download,
     ):
         """Test with similar image penalty applied."""
         # Setup mocks
         mock_download.return_value = b"fake_image"
-        mock_calc_smile.return_value = {'smile_score': 450.0, 'face_count': 5, 'smiling_faces': 5}
-        mock_eval_theme.return_value = {'score': 80, 'comment': 'Great!'}
+        mock_calc_smile.return_value = {
+            "smile_score": 450.0,
+            "face_count": 5,
+            "smiling_faces": 5,
+        }
+        mock_eval_theme.return_value = {"score": 80, "comment": "Great!"}
         mock_calc_hash.return_value = "abc123"
         mock_get_hashes.return_value = ["abc124"]  # Similar hash exists
 
         # Mock is_similar_image to return True
-        with patch('scoring.main.is_similar_image', return_value=True):
+        with patch("scoring.main.is_similar_image", return_value=True):
             # Mock Firestore
             mock_image_ref = Mock()
             mock_db.collection.return_value.document.return_value = mock_image_ref
@@ -369,14 +372,14 @@ class TestGenerateScoresWithVisionAPI:
 
             # Assert (penalty applied: × 0.33)
             expected_penalty_score = 360.0 * 0.33  # ~118.8
-            assert abs(result['total_score'] - expected_penalty_score) < 1
+            assert abs(result["total_score"] - expected_penalty_score) < 1
 
-    @patch('scoring.main.download_image_from_storage')
-    @patch('scoring.main.get_existing_hashes_for_user')
-    @patch('scoring.main.calculate_average_hash')
-    @patch('scoring.main.evaluate_theme')
-    @patch('scoring.main.calculate_smile_score')
-    @patch('scoring.main.db')
+    @patch("scoring.main.download_image_from_storage")
+    @patch("scoring.main.get_existing_hashes_for_user")
+    @patch("scoring.main.calculate_average_hash")
+    @patch("scoring.main.evaluate_theme")
+    @patch("scoring.main.calculate_smile_score")
+    @patch("scoring.main.db")
     def test_generate_scores_with_vision_error(
         self,
         mock_db,
@@ -384,18 +387,18 @@ class TestGenerateScoresWithVisionAPI:
         mock_eval_theme,
         mock_calc_hash,
         mock_get_hashes,
-        mock_download
+        mock_download,
     ):
         """Test with Vision API error (should use fallback)."""
         # Setup mocks
         mock_download.return_value = b"fake_image"
         mock_calc_smile.return_value = {
-            'smile_score': 300.0,  # Fallback
-            'face_count': 3,
-            'smiling_faces': 3,
-            'error': 'vision_api_failed'
+            "smile_score": 300.0,  # Fallback
+            "face_count": 3,
+            "smiling_faces": 3,
+            "error": "vision_api_failed",
         }
-        mock_eval_theme.return_value = {'score': 80, 'comment': 'Great!'}
+        mock_eval_theme.return_value = {"score": 80, "comment": "Great!"}
         mock_calc_hash.return_value = "abc123"
         mock_get_hashes.return_value = []
 
@@ -407,5 +410,5 @@ class TestGenerateScoresWithVisionAPI:
         result = generate_scores_with_vision_api("img_001", "req_001")
 
         # Assert
-        assert result['smile_score'] == 300.0  # Fallback score
-        assert 'error' in result or 'has_errors' in result
+        assert result["smile_score"] == 300.0  # Fallback score
+        assert "error" in result or "has_errors" in result
