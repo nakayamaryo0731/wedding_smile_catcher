@@ -21,14 +21,19 @@ from linebot.models import (
     TextSendMessage,
 )
 from google.cloud import firestore, storage
+from google.cloud import logging as cloud_logging
 from google.auth.transport.requests import Request as AuthRequest
 from google.auth import default
 from google.oauth2 import id_token
 import requests
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+# Initialize Cloud Logging
+logging_client = cloud_logging.Client()
+logging_client.setup_logging()
+
+# Initialize logger with Cloud Logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Initialize Google Cloud clients
 db = firestore.Client()
@@ -57,24 +62,54 @@ def webhook(request: Request):
     Returns:
         JSON response with status
     """
+    # Generate request ID for tracing
+    request_id = str(uuid.uuid4())
+
     # Get X-Line-Signature header value
     signature = request.headers.get('X-Line-Signature', '')
 
     # Get request body as text
     body = request.get_data(as_text=True)
-    logger.info(f"Request body: {body}")
+
+    logger.info(
+        "Webhook request received",
+        extra={
+            "request_id": request_id,
+            "has_signature": bool(signature),
+            "event": "webhook_received"
+        }
+    )
 
     # Handle webhook body
     try:
         handler.handle(body, signature)
+
+        logger.info(
+            "Webhook processed successfully",
+            extra={"request_id": request_id, "event": "webhook_processed"}
+        )
+
     except InvalidSignatureError:
-        logger.error("Invalid signature")
+        logger.error(
+            "Invalid LINE signature",
+            extra={"request_id": request_id, "event": "invalid_signature"}
+        )
         return jsonify({'error': 'Invalid signature'}), 400
+
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(
+            "Webhook processing failed",
+            extra={
+                "request_id": request_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "event": "webhook_failed"
+            },
+            exc_info=True
+        )
         return jsonify({'error': str(e)}), 500
 
-    return jsonify({'status': 'ok'}), 200
+    return jsonify({'status': 'ok', 'request_id': request_id}), 200
 
 
 @handler.add(FollowEvent)

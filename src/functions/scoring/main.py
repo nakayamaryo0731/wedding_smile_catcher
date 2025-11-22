@@ -12,7 +12,8 @@ import random
 import json
 import time
 import io
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import functions_framework
@@ -21,14 +22,19 @@ from linebot import LineBotApi
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
+from google.cloud import logging as cloud_logging
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Image
 from PIL import Image as PILImage
 import imagehash
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+# Initialize Cloud Logging
+logging_client = cloud_logging.Client()
+logging_client.setup_logging()
+
+# Initialize logger with Cloud Logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Initialize Google Cloud clients
 db = firestore.Client()
@@ -62,23 +68,46 @@ def scoring(request: Request):
     Returns:
         JSON response with scoring results
     """
+    # Generate request ID for tracing
+    request_id = str(uuid.uuid4())
+
     # Parse request
     request_json = request.get_json(silent=True)
 
     if not request_json:
+        logger.warning("No JSON body provided", extra={"request_id": request_id})
         return jsonify({'error': 'No JSON body provided'}), 400
 
     image_id = request_json.get('image_id')
     user_id = request_json.get('user_id')
 
     if not image_id or not user_id:
+        logger.warning(
+            "Missing required parameters",
+            extra={
+                "request_id": request_id,
+                "image_id": image_id,
+                "user_id": user_id
+            }
+        )
         return jsonify({'error': 'Missing image_id or user_id'}), 400
 
-    logger.info(f"Scoring request: image_id={image_id}, user_id={user_id}")
+    # Structured logging with context
+    logger.info(
+        "Scoring request received",
+        extra={
+            "request_id": request_id,
+            "image_id": image_id,
+            "user_id": user_id,
+            "event": "scoring_started"
+        }
+    )
+
+    start_time = time.time()
 
     try:
         # Generate scores using Vision API
-        scores = generate_scores_with_vision_api(image_id)
+        scores = generate_scores_with_vision_api(image_id, request_id)
 
         # Update Firestore
         update_firestore(image_id, user_id, scores)
@@ -86,15 +115,45 @@ def scoring(request: Request):
         # Send result to LINE
         send_result_to_line(user_id, scores)
 
+        elapsed_time = time.time() - start_time
+
+        # Success log with metrics
+        logger.info(
+            "Scoring completed successfully",
+            extra={
+                "request_id": request_id,
+                "image_id": image_id,
+                "user_id": user_id,
+                "total_score": scores.get('total_score'),
+                "elapsed_time": round(elapsed_time, 2),
+                "event": "scoring_completed"
+            }
+        )
+
         # Return success response
         return jsonify({
             'status': 'success',
             'image_id': image_id,
-            'scores': scores
+            'scores': scores,
+            'request_id': request_id
         }), 200
 
     except Exception as e:
-        logger.error(f"Scoring failed: {str(e)}")
+        elapsed_time = time.time() - start_time
+
+        logger.error(
+            "Scoring failed",
+            extra={
+                "request_id": request_id,
+                "image_id": image_id,
+                "user_id": user_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "elapsed_time": round(elapsed_time, 2),
+                "event": "scoring_failed"
+            },
+            exc_info=True
+        )
 
         # Try to send error message to user
         try:
@@ -105,7 +164,8 @@ def scoring(request: Request):
         return jsonify({
             'status': 'error',
             'error': str(e),
-            'image_id': image_id
+            'image_id': image_id,
+            'request_id': request_id
         }), 500
 
 
@@ -515,7 +575,7 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
     }
 
 
-def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
+def generate_scores_with_vision_api(image_id: str, request_id: str) -> Dict[str, Any]:
     """
     Generate scores using Vision API for smile detection, Vertex AI for theme evaluation,
     and Average Hash for similarity detection.
@@ -525,10 +585,13 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
 
     Args:
         image_id: Image document ID in Firestore
+        request_id: Request ID for tracing
 
     Returns:
         Dictionary with scoring data
     """
+    log_context = {"request_id": request_id, "image_id": image_id}
+
     # Get image document from Firestore
     image_ref = db.collection('images').document(image_id)
     image_doc = image_ref.get()
@@ -546,11 +609,23 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     if not user_id:
         raise Exception(f"User ID not found in image document: {image_id}")
 
+    log_context['user_id'] = user_id
+
     # Download image from Cloud Storage
+    download_start = time.time()
     image_bytes = download_image_from_storage(storage_path)
+    download_time = time.time() - download_start
+
+    logger.info(
+        "Image downloaded from storage",
+        extra={**log_context, "elapsed_time": round(download_time, 2), "event": "image_downloaded"}
+    )
 
     # Execute Vision API, Vertex AI, and Average Hash calculations in parallel
-    logger.info("Starting parallel processing: Vision API + Vertex AI + Average Hash")
+    logger.info(
+        "Starting parallel API processing",
+        extra={**log_context, "event": "parallel_processing_start"}
+    )
     start_time = time.time()
 
     with ThreadPoolExecutor(max_workers=3) as executor:
@@ -565,7 +640,6 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
         average_hash = hash_future.result()
 
     elapsed_time = time.time() - start_time
-    logger.info(f"Parallel processing completed in {elapsed_time:.2f} seconds")
 
     smile_score = vision_result['smile_score']
     face_count = vision_result['face_count']
@@ -575,11 +649,33 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     ai_comment = theme_result['comment']
     ai_error = theme_result.get('error')
 
+    logger.info(
+        "Parallel API processing completed",
+        extra={
+            **log_context,
+            "smile_score": smile_score,
+            "face_count": face_count,
+            "ai_score": ai_score,
+            "elapsed_time": round(elapsed_time, 2),
+            "event": "parallel_processing_completed"
+        }
+    )
+
     # Get existing hashes for this user
     existing_hashes = get_existing_hashes_for_user(user_id)
 
     # Check if similar image exists
     is_similar = is_similar_image(average_hash, existing_hashes, threshold=8)
+
+    logger.info(
+        "Similarity check completed",
+        extra={
+            **log_context,
+            "is_similar": is_similar,
+            "existing_hashes_count": len(existing_hashes),
+            "event": "similarity_check_completed"
+        }
+    )
 
     # Calculate penalty
     penalty = 0.33 if is_similar else 1.0
@@ -627,11 +723,26 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
         if ai_error:
             result['ai_error'] = ai_error
         logger.error(
-            f"Scoring completed with errors: vision_error={vision_error}, "
-            f"ai_error={ai_error}, total_score={total_score}"
+            "Scoring completed with errors",
+            extra={
+                **log_context,
+                "total_score": total_score,
+                "penalty_applied": is_similar,
+                "vision_error": vision_error,
+                "ai_error": ai_error,
+                "event": "score_calculated_with_errors"
+            }
         )
     else:
-        logger.info(f"Scoring completed successfully: total_score={total_score}")
+        logger.info(
+            "Scoring completed successfully",
+            extra={
+                **log_context,
+                "total_score": total_score,
+                "penalty_applied": is_similar,
+                "event": "score_calculated"
+            }
+        )
 
     return result
 
