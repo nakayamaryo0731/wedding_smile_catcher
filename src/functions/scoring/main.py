@@ -13,6 +13,7 @@ import json
 import time
 import io
 from typing import Dict, Any, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import functions_framework
 from flask import Request, jsonify
@@ -469,6 +470,9 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     Generate scores using Vision API for smile detection, Vertex AI for theme evaluation,
     and Average Hash for similarity detection.
 
+    Uses parallel processing for Vision API, Vertex AI, and Average Hash calculations
+    to reduce total processing time.
+
     Args:
         image_id: Image document ID in Firestore
 
@@ -495,18 +499,28 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     # Download image from Cloud Storage
     image_bytes = download_image_from_storage(storage_path)
 
-    # Calculate smile score using Vision API
-    vision_result = calculate_smile_score(image_bytes)
+    # Execute Vision API, Vertex AI, and Average Hash calculations in parallel
+    logger.info("Starting parallel processing: Vision API + Vertex AI + Average Hash")
+    start_time = time.time()
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        # Submit all three tasks
+        vision_future = executor.submit(calculate_smile_score, image_bytes)
+        theme_future = executor.submit(evaluate_theme, image_bytes)
+        hash_future = executor.submit(calculate_average_hash, image_bytes)
+
+        # Wait for all tasks to complete
+        vision_result = vision_future.result()
+        theme_result = theme_future.result()
+        average_hash = hash_future.result()
+
+    elapsed_time = time.time() - start_time
+    logger.info(f"Parallel processing completed in {elapsed_time:.2f} seconds")
+
     smile_score = vision_result['smile_score']
     face_count = vision_result['face_count']
-
-    # Evaluate theme using Vertex AI (Gemini)
-    theme_result = evaluate_theme(image_bytes)
     ai_score = theme_result['score']
     ai_comment = theme_result['comment']
-
-    # Calculate Average Hash for similarity detection
-    average_hash = calculate_average_hash(image_bytes)
 
     # Get existing hashes for this user
     existing_hashes = get_existing_hashes_for_user(user_id)
