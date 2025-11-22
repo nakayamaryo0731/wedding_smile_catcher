@@ -1,0 +1,24 @@
+# Production dependencies for Wedding Smile Catcher
+
+# Google Cloud Platform (use latest compatible versions)
+google-cloud-vision>=3.5.0
+google-cloud-firestore>=2.14.0
+google-cloud-storage>=2.14.0
+google-cloud-logging>=3.8.0
+google-cloud-aiplatform>=1.38.0
+
+# Vertex AI
+vertexai>=1.71.0
+
+# Image processing
+Pillow>=10.3.0
+imagehash>=4.3.1
+
+# LINE Bot SDK
+line-bot-sdk>=3.6.0
+
+# Cloud Functions
+functions-framework>=3.5.0
+
+# Utilities
+requests>=2.31.0

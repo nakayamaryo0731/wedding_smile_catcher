@@ -1,0 +1,16 @@
+# Ignore test images (privacy)
+test_data/*.jpg
+test_data/*.jpeg
+test_data/*.png
+
+# Keep README
+!test_data/README.md
+
+# Pytest cache
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Coverage reports
+.coverage
+htmlcov/
