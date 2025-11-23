@@ -7,7 +7,6 @@ import os
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
 
 import functions_framework
 from flask import Request, jsonify
@@ -23,7 +22,6 @@ from linebot.models import (
 from google.cloud import firestore, storage
 from google.cloud import logging as cloud_logging
 from google.auth.transport.requests import Request as AuthRequest
-from google.auth import default
 from google.oauth2 import id_token
 import requests
 
@@ -209,8 +207,6 @@ def handle_command(text: str, reply_token: str, user_ref):
         reply_token: LINE reply token
         user_ref: Firestore user document reference
     """
-    text_lower = text.lower()
-
     if text in ["ヘルプ", "help", "使い方"]:
         message = TextSendMessage(
             text="【Wedding Smile Catcher 使い方】\n\n"
@@ -282,7 +278,7 @@ def get_ranking_message(user_ref) -> TextSendMessage:
         if user_rank:
             ranking_text += f"\n📍 あなたの順位: {user_rank}位"
         else:
-            ranking_text += f"\n📍 あなたの順位: 圏外"
+            ranking_text += "\n📍 あなたの順位: 圏外"
 
         return TextSendMessage(text=ranking_text)
 
@@ -338,7 +334,9 @@ def handle_image_message(event: MessageEvent):
         # Generate unique image ID and path
         image_id = str(uuid.uuid4())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        storage_path = f"{CURRENT_EVENT_ID}/original/{user_id}/{timestamp}_{image_id}.jpg"
+        storage_path = (
+            f"{CURRENT_EVENT_ID}/original/{user_id}/{timestamp}_{image_id}.jpg"
+        )
 
         # Upload to Cloud Storage
         bucket = storage_client.bucket(STORAGE_BUCKET)

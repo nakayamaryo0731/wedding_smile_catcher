@@ -9,7 +9,6 @@ Usage:
 
 import sys
 from google.cloud import firestore
-from datetime import datetime
 
 
 def archive_event(event_id: str):
@@ -17,7 +16,7 @@ def archive_event(event_id: str):
     db = firestore.Client()
 
     # Check if event exists
-    event_ref = db.collection('events').document(event_id)
+    event_ref = db.collection("events").document(event_id)
     event_doc = event_ref.get()
 
     if not event_doc.exists:
@@ -27,7 +26,7 @@ def archive_event(event_id: str):
     event_data = event_doc.to_dict()
 
     # Confirm
-    print(f"📦 アーカイブ対象イベント:")
+    print("📦 アーカイブ対象イベント:")
     print(f"  ID: {event_id}")
     print(f"  名前: {event_data['event_name']}")
     print(f"  日付: {event_data['event_date']}")
@@ -35,15 +34,12 @@ def archive_event(event_id: str):
     print("")
 
     confirmation = input("このイベントをアーカイブしますか？ (yes/no): ")
-    if confirmation.lower() != 'yes':
+    if confirmation.lower() != "yes":
         print("❌ キャンセルしました")
         return
 
     # Update status
-    event_ref.update({
-        'status': 'archived',
-        'archived_at': firestore.SERVER_TIMESTAMP
-    })
+    event_ref.update({"status": "archived", "archived_at": firestore.SERVER_TIMESTAMP})
 
     print("")
     print("✅ イベントをアーカイブしました")

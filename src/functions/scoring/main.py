@@ -12,9 +12,9 @@ import random
 import json
 import time
 import io
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 import functions_framework
 from flask import Request, jsonify
@@ -24,7 +24,7 @@ from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
 from google.cloud import logging as cloud_logging
 import vertexai
-from vertexai.generative_models import GenerativeModel, Part, Image
+from vertexai.generative_models import GenerativeModel, Part
 from PIL import Image as PILImage
 import imagehash
 
