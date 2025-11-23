@@ -124,30 +124,29 @@ def mock_storage_client():
 @pytest.fixture
 def mock_vision_client_integration():
     """
-    Mock Vision API client for integration tests.
+    Mock Vision API client instance for integration tests.
+    Yields the instance mock, not the class mock.
     """
-    with patch("google.cloud.vision.ImageAnnotatorClient") as mock_client:
-        mock_response = Mock()
+    mock_response = Mock()
 
-        # Default: 2 happy faces
-        face1 = Mock()
-        face1.joy_likelihood = 5  # VERY_LIKELY = 95.0 points
+    # Default: 2 happy faces
+    face1 = Mock()
+    face1.joy_likelihood = 5  # VERY_LIKELY = 95.0 points
 
-        face2 = Mock()
-        face2.joy_likelihood = 5  # VERY_LIKELY = 95.0 points
+    face2 = Mock()
+    face2.joy_likelihood = 5  # VERY_LIKELY = 95.0 points
 
-        mock_response.face_annotations = [face1, face2]
+    mock_response.face_annotations = [face1, face2]
 
-        # Properly mock the error object with empty message (no error)
-        mock_error = Mock()
-        mock_error.message = ""
-        mock_response.error = mock_error
+    # Properly mock the error object with empty message (no error)
+    mock_error = Mock()
+    mock_error.message = ""
+    mock_response.error = mock_error
 
-        mock_instance = Mock()
-        mock_instance.face_detection = Mock(return_value=mock_response)
-        mock_client.return_value = mock_instance
+    mock_instance = Mock()
+    mock_instance.face_detection = Mock(return_value=mock_response)
 
-        yield mock_client
+    yield mock_instance
 
 
 @pytest.fixture
