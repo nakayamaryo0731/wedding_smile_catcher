@@ -33,6 +33,7 @@ def pytest_configure(config):
     mock_auth = auth_patch.start()
     mock_credentials = Mock()
     mock_credentials.token = "fake-token"
+    mock_credentials.universe_domain = "googleapis.com"  # Fix universe_domain error
     mock_auth.return_value = (mock_credentials, "fake-project-id")
     _patches.append(auth_patch)
 
