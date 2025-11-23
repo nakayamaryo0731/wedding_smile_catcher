@@ -127,14 +127,16 @@ def mock_vision_client_integration():
     Mock Vision API client instance for integration tests.
     Yields the instance mock, not the class mock.
     """
+    from google.cloud import vision
+
     mock_response = Mock()
 
-    # Default: 2 happy faces
+    # Default: 2 happy faces with VERY_LIKELY enum
     face1 = Mock()
-    face1.joy_likelihood = 5  # VERY_LIKELY = 95.0 points
+    face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 points
 
     face2 = Mock()
-    face2.joy_likelihood = 5  # VERY_LIKELY = 95.0 points
+    face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 points
 
     mock_response.face_annotations = [face1, face2]
 
