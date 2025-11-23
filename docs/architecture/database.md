@@ -27,6 +27,7 @@ graph LR
 |------------|------|------|------|------------|
 | `name` | string | ユーザーのフルネーム | ✓ | - |
 | `line_user_id` | string | LINE User ID | ✓ | ✓ (unique) |
+| `event_id` | string | イベントID（イベント分離用） | ✓ | ✓ |
 | `created_at` | timestamp | ユーザー登録日時 | ✓ | - |
 | `total_uploads` | number | 総投稿数 | ✓ | ✓ |
 | `best_score` | number | 最高スコア | ✓ | ✓ |
@@ -37,6 +38,7 @@ graph LR
 {
   "name": "山田太郎",
   "line_user_id": "U1234567890abcdef",
+  "event_id": "wedding_20250315_tanaka",
   "created_at": "2025-11-18T10:30:00Z",
   "total_uploads": 5,
   "best_score": 389.3
@@ -58,6 +60,7 @@ graph LR
 | フィールド名 | 型 | 説明 | 必須 | インデックス |
 |------------|------|------|------|------------|
 | `user_id` | string | 投稿者のユーザーID | ✓ | ✓ |
+| `event_id` | string | イベントID（イベント分離用） | ✓ | ✓ |
 | `storage_path` | string | Cloud Storageのパス | ✓ | - |
 | `upload_timestamp` | timestamp | 投稿日時 | ✓ | ✓ |
 | `smile_score` | number | 笑顔スコア（0～∞） | ✓ | ✓ |
@@ -74,7 +77,8 @@ graph LR
 ```json
 {
   "user_id": "user_001",
-  "storage_path": "original/user_001/20251118_103000_img001.jpg",
+  "event_id": "wedding_20250315_tanaka",
+  "storage_path": "wedding_20250315_tanaka/original/user_001/20251118_103000_img001.jpg",
   "upload_timestamp": "2025-11-18T10:30:00Z",
   "smile_score": 458.0,
   "ai_score": 85,
@@ -147,19 +151,31 @@ graph LR
 
 Firestoreで効率的にクエリを実行するための複合インデックス：
 
-#### 1. images コレクション - スコア順取得
+#### 1. images コレクション - イベント別スコア順取得（重要）
 
 ```
 Collection: images
 Fields:
+  - event_id (Ascending)
   - status (Ascending)
   - total_score (Descending)
-  - upload_timestamp (Descending)
 ```
 
-**用途**: ステータスが`completed`の画像をスコア順で取得
+**用途**: 特定イベントでステータスが`completed`の画像をスコア順で取得（ランキング表示）
 
-#### 2. images コレクション - ユーザー別投稿取得
+#### 2. images コレクション - イベント&ユーザー別類似判定用
+
+```
+Collection: images
+Fields:
+  - event_id (Ascending)
+  - user_id (Ascending)
+  - status (Ascending)
+```
+
+**用途**: 特定イベント内の特定ユーザーの完了済み画像を取得（類似画像判定用）
+
+#### 3. images コレクション - ユーザー別投稿取得
 
 ```
 Collection: images
@@ -168,41 +184,34 @@ Fields:
   - upload_timestamp (Descending)
 ```
 
-**用途**: 特定ユーザーの投稿を新しい順で取得
+**用途**: 特定ユーザーの投稿を新しい順で取得（全イベント横断）
 
-#### 3. images コレクション - 類似画像除外ランキング
-
-```
-Collection: images
-Fields:
-  - is_similar (Ascending)
-  - total_score (Descending)
-```
-
-**用途**: 類似画像を除外したランキング取得
-
-#### 4. users コレクション - 総投稿数順
+#### 4. users コレクション - イベント別総投稿数順
 
 ```
 Collection: users
 Fields:
+  - event_id (Ascending)
   - total_uploads (Descending)
 ```
 
-**用途**: 最も投稿したユーザーのランキング
+**用途**: 特定イベント内で最も投稿したユーザーのランキング
 
 ## クエリパターン
 
-### 1. トップN画像の取得（ユーザー重複なし）
+### 1. トップN画像の取得（ユーザー重複なし、イベント別）
 
 ```python
 from google.cloud import firestore
+import os
 
 db = firestore.Client()
+CURRENT_EVENT_ID = os.environ.get('CURRENT_EVENT_ID', 'test')
 
-# Step 1: トップ100画像を取得
+# Step 1: 特定イベントのトップ100画像を取得
 top_images = (
     db.collection('images')
+    .where('event_id', '==', CURRENT_EVENT_ID)
     .where('status', '==', 'completed')
     .order_by('total_score', direction=firestore.Query.DESCENDING)
     .limit(100)
@@ -233,24 +242,34 @@ user_images = (
 )
 ```
 
-### 3. 既存のAverage Hash一覧を取得（類似判定用）
+### 3. 既存のAverage Hash一覧を取得（類似判定用、イベント別）
 
 ```python
-# 全画像のハッシュを取得（類似判定のため）
-all_hashes = []
-images = db.collection('images').where('status', '==', 'completed').stream()
+# 特定イベント&ユーザーの画像ハッシュを取得（類似判定のため）
+def get_existing_hashes_for_user(user_id: str, event_id: str):
+    images = (
+        db.collection('images')
+        .where('event_id', '==', event_id)
+        .where('user_id', '==', user_id)
+        .where('status', '==', 'completed')
+        .stream()
+    )
 
-for doc in images:
-    all_hashes.append(doc.get('average_hash'))
+    hashes = []
+    for doc in images:
+        hashes.append(doc.get('average_hash'))
+
+    return hashes
 ```
 
-### 4. ランキング更新
+### 4. ランキング更新（イベント別）
 
 ```python
-def update_ranking():
-    # トップ100を取得
+def update_ranking(event_id: str):
+    # 特定イベントのトップ100を取得
     top_images = (
         db.collection('images')
+        .where('event_id', '==', event_id)
         .where('status', '==', 'completed')
         .order_by('total_score', direction=firestore.Query.DESCENDING)
         .limit(100)
@@ -267,11 +286,17 @@ def update_ranking():
             'rank': idx
         })
 
-    # 総投稿数を取得
-    total_count = db.collection('images').where('status', '==', 'completed').count().get()[0][0].value
+    # 総投稿数を取得（特定イベントのみ）
+    total_count = (
+        db.collection('images')
+        .where('event_id', '==', event_id)
+        .where('status', '==', 'completed')
+        .count()
+        .get()[0][0].value
+    )
 
-    # rankingコレクションを更新
-    db.collection('ranking').document('current').set({
+    # rankingコレクションをイベント別に更新
+    db.collection('ranking').document(event_id).set({
         'top_images': ranking_data,
         'updated_at': firestore.SERVER_TIMESTAMP,
         'total_submissions': total_count

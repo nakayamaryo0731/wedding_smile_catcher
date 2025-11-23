@@ -2,26 +2,22 @@
 Unit tests for scoring functions (src/functions/scoring/main.py).
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from google.cloud import vision
-
-
-# Import functions from scoring module
-# Adjust import path based on your project structure
 import sys
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+from google.cloud import vision
 
 # Add src directory to path
 src_path = Path(__file__).parent.parent.parent / "src" / "functions" / "scoring"
 sys.path.insert(0, str(src_path.parent))
 
-from scoring.main import (
+from scoring.main import (  # noqa: E402
+    calculate_average_hash,
     calculate_smile_score,
     evaluate_theme,
-    calculate_average_hash,
-    is_similar_image,
     generate_scores_with_vision_api,
+    is_similar_image,
 )
 
 

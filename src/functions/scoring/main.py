@@ -12,9 +12,9 @@ import random
 import json
 import time
 import io
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 import functions_framework
 from flask import Request, jsonify
@@ -24,7 +24,7 @@ from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
 from google.cloud import logging as cloud_logging
 import vertexai
-from vertexai.generative_models import GenerativeModel, Part, Image
+from vertexai.generative_models import GenerativeModel, Part
 from PIL import Image as PILImage
 import imagehash
 
@@ -46,6 +46,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 GCP_REGION = os.environ.get("GCP_REGION", "asia-northeast1")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
+CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID", "test")
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -399,7 +400,7 @@ def is_similar_image(
 
 def get_existing_hashes_for_user(user_id: str) -> List[str]:
     """
-    Get all existing average hashes for a user's uploaded images.
+    Get all existing average hashes for a user's uploaded images in the current event.
 
     Args:
         user_id: User ID
@@ -408,9 +409,10 @@ def get_existing_hashes_for_user(user_id: str) -> List[str]:
         List of average hash strings
     """
     try:
-        # Query images collection for this user with status 'completed'
+        # Query images collection for this user in current event with status 'completed'
         images_query = (
             db.collection("images")
+            .where("event_id", "==", CURRENT_EVENT_ID)
             .where("user_id", "==", user_id)
             .where("status", "==", "completed")
             .get()

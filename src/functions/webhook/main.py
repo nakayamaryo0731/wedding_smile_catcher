@@ -7,7 +7,6 @@ import os
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
 
 import functions_framework
 from flask import Request, jsonify
@@ -23,7 +22,6 @@ from linebot.models import (
 from google.cloud import firestore, storage
 from google.cloud import logging as cloud_logging
 from google.auth.transport.requests import Request as AuthRequest
-from google.auth import default
 from google.oauth2 import id_token
 import requests
 
@@ -45,6 +43,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 SCORING_FUNCTION_URL = os.environ.get("SCORING_FUNCTION_URL")
+CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID", "test")
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -173,6 +172,7 @@ def handle_text_message(event: MessageEvent):
                 {
                     "name": text,
                     "line_user_id": user_id,
+                    "event_id": CURRENT_EVENT_ID,
                     "created_at": firestore.SERVER_TIMESTAMP,
                     "total_uploads": 0,
                     "best_score": 0,
@@ -207,8 +207,6 @@ def handle_command(text: str, reply_token: str, user_ref):
         reply_token: LINE reply token
         user_ref: Firestore user document reference
     """
-    text_lower = text.lower()
-
     if text in ["ヘルプ", "help", "使い方"]:
         message = TextSendMessage(
             text="【Wedding Smile Catcher 使い方】\n\n"
@@ -241,9 +239,10 @@ def get_ranking_message(user_ref) -> TextSendMessage:
         TextSendMessage with ranking information
     """
     try:
-        # Get top 10 images
+        # Get top 10 images for current event
         top_images = (
             db.collection("images")
+            .where("event_id", "==", CURRENT_EVENT_ID)
             .where("status", "==", "completed")
             .order_by("total_score", direction=firestore.Query.DESCENDING)
             .limit(10)
@@ -279,7 +278,7 @@ def get_ranking_message(user_ref) -> TextSendMessage:
         if user_rank:
             ranking_text += f"\n📍 あなたの順位: {user_rank}位"
         else:
-            ranking_text += f"\n📍 あなたの順位: 圏外"
+            ranking_text += "\n📍 あなたの順位: 圏外"
 
         return TextSendMessage(text=ranking_text)
 
@@ -335,7 +334,9 @@ def handle_image_message(event: MessageEvent):
         # Generate unique image ID and path
         image_id = str(uuid.uuid4())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        storage_path = f"original/{user_id}/{timestamp}_{image_id}.jpg"
+        storage_path = (
+            f"{CURRENT_EVENT_ID}/original/{user_id}/{timestamp}_{image_id}.jpg"
+        )
 
         # Upload to Cloud Storage
         bucket = storage_client.bucket(STORAGE_BUCKET)
@@ -349,6 +350,7 @@ def handle_image_message(event: MessageEvent):
         image_ref.set(
             {
                 "user_id": user_id,
+                "event_id": CURRENT_EVENT_ID,
                 "storage_path": storage_path,
                 "upload_timestamp": firestore.SERVER_TIMESTAMP,
                 "status": "pending",

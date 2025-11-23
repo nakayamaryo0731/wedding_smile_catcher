@@ -1,7 +1,25 @@
-import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // State
 let currentTop3 = [];
+
+/**
+ * Get current event ID from URL parameters or config
+ * Supports: ?event_id=wedding_20250315_tanaka
+ */
+function getCurrentEventId() {
+  const params = new URLSearchParams(window.location.search);
+  const eventIdFromUrl = params.get('event_id');
+
+  if (eventIdFromUrl) {
+    console.log(`Using event_id from URL: ${eventIdFromUrl}`);
+    return eventIdFromUrl;
+  }
+
+  const defaultEventId = window.CURRENT_EVENT_ID || 'test';
+  console.log(`Using default event_id: ${defaultEventId}`);
+  return defaultEventId;
+}
 
 // DOM Elements
 const loadingEl = document.getElementById('loading');
@@ -160,11 +178,13 @@ async function updateRankings(images) {
  */
 async function fetchRankings() {
   try {
-    console.log('Fetching latest rankings from Firestore...');
+    const currentEventId = getCurrentEventId();
+    console.log(`Fetching latest rankings from Firestore for event: ${currentEventId}`);
 
     const imagesRef = collection(window.db, 'images');
     const q = query(
       imagesRef,
+      where('event_id', '==', currentEventId),
       orderBy('total_score', 'desc'),
       limit(100) // Fetch top 100 to ensure we can filter to 3 unique users
     );
@@ -213,6 +233,10 @@ function setupPeriodicPolling() {
  */
 function init() {
   console.log('Initializing Wedding Smile Ranking app...');
+
+  // Get event ID from URL or config
+  const currentEventId = getCurrentEventId();
+  console.log(`Current Event ID: ${currentEventId}`);
 
   // Check if Firebase is initialized
   if (!window.db) {

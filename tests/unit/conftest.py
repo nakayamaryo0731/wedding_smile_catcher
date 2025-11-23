@@ -5,7 +5,6 @@ This module sets up mocks for Google Cloud clients to avoid authentication
 errors during test collection and execution.
 """
 
-import pytest
 from unittest.mock import Mock, patch
 import os
 
@@ -54,7 +53,7 @@ def pytest_configure(config):
 
     # Mock vertexai.init
     vertexai_patch = patch("vertexai.init")
-    mock_vertexai = vertexai_patch.start()
+    vertexai_patch.start()
     _patches.append(vertexai_patch)
 
 
