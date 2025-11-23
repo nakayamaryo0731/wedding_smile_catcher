@@ -24,6 +24,9 @@ def pytest_configure(config):
     """
     Pytest hook called before test collection begins.
     Sets up mocks for Google Cloud clients at the earliest possible time.
+
+    Note: We do NOT mock Firestore client here because integration tests
+    need a real Firestore client connected to the emulator.
     """
     # Mock google.auth.default
     auth_patch = patch("google.auth.default")
@@ -33,16 +36,14 @@ def pytest_configure(config):
     mock_auth.return_value = (mock_credentials, "fake-project-id")
     _patches.append(auth_patch)
 
-    # Mock Google Cloud client constructors
+    # Mock Google Cloud client constructors (except Firestore)
     logging_patch = patch("google.cloud.logging.Client")
     mock_logging = logging_patch.start()
     mock_logging.return_value = Mock()
     _patches.append(logging_patch)
 
-    firestore_patch = patch("google.cloud.firestore.Client")
-    mock_firestore = firestore_patch.start()
-    mock_firestore.return_value = Mock()
-    _patches.append(firestore_patch)
+    # NOTE: Do NOT mock Firestore client - we need real client for emulator
+    # firestore_patch is intentionally omitted
 
     storage_patch = patch("google.cloud.storage.Client")
     mock_storage = storage_patch.start()
