@@ -45,6 +45,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 SCORING_FUNCTION_URL = os.environ.get("SCORING_FUNCTION_URL")
+CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID", "test")
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -173,6 +174,7 @@ def handle_text_message(event: MessageEvent):
                 {
                     "name": text,
                     "line_user_id": user_id,
+                    "event_id": CURRENT_EVENT_ID,
                     "created_at": firestore.SERVER_TIMESTAMP,
                     "total_uploads": 0,
                     "best_score": 0,
@@ -241,9 +243,10 @@ def get_ranking_message(user_ref) -> TextSendMessage:
         TextSendMessage with ranking information
     """
     try:
-        # Get top 10 images
+        # Get top 10 images for current event
         top_images = (
             db.collection("images")
+            .where("event_id", "==", CURRENT_EVENT_ID)
             .where("status", "==", "completed")
             .order_by("total_score", direction=firestore.Query.DESCENDING)
             .limit(10)
@@ -335,7 +338,7 @@ def handle_image_message(event: MessageEvent):
         # Generate unique image ID and path
         image_id = str(uuid.uuid4())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        storage_path = f"original/{user_id}/{timestamp}_{image_id}.jpg"
+        storage_path = f"{CURRENT_EVENT_ID}/original/{user_id}/{timestamp}_{image_id}.jpg"
 
         # Upload to Cloud Storage
         bucket = storage_client.bucket(STORAGE_BUCKET)
@@ -349,6 +352,7 @@ def handle_image_message(event: MessageEvent):
         image_ref.set(
             {
                 "user_id": user_id,
+                "event_id": CURRENT_EVENT_ID,
                 "storage_path": storage_path,
                 "upload_timestamp": firestore.SERVER_TIMESTAMP,
                 "status": "pending",
