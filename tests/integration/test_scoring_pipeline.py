@@ -10,7 +10,6 @@ Tests the complete flow:
 Requires Firestore emulator: firebase emulators:start --only firestore
 """
 
-import pytest
 from google.cloud import firestore
 from unittest.mock import Mock, patch
 import sys
@@ -76,9 +75,11 @@ class TestScoringPipeline:
         with patch("scoring.main.vision_client", mock_vision_client_integration), patch(
             "scoring.main.vertexai"
         ):
-            # Calculate smile score
-            smile_score = calculate_smile_score(test_image_bytes)
-            assert smile_score == 190.0  # 2 faces × 95.0
+            # Calculate smile score (returns dict)
+            smile_result = calculate_smile_score(test_image_bytes)
+            assert smile_result["smile_score"] == 190.0  # 2 faces × 95.0
+            assert smile_result["face_count"] == 2
+            assert smile_result["smiling_faces"] == 2
 
             # Calculate AI score
             ai_result = evaluate_theme(test_image_bytes)
@@ -97,19 +98,21 @@ class TestScoringPipeline:
 
             # Calculate total score
             similarity_penalty = 1.0 if not is_similar else 1 / 3
-            total_score = (smile_score * ai_result["score"] / 100) * similarity_penalty
+            total_score = (
+                smile_result["smile_score"] * ai_result["score"] / 100
+            ) * similarity_penalty
 
         # Update Firestore with scores
         image_ref.update(
             {
-                "smile_score": smile_score,
+                "smile_score": smile_result["smile_score"],
                 "ai_score": ai_result["score"],
                 "ai_comment": ai_result["comment"],
                 "total_score": total_score,
                 "average_hash": avg_hash,
                 "status": "completed",
-                "face_count": 2,
-                "smiling_faces": 2,
+                "face_count": smile_result["face_count"],
+                "smiling_faces": smile_result["smiling_faces"],
                 "similarity_penalty": similarity_penalty,
             }
         )
@@ -278,13 +281,16 @@ class TestScoringPipeline:
             side_effect=Exception("Vision API error")
         )
 
-        with patch("scoring.main.vision_client", mock_vision_error), pytest.raises(
-            Exception
-        ):
-            calculate_smile_score(test_image_bytes)
+        # The function should not raise exceptions, but return error dict with fallback
+        with patch("scoring.main.vision_client", mock_vision_error):
+            result = calculate_smile_score(test_image_bytes)
 
-        # In real implementation, this should update status to "failed"
-        # For now, just verify the exception is raised
+        # Verify error handling returns fallback values
+        assert "error" in result
+        assert result["error"] == "vision_api_failed"
+        assert result["smile_score"] == 300.0  # Default fallback score
+        assert result["face_count"] == 3  # Assume average group size
+        assert result["smiling_faces"] == 3  # Assume all smiling
 
     def test_concurrent_scoring_no_conflicts(
         self, firestore_client, test_image_bytes, mock_vision_client_integration
@@ -313,14 +319,14 @@ class TestScoringPipeline:
         # Score all images (sequentially in test, but simulating concurrent)
         with patch("scoring.main.vision_client", mock_vision_client_integration):
             for image_ref in image_refs:
-                smile_score = calculate_smile_score(test_image_bytes)
+                smile_result = calculate_smile_score(test_image_bytes)
                 avg_hash = calculate_average_hash(test_image_bytes)
 
                 image_ref.update(
                     {
-                        "smile_score": smile_score,
+                        "smile_score": smile_result["smile_score"],
                         "average_hash": avg_hash,
-                        "total_score": smile_score,
+                        "total_score": smile_result["smile_score"],
                         "status": "completed",
                     }
                 )

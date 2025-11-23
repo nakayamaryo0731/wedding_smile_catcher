@@ -137,7 +137,11 @@ def mock_vision_client_integration():
         face2.joy_likelihood = 5  # VERY_LIKELY = 95.0 points
 
         mock_response.face_annotations = [face1, face2]
-        mock_response.error.message = ""
+
+        # Properly mock the error object with empty message (no error)
+        mock_error = Mock()
+        mock_error.message = ""
+        mock_response.error = mock_error
 
         mock_instance = Mock()
         mock_instance.face_detection = Mock(return_value=mock_response)
