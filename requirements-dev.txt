@@ -14,5 +14,8 @@ black==24.2.0               # Code formatter
 flake8==7.0.0               # Linter
 mypy==1.8.0                 # Type checker
 
+# Load testing
+locust==2.24.0              # Load testing framework
+
 # Include production dependencies
 -r requirements.txt
