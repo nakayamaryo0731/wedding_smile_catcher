@@ -7,32 +7,38 @@ service cloud.firestore {
     }
 
     // Users collection
+    // Frontend can read user names for display
+    // Only Cloud Functions (with service account) can write
     match /users/{userId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if false;
     }
 
     // Images collection
+    // Frontend can read images and scores for ranking display
+    // Only Cloud Functions (with service account) can write
     match /images/{imageId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if false;
     }
 
     // Events collection (for multi-event support)
+    // Frontend can read event metadata
+    // Only Cloud Functions (with service account) can write
     match /events/{eventId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if false;
 
       // Event-specific users subcollection
       match /users/{userId} {
         allow read: if true;
-        allow write: if true;
+        allow write: if false;
       }
 
       // Event-specific images subcollection
       match /images/{imageId} {
         allow read: if true;
-        allow write: if true;
+        allow write: if false;
       }
     }
   }
