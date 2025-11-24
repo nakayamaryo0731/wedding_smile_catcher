@@ -1,0 +1,130 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements-dev.txt
+
+      - name: Run unit tests
+        env:
+          GCP_PROJECT_ID: wedding-smile-catcher-test
+          STORAGE_BUCKET: wedding-smile-images-test
+        run: |
+          pytest tests/unit/ -v --cov=src --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage to Codecov (optional)
+        uses: codecov/codecov-action@v4
+        if: always()
+        continue-on-error: true
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: |
+          uv pip install --system -r requirements-dev.txt
+
+      - name: Install Firebase CLI
+        run: |
+          npm install -g firebase-tools
+
+      - name: Start Firestore Emulator
+        run: |
+          firebase emulators:start --only firestore --project=wedding-smile-catcher-test &
+          # Wait for emulator to be ready
+          timeout 30 bash -c 'until curl -s http://localhost:8080 > /dev/null; do sleep 1; done'
+        env:
+          FIRESTORE_EMULATOR_HOST: localhost:8080
+
+      - name: Run integration tests
+        env:
+          FIRESTORE_EMULATOR_HOST: localhost:8080
+          GCP_PROJECT_ID: wedding-smile-catcher-test
+          STORAGE_BUCKET: wedding-smile-images-test
+        run: |
+          pytest tests/integration/ -v --cov=src --cov-report=term-missing
+
+      - name: Stop Firestore Emulator
+        if: always()
+        run: |
+          pkill -f "firebase.*emulators" || true
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system flake8 black
+
+      - name: Run black (check only)
+        run: |
+          black --check src/ tests/
+
+      - name: Run flake8
+        run: |
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Exit-zero treats all errors as warnings. Line length set to 120
+          flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics

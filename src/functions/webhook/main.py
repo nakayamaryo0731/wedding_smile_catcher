@@ -7,7 +7,6 @@ import os
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
 
 import functions_framework
 from flask import Request, jsonify
@@ -21,25 +20,30 @@ from linebot.models import (
     TextSendMessage,
 )
 from google.cloud import firestore, storage
+from google.cloud import logging as cloud_logging
 from google.auth.transport.requests import Request as AuthRequest
-from google.auth import default
 from google.oauth2 import id_token
 import requests
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+# Initialize Cloud Logging
+logging_client = cloud_logging.Client()
+logging_client.setup_logging()
+
+# Initialize logger with Cloud Logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Initialize Google Cloud clients
 db = firestore.Client()
 storage_client = storage.Client()
 
 # Environment variables
-LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET')
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
-GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', 'wedding-smile-catcher')
-STORAGE_BUCKET = os.environ.get('STORAGE_BUCKET', 'wedding-smile-images')
-SCORING_FUNCTION_URL = os.environ.get('SCORING_FUNCTION_URL')
+LINE_CHANNEL_SECRET = os.environ.get("LINE_CHANNEL_SECRET")
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
+STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
+SCORING_FUNCTION_URL = os.environ.get("SCORING_FUNCTION_URL")
+CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID", "test")
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -57,24 +61,54 @@ def webhook(request: Request):
     Returns:
         JSON response with status
     """
+    # Generate request ID for tracing
+    request_id = str(uuid.uuid4())
+
     # Get X-Line-Signature header value
-    signature = request.headers.get('X-Line-Signature', '')
+    signature = request.headers.get("X-Line-Signature", "")
 
     # Get request body as text
     body = request.get_data(as_text=True)
-    logger.info(f"Request body: {body}")
+
+    logger.info(
+        "Webhook request received",
+        extra={
+            "request_id": request_id,
+            "has_signature": bool(signature),
+            "event": "webhook_received",
+        },
+    )
 
     # Handle webhook body
     try:
         handler.handle(body, signature)
-    except InvalidSignatureError:
-        logger.error("Invalid signature")
-        return jsonify({'error': 'Invalid signature'}), 400
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
-    return jsonify({'status': 'ok'}), 200
+        logger.info(
+            "Webhook processed successfully",
+            extra={"request_id": request_id, "event": "webhook_processed"},
+        )
+
+    except InvalidSignatureError:
+        logger.error(
+            "Invalid LINE signature",
+            extra={"request_id": request_id, "event": "invalid_signature"},
+        )
+        return jsonify({"error": "Invalid signature"}), 400
+
+    except Exception as e:
+        logger.error(
+            "Webhook processing failed",
+            extra={
+                "request_id": request_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "event": "webhook_failed",
+            },
+            exc_info=True,
+        )
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"status": "ok", "request_id": request_id}), 200
 
 
 @handler.add(FollowEvent)
@@ -89,24 +123,24 @@ def handle_follow(event: FollowEvent):
     logger.info(f"Follow event from user: {user_id}")
 
     # Check if user already exists
-    user_ref = db.collection('users').document(user_id)
+    user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
 
     if not user_doc.exists:
         # Send registration guide
         message = TextSendMessage(
-            text='ようこそ！Wedding Smile Catcherへ\n\n'
-                 'まずはお名前（フルネーム）をテキストで送信してください。\n'
-                 '例: 山田太郎'
+            text="ようこそ！Wedding Smile Catcherへ\n\n"
+            "まずはお名前（フルネーム）をテキストで送信してください。\n"
+            "例: 山田太郎"
         )
         line_bot_api.reply_message(event.reply_token, message)
     else:
         # Already registered
         user_data = user_doc.to_dict()
-        name = user_data.get('name', 'ゲスト')
+        name = user_data.get("name", "ゲスト")
         message = TextSendMessage(
-            text=f'{name}さん、おかえりなさい！\n\n'
-                 '写真を送信してスコアを取得しましょう！'
+            text=f"{name}さん、おかえりなさい！\n\n"
+            "写真を送信してスコアを取得しましょう！"
         )
         line_bot_api.reply_message(event.reply_token, message)
 
@@ -128,32 +162,35 @@ def handle_text_message(event: MessageEvent):
     logger.info(f"Text message from {user_id}: {text}")
 
     # Check if user is registered
-    user_ref = db.collection('users').document(user_id)
+    user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
 
     if not user_doc.exists:
         # Register new user with name
         try:
-            user_ref.set({
-                'name': text,
-                'line_user_id': user_id,
-                'created_at': firestore.SERVER_TIMESTAMP,
-                'total_uploads': 0,
-                'best_score': 0
-            })
+            user_ref.set(
+                {
+                    "name": text,
+                    "line_user_id": user_id,
+                    "event_id": CURRENT_EVENT_ID,
+                    "created_at": firestore.SERVER_TIMESTAMP,
+                    "total_uploads": 0,
+                    "best_score": 0,
+                }
+            )
 
             logger.info(f"User registered: {user_id} - {text}")
 
             message = TextSendMessage(
-                text=f'{text}さん、登録完了です！\n\n'
-                     '早速、笑顔の写真を送ってみましょう！📸'
+                text=f"{text}さん、登録完了です！\n\n"
+                "早速、笑顔の写真を送ってみましょう！📸"
             )
             line_bot_api.reply_message(reply_token, message)
 
         except Exception as e:
             logger.error(f"Failed to register user: {str(e)}")
             message = TextSendMessage(
-                text='登録に失敗しました。もう一度お試しください。'
+                text="登録に失敗しました。もう一度お試しください。"
             )
             line_bot_api.reply_message(reply_token, message)
     else:
@@ -170,24 +207,22 @@ def handle_command(text: str, reply_token: str, user_ref):
         reply_token: LINE reply token
         user_ref: Firestore user document reference
     """
-    text_lower = text.lower()
-
-    if text in ['ヘルプ', 'help', '使い方']:
+    if text in ["ヘルプ", "help", "使い方"]:
         message = TextSendMessage(
-            text='【Wedding Smile Catcher 使い方】\n\n'
-                 '📸 写真を送信\n'
-                 '  → AIが笑顔を分析してスコアをお伝えします\n\n'
-                 '🏆 「ランキング」\n'
-                 '  → 現在のランキングを確認\n\n'
-                 '❓ 「ヘルプ」\n'
-                 '  → この使い方を表示'
+            text="【Wedding Smile Catcher 使い方】\n\n"
+            "📸 写真を送信\n"
+            "  → AIが笑顔を分析してスコアをお伝えします\n\n"
+            "🏆 「ランキング」\n"
+            "  → 現在のランキングを確認\n\n"
+            "❓ 「ヘルプ」\n"
+            "  → この使い方を表示"
         )
-    elif text in ['ランキング', '順位', 'ranking']:
+    elif text in ["ランキング", "順位", "ranking"]:
         message = get_ranking_message(user_ref)
     else:
         message = TextSendMessage(
-            text='写真を送信してスコアを取得しましょう！\n\n'
-                 '「ヘルプ」と送信すると使い方を確認できます。'
+            text="写真を送信してスコアを取得しましょう！\n\n"
+            "「ヘルプ」と送信すると使い方を確認できます。"
         )
 
     line_bot_api.reply_message(reply_token, message)
@@ -204,51 +239,52 @@ def get_ranking_message(user_ref) -> TextSendMessage:
         TextSendMessage with ranking information
     """
     try:
-        # Get top 10 images
+        # Get top 10 images for current event
         top_images = (
-            db.collection('images')
-            .where('status', '==', 'completed')
-            .order_by('total_score', direction=firestore.Query.DESCENDING)
+            db.collection("images")
+            .where("event_id", "==", CURRENT_EVENT_ID)
+            .where("status", "==", "completed")
+            .order_by("total_score", direction=firestore.Query.DESCENDING)
             .limit(10)
             .get()
         )
 
         if not top_images:
-            return TextSendMessage(text='まだ投稿がありません。')
+            return TextSendMessage(text="まだ投稿がありません。")
 
         # Build ranking text
-        ranking_text = '🏆 現在のランキング TOP10\n\n'
+        ranking_text = "🏆 現在のランキング TOP10\n\n"
 
         user_data = user_ref.get().to_dict()
-        user_id = user_data.get('line_user_id')
+        user_id = user_data.get("line_user_id")
         user_rank = None
 
         for idx, doc in enumerate(top_images, 1):
             data = doc.to_dict()
-            user_name = data.get('user_id', 'Unknown')  # Will be improved
-            score = data.get('total_score', 0)
+            user_name = data.get("user_id", "Unknown")  # Will be improved
+            score = data.get("total_score", 0)
 
             # Get user name from users collection
-            image_user_ref = db.collection('users').document(data.get('user_id'))
+            image_user_ref = db.collection("users").document(data.get("user_id"))
             image_user = image_user_ref.get()
             if image_user.exists:
-                user_name = image_user.to_dict().get('name', 'Unknown')
+                user_name = image_user.to_dict().get("name", "Unknown")
 
-            ranking_text += f'{idx}. {user_name}: {score:.2f}点\n'
+            ranking_text += f"{idx}. {user_name}: {score:.2f}点\n"
 
-            if data.get('user_id') == user_id:
+            if data.get("user_id") == user_id:
                 user_rank = idx
 
         if user_rank:
-            ranking_text += f'\n📍 あなたの順位: {user_rank}位'
+            ranking_text += f"\n📍 あなたの順位: {user_rank}位"
         else:
-            ranking_text += f'\n📍 あなたの順位: 圏外'
+            ranking_text += "\n📍 あなたの順位: 圏外"
 
         return TextSendMessage(text=ranking_text)
 
     except Exception as e:
         logger.error(f"Failed to get ranking: {str(e)}")
-        return TextSendMessage(text='ランキング取得に失敗しました。')
+        return TextSendMessage(text="ランキング取得に失敗しました。")
 
 
 @handler.add(MessageEvent, message=ImageMessage)
@@ -271,22 +307,22 @@ def handle_image_message(event: MessageEvent):
     logger.info(f"Image message from {user_id}: {message_id}")
 
     # Check if user is registered
-    user_ref = db.collection('users').document(user_id)
+    user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
 
     if not user_doc.exists:
         message = TextSendMessage(
-            text='まずはお名前を登録してください。\n\n'
-                 'お名前（フルネーム）をテキストで送信してください。'
+            text="まずはお名前を登録してください。\n\n"
+            "お名前（フルネーム）をテキストで送信してください。"
         )
         line_bot_api.reply_message(reply_token, message)
         return
 
     # Send loading message
     loading_message = TextSendMessage(
-        text='📸 画像を受け取りました！\n\n'
-             'AIが笑顔を分析中...\n'
-             'しばらくお待ちください ⏳'
+        text="📸 画像を受け取りました！\n\n"
+        "AIが笑顔を分析中...\n"
+        "しばらくお待ちください ⏳"
     )
     line_bot_api.reply_message(reply_token, loading_message)
 
@@ -297,28 +333,30 @@ def handle_image_message(event: MessageEvent):
 
         # Generate unique image ID and path
         image_id = str(uuid.uuid4())
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        storage_path = f"original/{user_id}/{timestamp}_{image_id}.jpg"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        storage_path = (
+            f"{CURRENT_EVENT_ID}/original/{user_id}/{timestamp}_{image_id}.jpg"
+        )
 
         # Upload to Cloud Storage
         bucket = storage_client.bucket(STORAGE_BUCKET)
         blob = bucket.blob(storage_path)
-        blob.upload_from_string(
-            image_bytes,
-            content_type='image/jpeg'
-        )
+        blob.upload_from_string(image_bytes, content_type="image/jpeg")
 
         logger.info(f"Image uploaded to Storage: {storage_path}")
 
         # Create Firestore document
-        image_ref = db.collection('images').document(image_id)
-        image_ref.set({
-            'user_id': user_id,
-            'storage_path': storage_path,
-            'upload_timestamp': firestore.SERVER_TIMESTAMP,
-            'status': 'pending',
-            'line_message_id': message_id
-        })
+        image_ref = db.collection("images").document(image_id)
+        image_ref.set(
+            {
+                "user_id": user_id,
+                "event_id": CURRENT_EVENT_ID,
+                "storage_path": storage_path,
+                "upload_timestamp": firestore.SERVER_TIMESTAMP,
+                "status": "pending",
+                "line_message_id": message_id,
+            }
+        )
 
         logger.info(f"Firestore document created: {image_id}")
 
@@ -331,7 +369,7 @@ def handle_image_message(event: MessageEvent):
     except LineBotApiError as e:
         logger.error(f"LINE API error: {e.status_code} {e.message}")
         error_message = TextSendMessage(
-            text='❌ 画像の取得に失敗しました。\n\nもう一度お試しください。'
+            text="❌ 画像の取得に失敗しました。\n\nもう一度お試しください。"
         )
         # Can't use reply_message here as reply_token might be consumed
         line_bot_api.push_message(user_id, error_message)
@@ -339,7 +377,7 @@ def handle_image_message(event: MessageEvent):
     except Exception as e:
         logger.error(f"Failed to process image: {str(e)}")
         error_message = TextSendMessage(
-            text='❌ 画像の処理に失敗しました。\n\nもう一度お試しください。'
+            text="❌ 画像の処理に失敗しました。\n\nもう一度お試しください。"
         )
         line_bot_api.push_message(user_id, error_message)
 
@@ -353,25 +391,22 @@ def trigger_scoring_function(image_id: str, user_id: str):
         user_id: User ID
     """
     try:
-        payload = {
-            'image_id': image_id,
-            'user_id': user_id
-        }
+        payload = {"image_id": image_id, "user_id": user_id}
 
         # Get ID token for authenticating to the scoring function
         auth_req = AuthRequest()
         id_token_value = id_token.fetch_id_token(auth_req, SCORING_FUNCTION_URL)
 
         headers = {
-            'Authorization': f'Bearer {id_token_value}',
-            'Content-Type': 'application/json'
+            "Authorization": f"Bearer {id_token_value}",
+            "Content-Type": "application/json",
         }
 
         response = requests.post(
             SCORING_FUNCTION_URL,
             json=payload,
             headers=headers,
-            timeout=5  # Don't wait for response
+            timeout=5,  # Don't wait for response
         )
 
         logger.info(f"Scoring function triggered: {response.status_code}")

@@ -13,6 +13,8 @@ import json
 import time
 import io
 from typing import Dict, Any, List
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import functions_framework
 from flask import Request, jsonify
@@ -20,14 +22,19 @@ from linebot import LineBotApi
 from linebot.models import TextSendMessage
 from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
+from google.cloud import logging as cloud_logging
 import vertexai
-from vertexai.generative_models import GenerativeModel, Part, Image
+from vertexai.generative_models import GenerativeModel, Part
 from PIL import Image as PILImage
 import imagehash
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+# Initialize Cloud Logging
+logging_client = cloud_logging.Client()
+logging_client.setup_logging()
+
+# Initialize logger with Cloud Logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Initialize Google Cloud clients
 db = firestore.Client()
@@ -35,10 +42,11 @@ storage_client = storage.Client()
 vision_client = vision.ImageAnnotatorClient()
 
 # Environment variables
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
-GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', 'wedding-smile-catcher')
-GCP_REGION = os.environ.get('GCP_REGION', 'asia-northeast1')
-STORAGE_BUCKET = os.environ.get('STORAGE_BUCKET', 'wedding-smile-images')
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
+GCP_REGION = os.environ.get("GCP_REGION", "asia-northeast1")
+STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
+CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID", "test")
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -61,23 +69,42 @@ def scoring(request: Request):
     Returns:
         JSON response with scoring results
     """
+    # Generate request ID for tracing
+    request_id = str(uuid.uuid4())
+
     # Parse request
     request_json = request.get_json(silent=True)
 
     if not request_json:
-        return jsonify({'error': 'No JSON body provided'}), 400
+        logger.warning("No JSON body provided", extra={"request_id": request_id})
+        return jsonify({"error": "No JSON body provided"}), 400
 
-    image_id = request_json.get('image_id')
-    user_id = request_json.get('user_id')
+    image_id = request_json.get("image_id")
+    user_id = request_json.get("user_id")
 
     if not image_id or not user_id:
-        return jsonify({'error': 'Missing image_id or user_id'}), 400
+        logger.warning(
+            "Missing required parameters",
+            extra={"request_id": request_id, "image_id": image_id, "user_id": user_id},
+        )
+        return jsonify({"error": "Missing image_id or user_id"}), 400
 
-    logger.info(f"Scoring request: image_id={image_id}, user_id={user_id}")
+    # Structured logging with context
+    logger.info(
+        "Scoring request received",
+        extra={
+            "request_id": request_id,
+            "image_id": image_id,
+            "user_id": user_id,
+            "event": "scoring_started",
+        },
+    )
+
+    start_time = time.time()
 
     try:
         # Generate scores using Vision API
-        scores = generate_scores_with_vision_api(image_id)
+        scores = generate_scores_with_vision_api(image_id, request_id)
 
         # Update Firestore
         update_firestore(image_id, user_id, scores)
@@ -85,15 +112,50 @@ def scoring(request: Request):
         # Send result to LINE
         send_result_to_line(user_id, scores)
 
+        elapsed_time = time.time() - start_time
+
+        # Success log with metrics
+        logger.info(
+            "Scoring completed successfully",
+            extra={
+                "request_id": request_id,
+                "image_id": image_id,
+                "user_id": user_id,
+                "total_score": scores.get("total_score"),
+                "elapsed_time": round(elapsed_time, 2),
+                "event": "scoring_completed",
+            },
+        )
+
         # Return success response
-        return jsonify({
-            'status': 'success',
-            'image_id': image_id,
-            'scores': scores
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "image_id": image_id,
+                    "scores": scores,
+                    "request_id": request_id,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
-        logger.error(f"Scoring failed: {str(e)}")
+        elapsed_time = time.time() - start_time
+
+        logger.error(
+            "Scoring failed",
+            extra={
+                "request_id": request_id,
+                "image_id": image_id,
+                "user_id": user_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "elapsed_time": round(elapsed_time, 2),
+                "event": "scoring_failed",
+            },
+            exc_info=True,
+        )
 
         # Try to send error message to user
         try:
@@ -101,11 +163,17 @@ def scoring(request: Request):
         except Exception:
             pass
 
-        return jsonify({
-            'status': 'error',
-            'error': str(e),
-            'image_id': image_id
-        }), 500
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "error": str(e),
+                    "image_id": image_id,
+                    "request_id": request_id,
+                }
+            ),
+            500,
+        )
 
 
 def get_joy_likelihood_score(joy_likelihood) -> float:
@@ -132,6 +200,7 @@ def get_joy_likelihood_score(joy_likelihood) -> float:
 def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
     """
     Calculate smile score using Vision API.
+    Implements exponential backoff retry for rate limit and server errors.
 
     Args:
         image_bytes: Image binary data
@@ -139,46 +208,92 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
     Returns:
         Dictionary with smile_score and face_count
     """
-    try:
-        # Create Vision API image object
-        image = vision.Image(content=image_bytes)
+    # Retry configuration
+    max_retries = 3
+    base_delay = 1.0  # seconds
+    max_delay = 10.0  # seconds
 
-        # Detect faces
-        response = vision_client.face_detection(image=image)
+    for attempt in range(max_retries):
+        try:
+            # Create Vision API image object
+            image = vision.Image(content=image_bytes)
 
-        if response.error.message:
-            raise Exception(f"Vision API error: {response.error.message}")
+            # Detect faces
+            response = vision_client.face_detection(image=image)
 
-        # Calculate total smile score
-        total_smile_score = 0.0
-        smiling_faces = 0
+            if response.error.message:
+                raise Exception(f"Vision API error: {response.error.message}")
 
-        for face in response.face_annotations:
-            # Only count faces with LIKELY or VERY_LIKELY joy
-            if face.joy_likelihood >= vision.Likelihood.LIKELY:
-                score = get_joy_likelihood_score(face.joy_likelihood)
-                total_smile_score += score
-                smiling_faces += 1
-                logger.info(
-                    f"Face detected: joy={face.joy_likelihood.name}, score={score}"
-                )
+            # Calculate total smile score
+            total_smile_score = 0.0
+            smiling_faces = 0
 
-        face_count = len(response.face_annotations)
+            for face in response.face_annotations:
+                # Only count faces with LIKELY or VERY_LIKELY joy
+                if face.joy_likelihood >= vision.Likelihood.LIKELY:
+                    score = get_joy_likelihood_score(face.joy_likelihood)
+                    total_smile_score += score
+                    smiling_faces += 1
+                    logger.info(
+                        f"Face detected: joy={face.joy_likelihood.name}, score={score}"
+                    )
 
-        logger.info(
-            f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, "
-            f"total score={total_smile_score}"
-        )
+            face_count = len(response.face_annotations)
 
-        return {
-            'smile_score': round(total_smile_score, 2),
-            'face_count': face_count,
-            'smiling_faces': smiling_faces
-        }
+            logger.info(
+                f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, "
+                f"total score={total_smile_score}"
+            )
 
-    except Exception as e:
-        logger.error(f"Vision API error: {str(e)}")
-        raise
+            return {
+                "smile_score": round(total_smile_score, 2),
+                "face_count": face_count,
+                "smiling_faces": smiling_faces,
+            }
+
+        except Exception as e:
+            error_message = str(e)
+            logger.warning(
+                f"Vision API error (attempt {attempt + 1}/{max_retries}): {error_message}"
+            )
+
+            # Check if error is retryable (rate limit or server error)
+            is_retryable = (
+                "429" in error_message  # Rate limit
+                or "500" in error_message  # Internal server error
+                or "502" in error_message  # Bad gateway
+                or "503" in error_message  # Service unavailable
+                or "504" in error_message  # Gateway timeout
+                or "ResourceExhausted" in error_message
+                or "DeadlineExceeded" in error_message
+            )
+
+            # If not retryable or last attempt, return fallback
+            if not is_retryable or attempt == max_retries - 1:
+                logger.error(f"Vision API error (final): {error_message}")
+                # Return fallback values
+                return {
+                    "smile_score": 300.0,  # Default fallback score
+                    "face_count": 3,  # Assume average group size
+                    "smiling_faces": 3,  # Assume all are smiling
+                    "error": "vision_api_failed",
+                }
+
+            # Calculate exponential backoff delay with jitter
+            delay = min(base_delay * (2**attempt), max_delay)
+            jitter = random.uniform(0, delay * 0.1)  # Add 10% jitter
+            sleep_time = delay + jitter
+
+            logger.info(f"Retrying Vision API after {sleep_time:.2f} seconds...")
+            time.sleep(sleep_time)
+
+    # Should not reach here, but return fallback just in case
+    return {
+        "smile_score": 300.0,
+        "face_count": 3,
+        "smiling_faces": 3,
+        "error": "vision_api_failed",
+    }
 
 
 def download_image_from_storage(storage_path: str) -> bytes:
@@ -228,7 +343,9 @@ def calculate_average_hash(image_bytes: bytes) -> str:
         return f"error_{random.randint(1000, 9999)}"
 
 
-def is_similar_image(new_hash: str, existing_hashes: List[str], threshold: int = 8) -> bool:
+def is_similar_image(
+    new_hash: str, existing_hashes: List[str], threshold: int = 8
+) -> bool:
     """
     Check if the image is similar to any existing images.
 
@@ -283,7 +400,7 @@ def is_similar_image(new_hash: str, existing_hashes: List[str], threshold: int =
 
 def get_existing_hashes_for_user(user_id: str) -> List[str]:
     """
-    Get all existing average hashes for a user's uploaded images.
+    Get all existing average hashes for a user's uploaded images in the current event.
 
     Args:
         user_id: User ID
@@ -292,19 +409,20 @@ def get_existing_hashes_for_user(user_id: str) -> List[str]:
         List of average hash strings
     """
     try:
-        # Query images collection for this user with status 'completed'
+        # Query images collection for this user in current event with status 'completed'
         images_query = (
-            db.collection('images')
-            .where('user_id', '==', user_id)
-            .where('status', '==', 'completed')
+            db.collection("images")
+            .where("event_id", "==", CURRENT_EVENT_ID)
+            .where("user_id", "==", user_id)
+            .where("status", "==", "completed")
             .get()
         )
 
         hashes = []
         for doc in images_query:
             data = doc.to_dict()
-            if 'average_hash' in data:
-                hashes.append(data['average_hash'])
+            if "average_hash" in data:
+                hashes.append(data["average_hash"])
 
         logger.info(f"Retrieved {len(hashes)} existing hashes for user {user_id}")
         return hashes
@@ -401,11 +519,11 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
             result = json.loads(response_text)
 
             # Validate response structure
-            if 'score' not in result or 'comment' not in result:
+            if "score" not in result or "comment" not in result:
                 raise ValueError("Invalid response format from Gemini")
 
             # Ensure score is an integer
-            result['score'] = int(result['score'])
+            result["score"] = int(result["score"])
 
             logger.info(
                 f"Theme evaluation complete: score={result['score']}, "
@@ -416,12 +534,13 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse Gemini response as JSON: {str(e)}")
-            if 'response' in locals():
+            if "response" in locals():
                 logger.error(f"Response text: {response.text}")
             # JSON parse errors are not retryable
             return {
-                'score': 50,
-                'comment': 'AI評価の解析に失敗しました。デフォルトスコアを適用しています。'
+                "score": 50,
+                "comment": "AI評価の解析に失敗しました。デフォルトスコアを適用しています。",
+                "error": "vertex_ai_parse_failed",
             }
 
         except Exception as e:
@@ -432,25 +551,26 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 
             # Check if error is retryable (rate limit or server error)
             is_retryable = (
-                '429' in error_message or  # Rate limit
-                '500' in error_message or  # Internal server error
-                '502' in error_message or  # Bad gateway
-                '503' in error_message or  # Service unavailable
-                '504' in error_message or  # Gateway timeout
-                'ResourceExhausted' in error_message or
-                'DeadlineExceeded' in error_message
+                "429" in error_message  # Rate limit
+                or "500" in error_message  # Internal server error
+                or "502" in error_message  # Bad gateway
+                or "503" in error_message  # Service unavailable
+                or "504" in error_message  # Gateway timeout
+                or "ResourceExhausted" in error_message
+                or "DeadlineExceeded" in error_message
             )
 
             # If not retryable or last attempt, return fallback
             if not is_retryable or attempt == max_retries - 1:
                 logger.error(f"Gemini API error (final): {error_message}")
                 return {
-                    'score': 50,
-                    'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+                    "score": 50,
+                    "comment": "AI評価中にエラーが発生しました。デフォルトスコアを適用しています。",
+                    "error": "vertex_ai_failed",
                 }
 
             # Calculate exponential backoff delay with jitter
-            delay = min(base_delay * (2 ** attempt), max_delay)
+            delay = min(base_delay * (2**attempt), max_delay)
             jitter = random.uniform(0, delay * 0.1)  # Add 10% jitter
             sleep_time = delay + jitter
 
@@ -459,32 +579,39 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 
     # Should not reach here, but return fallback just in case
     return {
-        'score': 50,
-        'comment': 'AI評価中にエラーが発生しました。デフォルトスコアを適用しています。'
+        "score": 50,
+        "comment": "AI評価中にエラーが発生しました。デフォルトスコアを適用しています。",
+        "error": "vertex_ai_failed",
     }
 
 
-def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
+def generate_scores_with_vision_api(image_id: str, request_id: str) -> Dict[str, Any]:
     """
     Generate scores using Vision API for smile detection, Vertex AI for theme evaluation,
     and Average Hash for similarity detection.
 
+    Uses parallel processing for Vision API, Vertex AI, and Average Hash calculations
+    to reduce total processing time.
+
     Args:
         image_id: Image document ID in Firestore
+        request_id: Request ID for tracing
 
     Returns:
         Dictionary with scoring data
     """
+    log_context = {"request_id": request_id, "image_id": image_id}
+
     # Get image document from Firestore
-    image_ref = db.collection('images').document(image_id)
+    image_ref = db.collection("images").document(image_id)
     image_doc = image_ref.get()
 
     if not image_doc.exists:
         raise Exception(f"Image document not found: {image_id}")
 
     image_data = image_doc.to_dict()
-    storage_path = image_data.get('storage_path')
-    user_id = image_data.get('user_id')
+    storage_path = image_data.get("storage_path")
+    user_id = image_data.get("user_id")
 
     if not storage_path:
         raise Exception(f"Storage path not found in image document: {image_id}")
@@ -492,21 +619,61 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     if not user_id:
         raise Exception(f"User ID not found in image document: {image_id}")
 
+    log_context["user_id"] = user_id
+
     # Download image from Cloud Storage
+    download_start = time.time()
     image_bytes = download_image_from_storage(storage_path)
+    download_time = time.time() - download_start
 
-    # Calculate smile score using Vision API
-    vision_result = calculate_smile_score(image_bytes)
-    smile_score = vision_result['smile_score']
-    face_count = vision_result['face_count']
+    logger.info(
+        "Image downloaded from storage",
+        extra={
+            **log_context,
+            "elapsed_time": round(download_time, 2),
+            "event": "image_downloaded",
+        },
+    )
 
-    # Evaluate theme using Vertex AI (Gemini)
-    theme_result = evaluate_theme(image_bytes)
-    ai_score = theme_result['score']
-    ai_comment = theme_result['comment']
+    # Execute Vision API, Vertex AI, and Average Hash calculations in parallel
+    logger.info(
+        "Starting parallel API processing",
+        extra={**log_context, "event": "parallel_processing_start"},
+    )
+    start_time = time.time()
 
-    # Calculate Average Hash for similarity detection
-    average_hash = calculate_average_hash(image_bytes)
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        # Submit all three tasks
+        vision_future = executor.submit(calculate_smile_score, image_bytes)
+        theme_future = executor.submit(evaluate_theme, image_bytes)
+        hash_future = executor.submit(calculate_average_hash, image_bytes)
+
+        # Wait for all tasks to complete
+        vision_result = vision_future.result()
+        theme_result = theme_future.result()
+        average_hash = hash_future.result()
+
+    elapsed_time = time.time() - start_time
+
+    smile_score = vision_result["smile_score"]
+    face_count = vision_result["face_count"]
+    vision_error = vision_result.get("error")
+
+    ai_score = theme_result["score"]
+    ai_comment = theme_result["comment"]
+    ai_error = theme_result.get("error")
+
+    logger.info(
+        "Parallel API processing completed",
+        extra={
+            **log_context,
+            "smile_score": smile_score,
+            "face_count": face_count,
+            "ai_score": ai_score,
+            "elapsed_time": round(elapsed_time, 2),
+            "event": "parallel_processing_completed",
+        },
+    )
 
     # Get existing hashes for this user
     existing_hashes = get_existing_hashes_for_user(user_id)
@@ -514,26 +681,88 @@ def generate_scores_with_vision_api(image_id: str) -> Dict[str, Any]:
     # Check if similar image exists
     is_similar = is_similar_image(average_hash, existing_hashes, threshold=8)
 
+    logger.info(
+        "Similarity check completed",
+        extra={
+            **log_context,
+            "is_similar": is_similar,
+            "existing_hashes_count": len(existing_hashes),
+            "event": "similarity_check_completed",
+        },
+    )
+
     # Calculate penalty
     penalty = 0.33 if is_similar else 1.0
 
     # Calculate total score
     total_score = round((smile_score * ai_score / 100) * penalty, 2)
 
-    comment = (
-        f"{ai_comment}\n\n"
-        f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！"
-    )
+    # Build comment with error warnings if any
+    error_warnings = []
+    if vision_error:
+        logger.warning(f"Vision API error occurred: {vision_error}")
+        error_warnings.append(
+            "⚠️ 笑顔検出でエラーが発生しました。推定値を使用しています。"
+        )
+    if ai_error:
+        logger.warning(f"Vertex AI error occurred: {ai_error}")
+        error_warnings.append(
+            "⚠️ AI評価でエラーが発生しました。デフォルト値を使用しています。"
+        )
 
-    return {
-        'smile_score': smile_score,
-        'ai_score': ai_score,
-        'total_score': total_score,
-        'comment': comment,
-        'face_count': face_count,
-        'is_similar': is_similar,
-        'average_hash': average_hash
+    if error_warnings:
+        warning_text = "\n".join(error_warnings)
+        comment = (
+            f"{warning_text}\n\n"
+            f"{ai_comment}\n\n"
+            f"笑顔検出: {vision_result.get('smiling_faces', face_count)}人/{face_count}人が笑顔です！"
+        )
+    else:
+        comment = (
+            f"{ai_comment}\n\n"
+            f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！"
+        )
+
+    result = {
+        "smile_score": smile_score,
+        "ai_score": ai_score,
+        "total_score": total_score,
+        "comment": comment,
+        "face_count": face_count,
+        "is_similar": is_similar,
+        "average_hash": average_hash,
     }
+
+    # Add error flags if any occurred
+    if vision_error or ai_error:
+        result["has_errors"] = True
+        if vision_error:
+            result["vision_error"] = vision_error
+        if ai_error:
+            result["ai_error"] = ai_error
+        logger.error(
+            "Scoring completed with errors",
+            extra={
+                **log_context,
+                "total_score": total_score,
+                "penalty_applied": is_similar,
+                "vision_error": vision_error,
+                "ai_error": ai_error,
+                "event": "score_calculated_with_errors",
+            },
+        )
+    else:
+        logger.info(
+            "Scoring completed successfully",
+            extra={
+                **log_context,
+                "total_score": total_score,
+                "penalty_applied": is_similar,
+                "event": "score_calculated",
+            },
+        )
+
+    return result
 
 
 def generate_dummy_scores() -> Dict[str, Any]:
@@ -557,13 +786,13 @@ def generate_dummy_scores() -> Dict[str, Any]:
     total_score = round((smile_score * ai_score / 100) * penalty, 2)
 
     return {
-        'smile_score': smile_score,
-        'ai_score': ai_score,
-        'total_score': total_score,
-        'comment': 'これはダミーのスコアリング結果です。実装完了後は実際のAI評価に置き換わります。',
-        'face_count': face_count,
-        'is_similar': is_similar,
-        'average_hash': 'dummy_hash_' + str(random.randint(1000, 9999))
+        "smile_score": smile_score,
+        "ai_score": ai_score,
+        "total_score": total_score,
+        "comment": "これはダミーのスコアリング結果です。実装完了後は実際のAI評価に置き換わります。",
+        "face_count": face_count,
+        "is_similar": is_similar,
+        "average_hash": "dummy_hash_" + str(random.randint(1000, 9999)),
     }
 
 
@@ -577,33 +806,34 @@ def update_firestore(image_id: str, user_id: str, scores: Dict[str, Any]):
         scores: Scoring results
     """
     # Update image document
-    image_ref = db.collection('images').document(image_id)
-    image_ref.update({
-        'smile_score': scores['smile_score'],
-        'ai_score': scores['ai_score'],
-        'total_score': scores['total_score'],
-        'comment': scores['comment'],
-        'average_hash': scores['average_hash'],
-        'is_similar': scores['is_similar'],
-        'face_count': scores['face_count'],
-        'status': 'completed',
-        'scored_at': firestore.SERVER_TIMESTAMP
-    })
+    image_ref = db.collection("images").document(image_id)
+    image_ref.update(
+        {
+            "smile_score": scores["smile_score"],
+            "ai_score": scores["ai_score"],
+            "total_score": scores["total_score"],
+            "comment": scores["comment"],
+            "average_hash": scores["average_hash"],
+            "is_similar": scores["is_similar"],
+            "face_count": scores["face_count"],
+            "status": "completed",
+            "scored_at": firestore.SERVER_TIMESTAMP,
+        }
+    )
 
     logger.info(f"Updated image document: {image_id}")
 
     # Update user statistics
-    user_ref = db.collection('users').document(user_id)
+    user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
 
     if user_doc.exists:
-        current_best = user_doc.to_dict().get('best_score', 0)
-        new_best = max(current_best, scores['total_score'])
+        current_best = user_doc.to_dict().get("best_score", 0)
+        new_best = max(current_best, scores["total_score"])
 
-        user_ref.update({
-            'total_uploads': firestore.Increment(1),
-            'best_score': new_best
-        })
+        user_ref.update(
+            {"total_uploads": firestore.Increment(1), "best_score": new_best}
+        )
 
         logger.info(f"Updated user stats: {user_id}")
 
@@ -617,7 +847,7 @@ def send_result_to_line(user_id: str, scores: Dict[str, Any]):
         scores: Scoring results
     """
     # Get user's LINE user ID
-    user_ref = db.collection('users').document(user_id)
+    user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
 
     if not user_doc.exists:
@@ -625,14 +855,14 @@ def send_result_to_line(user_id: str, scores: Dict[str, Any]):
         return
 
     user_data = user_doc.to_dict()
-    line_user_id = user_data.get('line_user_id')
+    line_user_id = user_data.get("line_user_id")
 
     if not line_user_id:
         logger.error(f"LINE user ID not found for user: {user_id}")
         return
 
     # Build message
-    if scores['is_similar']:
+    if scores["is_similar"]:
         message_text = (
             f"📸 スコア: {scores['total_score']}点\n\n"
             f"⚠️ この写真は、以前の投稿と似ています。\n"
@@ -668,21 +898,21 @@ def send_error_to_line(user_id: str):
         user_id: User ID
     """
     # Get user's LINE user ID
-    user_ref = db.collection('users').document(user_id)
+    user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
 
     if not user_doc.exists:
         return
 
     user_data = user_doc.to_dict()
-    line_user_id = user_data.get('line_user_id')
+    line_user_id = user_data.get("line_user_id")
 
     if not line_user_id:
         return
 
     try:
         message = TextSendMessage(
-            text='❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。'
+            text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。"
         )
         line_bot_api.push_message(line_user_id, message)
         logger.info(f"Sent error message to LINE user: {line_user_id}")

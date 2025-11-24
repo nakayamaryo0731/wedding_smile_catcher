@@ -8,3 +8,6 @@ window.FIREBASE_CONFIG = {
   appId: "1:548587922270:web:b17dc1a3c29c7597b925cf",
   measurementId: "G-VCRX101G1W"
 };
+
+// Current Event ID (change this to switch between events)
+window.CURRENT_EVENT_ID = "test";
