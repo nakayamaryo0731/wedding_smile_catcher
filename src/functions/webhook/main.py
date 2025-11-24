@@ -5,6 +5,7 @@ Handles LINE Bot webhook events for user registration and image uploads.
 
 import os
 import logging
+import time
 import uuid
 from datetime import datetime
 
@@ -385,33 +386,72 @@ def handle_image_message(event: MessageEvent):
 def trigger_scoring_function(image_id: str, user_id: str):
     """
     Trigger scoring function via HTTP with authentication.
+    Implements retry logic for authentication failures.
 
     Args:
         image_id: Image document ID
         user_id: User ID
     """
-    try:
-        payload = {"image_id": image_id, "user_id": user_id}
+    max_retries = 3
+    retry_delay = 1.0  # seconds
 
-        # Get ID token for authenticating to the scoring function
-        auth_req = AuthRequest()
-        id_token_value = id_token.fetch_id_token(auth_req, SCORING_FUNCTION_URL)
+    for attempt in range(max_retries):
+        try:
+            payload = {"image_id": image_id, "user_id": user_id}
 
-        headers = {
-            "Authorization": f"Bearer {id_token_value}",
-            "Content-Type": "application/json",
-        }
+            # Get ID token for authenticating to the scoring function
+            auth_req = AuthRequest()
+            id_token_value = id_token.fetch_id_token(auth_req, SCORING_FUNCTION_URL)
 
-        response = requests.post(
-            SCORING_FUNCTION_URL,
-            json=payload,
-            headers=headers,
-            timeout=5,  # Don't wait for response
-        )
+            headers = {
+                "Authorization": f"Bearer {id_token_value}",
+                "Content-Type": "application/json",
+            }
 
-        logger.info(f"Scoring function triggered: {response.status_code}")
+            response = requests.post(
+                SCORING_FUNCTION_URL,
+                json=payload,
+                headers=headers,
+                timeout=5,  # Don't wait for response
+            )
 
-    except requests.exceptions.Timeout:
-        logger.info("Scoring function triggered (timeout expected)")
-    except Exception as e:
-        logger.error(f"Failed to trigger scoring function: {str(e)}")
+            logger.info(
+                f"Scoring function triggered: {response.status_code}",
+                extra={"attempt": attempt + 1},
+            )
+            return  # Success, exit function
+
+        except requests.exceptions.Timeout:
+            logger.info(
+                "Scoring function triggered (timeout expected)",
+                extra={"attempt": attempt + 1},
+            )
+            return  # Timeout is expected for async trigger, not an error
+
+        except Exception as e:
+            error_message = str(e)
+            is_last_attempt = attempt == max_retries - 1
+
+            # Check if this is a retryable error (auth/network issues)
+            is_retryable = (
+                "authentication" in error_message.lower()
+                or "credential" in error_message.lower()
+                or "token" in error_message.lower()
+                or "Connection" in error_message
+                or "Timeout" in error_message
+            )
+
+            if is_retryable and not is_last_attempt:
+                logger.warning(
+                    f"Retryable error triggering scoring function: {error_message}",
+                    extra={"attempt": attempt + 1, "retrying": True},
+                )
+                time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                continue
+
+            # Final attempt or non-retryable error
+            logger.error(
+                f"Failed to trigger scoring function: {error_message}",
+                extra={"attempt": attempt + 1, "final": is_last_attempt},
+            )
+            return  # Give up after max retries or non-retryable error
