@@ -102,10 +102,10 @@ class TestCalculateSmileScore:
         # Test
         result = calculate_smile_score(b"fake_image_bytes")
 
-        # Assert fallback values
-        assert result["smile_score"] == 300.0  # Fallback
-        assert result["face_count"] == 3
-        assert result["smiling_faces"] == 3
+        # Assert fallback values (zero points for API failures)
+        assert result["smile_score"] == 0.0  # Zero points for fairness
+        assert result["face_count"] == 0
+        assert result["smiling_faces"] == 0
         assert result["error"] == "vision_api_failed"
 
 
