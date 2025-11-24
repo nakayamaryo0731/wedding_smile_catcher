@@ -35,7 +35,7 @@ body {
 .container {
     max-width: 1300px;
     margin: 0 auto;
-    padding: 1rem 0.5rem 1.5rem 0.5rem;
+    padding: 0.8rem 0.5rem 1rem 0.5rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -45,7 +45,7 @@ body {
 /* Header */
 .header {
     text-align: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
     animation: fadeInDown 1s ease-out;
 }
 
@@ -71,7 +71,7 @@ body {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
-    margin-top: 0.6rem;
+    margin-top: 0.4rem;
 }
 
 .tab-btn {
@@ -143,7 +143,7 @@ body {
     background: var(--gradient-card);
     backdrop-filter: blur(20px);
     border-radius: 12px;
-    padding: 0.4rem;
+    padding: 0.3rem;
     box-shadow: 0 8px 32px var(--shadow-medium);
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -244,7 +244,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 0.35rem;
+    padding: 0.25rem;
 }
 
 /* Rank 2 & 3 Specific - Smaller size */
