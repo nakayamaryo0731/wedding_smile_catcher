@@ -132,7 +132,7 @@ function updateRankCard(rank, imageData, cards = rankCards) {
   card.card.classList.remove('empty');
 
   // Construct full image URL from storage_path
-  const bucketName = 'wedding-smile-images-wedding-smile-catcher';
+  const bucketName = window.GCS_BUCKET_NAME || 'wedding-smile-images-wedding-smile-catcher';
   const imageUrl = imageData.storage_url ||
                    `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
 
@@ -172,7 +172,7 @@ function renderRankingList(images, startRank = 4) {
   const listContainer = document.getElementById('ranking-list-items');
   listContainer.innerHTML = '';
 
-  const bucketName = 'wedding-smile-images-wedding-smile-catcher';
+  const bucketName = window.GCS_BUCKET_NAME || 'wedding-smile-images-wedding-smile-catcher';
 
   images.forEach((imageData, index) => {
     const rank = startRank + index;
