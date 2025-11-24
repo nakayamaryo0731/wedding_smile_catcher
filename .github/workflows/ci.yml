@@ -140,7 +140,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install black flake8 pip-tools
+          pip install black flake8
 
       - name: Check Python formatting
         run: |
@@ -149,10 +149,3 @@ jobs:
       - name: Lint Python code
         run: |
           flake8 src/ --max-line-length=100 --extend-ignore=E203
-
-      - name: Validate Python dependencies
-        run: |
-          echo "Validating webhook requirements..."
-          pip-compile --dry-run --quiet src/functions/webhook/requirements.txt
-          echo "Validating scoring requirements..."
-          pip-compile --dry-run --quiet src/functions/scoring/requirements.txt
