@@ -45,6 +45,29 @@ const rankCards = {
   }
 };
 
+// All-time ranking cards (for hall of fame tab)
+const rankCardsAll = {
+  1: {
+    card: document.getElementById('rank-1-all'),
+    image: document.getElementById('rank-1-all-image'),
+    name: document.getElementById('rank-1-all-name'),
+    score: document.getElementById('rank-1-all-score'),
+    comment: document.getElementById('rank-1-all-comment')
+  },
+  2: {
+    card: document.getElementById('rank-2-all'),
+    image: document.getElementById('rank-2-all-image'),
+    name: document.getElementById('rank-2-all-name'),
+    score: document.getElementById('rank-2-all-score')
+  },
+  3: {
+    card: document.getElementById('rank-3-all'),
+    image: document.getElementById('rank-3-all-image'),
+    name: document.getElementById('rank-3-all-name'),
+    score: document.getElementById('rank-3-all-score')
+  }
+};
+
 /**
  * Fetch user name from users collection
  */
@@ -89,8 +112,8 @@ function filterToUniqueUsers(images) {
 /**
  * Update a ranking card with image data
  */
-function updateRankCard(rank, imageData) {
-  const card = rankCards[rank];
+function updateRankCard(rank, imageData, cards = rankCards) {
+  const card = cards[rank];
 
   if (!imageData) {
     // Empty state - show frame but no data
@@ -143,6 +166,38 @@ function updateRankCard(rank, imageData) {
 }
 
 /**
+ * Render ranking list items (4-10位)
+ */
+function renderRankingList(images, startRank = 4) {
+  const listContainer = document.getElementById('ranking-list-items');
+  listContainer.innerHTML = '';
+
+  const bucketName = 'wedding-smile-images-wedding-smile-catcher';
+
+  images.forEach((imageData, index) => {
+    const rank = startRank + index;
+    const imageUrl = imageData.storage_url ||
+                     `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
+    const userName = imageData.user_name || imageData.user_id || 'ゲスト';
+    const score = Math.round(imageData.total_score);
+
+    const itemEl = document.createElement('div');
+    itemEl.className = 'ranking-list-item';
+    itemEl.innerHTML = `
+      <div class="list-rank">${rank}位</div>
+      <div class="list-image-container">
+        <img src="${imageUrl}" alt="${userName}'s smile" class="list-image">
+      </div>
+      <div class="list-info">
+        <span class="list-name">${userName}</span>
+        <span class="list-score">${score}</span>
+      </div>
+    `;
+    listContainer.appendChild(itemEl);
+  });
+}
+
+/**
  * Update the ranking display
  */
 async function updateRankings(images) {
@@ -174,36 +229,101 @@ async function updateRankings(images) {
 }
 
 /**
- * Fetch latest rankings from Firestore (one-time fetch)
+ * Fetch recent rankings (last 30 images) from Firestore
  */
-async function fetchRankings() {
+async function fetchRecentRankings() {
   try {
     const currentEventId = getCurrentEventId();
-    console.log(`Fetching latest rankings from Firestore for event: ${currentEventId}`);
+    console.log(`Fetching recent rankings (last 30 images) for event: ${currentEventId}`);
+
+    const imagesRef = collection(window.db, 'images');
+    const q = query(
+      imagesRef,
+      where('event_id', '==', currentEventId),
+      orderBy('upload_timestamp', 'desc'),
+      limit(30) // Fetch last 30 uploaded images
+    );
+
+    const snapshot = await getDocs(q);
+    console.log(`Fetched ${snapshot.docs.length} recent documents`);
+
+    let images = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Sort by total_score descending
+    images.sort((a, b) => b.total_score - a.total_score);
+
+    await updateRankings(images);
+  } catch (error) {
+    console.error('Error fetching recent rankings:', error);
+    loadingEl.innerHTML = `
+      <div class="spinner"></div>
+      <p style="color: #ff6b6b;">Error loading rankings: ${error.message}</p>
+    `;
+  }
+}
+
+/**
+ * Fetch all-time top 10 rankings from Firestore
+ */
+async function fetchAllTimeRankings() {
+  try {
+    const currentEventId = getCurrentEventId();
+    console.log(`Fetching all-time top 10 rankings for event: ${currentEventId}`);
 
     const imagesRef = collection(window.db, 'images');
     const q = query(
       imagesRef,
       where('event_id', '==', currentEventId),
       orderBy('total_score', 'desc'),
-      limit(100) // Fetch top 100 to ensure we can filter to 3 unique users
+      limit(100) // Fetch top 100 to filter to unique users
     );
 
     const snapshot = await getDocs(q);
-    console.log(`Fetched ${snapshot.docs.length} documents`);
+    console.log(`Fetched ${snapshot.docs.length} documents for all-time ranking`);
 
-    const images = snapshot.docs.map(doc => ({
+    let images = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
 
-    await updateRankings(images);
+    // Filter to unique users for top 10
+    const seenUsers = new Set();
+    const uniqueImages = [];
+
+    for (const img of images) {
+      if (!seenUsers.has(img.user_id)) {
+        seenUsers.add(img.user_id);
+        uniqueImages.push(img);
+
+        if (uniqueImages.length >= 10) {
+          break;
+        }
+      }
+    }
+
+    // Fetch user names
+    const userNamesPromises = uniqueImages.map(img => fetchUserName(img.user_id));
+    const userNames = await Promise.all(userNamesPromises);
+
+    uniqueImages.forEach((img, index) => {
+      img.user_name = userNames[index];
+    });
+
+    // Update top 3 in all-time tab
+    for (let i = 1; i <= 3; i++) {
+      updateRankCard(i, uniqueImages[i - 1], rankCardsAll);
+    }
+
+    // Render 4-10 in list format
+    const listImages = uniqueImages.slice(3, 10);
+    renderRankingList(listImages, 4);
+
+    console.log(`Updated all-time top 10 rankings`);
   } catch (error) {
-    console.error('Error fetching rankings:', error);
-    loadingEl.innerHTML = `
-      <div class="spinner"></div>
-      <p style="color: #ff6b6b;">Error loading rankings: ${error.message}</p>
-    `;
+    console.error('Error fetching all-time rankings:', error);
   }
 }
 
@@ -214,18 +334,63 @@ function setupPeriodicPolling() {
   console.log('Setting up periodic polling (every 1 minute)...');
 
   // Initial fetch
-  fetchRankings();
+  fetchRecentRankings();
 
   // Fetch every 60 seconds
   const intervalId = setInterval(() => {
     console.log('Periodic update: fetching rankings...');
-    fetchRankings();
+    fetchRecentRankings();
   }, 60000); // 60000ms = 1 minute
 
   // Store interval ID for cleanup
   window.rankingIntervalId = intervalId;
 
   console.log('Periodic polling set up successfully');
+}
+
+/**
+ * Switch between recent and all-time ranking tabs
+ */
+function switchTab(tabName) {
+  console.log(`Switching to ${tabName} tab`);
+
+  // Update tab buttons
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(btn => {
+    if (btn.dataset.tab === tabName) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Update tab content
+  const tabContents = document.querySelectorAll('.tab-content');
+  tabContents.forEach(content => {
+    if (content.id === `${tabName}-ranking`) {
+      content.classList.add('active');
+    } else {
+      content.classList.remove('active');
+    }
+  });
+
+  // Fetch all-time rankings when switching to that tab
+  if (tabName === 'all') {
+    fetchAllTimeRankings();
+  }
+}
+
+/**
+ * Set up tab button event listeners
+ */
+function setupTabListeners() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.dataset.tab;
+      switchTab(tabName);
+    });
+  });
 }
 
 /**
@@ -248,6 +413,9 @@ function init() {
     `;
     return;
   }
+
+  // Set up tab switching
+  setupTabListeners();
 
   // Set up periodic polling (every 1 minute)
   setupPeriodicPolling();
