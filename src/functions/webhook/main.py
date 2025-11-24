@@ -43,7 +43,15 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 SCORING_FUNCTION_URL = os.environ.get("SCORING_FUNCTION_URL")
-CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID", "test")
+CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID")
+
+# Validate required environment variables on module load
+if not CURRENT_EVENT_ID:
+    raise ValueError(
+        "CURRENT_EVENT_ID environment variable is required. "
+        "This prevents accidentally saving production data to a test event. "
+        "Set it via: gcloud functions deploy ... --set-env-vars CURRENT_EVENT_ID=your_event_id"
+    )
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
