@@ -271,11 +271,11 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
             # If not retryable or last attempt, return fallback
             if not is_retryable or attempt == max_retries - 1:
                 logger.error(f"Vision API error (final): {error_message}")
-                # Return fallback values
+                # Return zero score to ensure fairness - API failures should not give any points
                 return {
-                    "smile_score": 300.0,  # Default fallback score
-                    "face_count": 3,  # Assume average group size
-                    "smiling_faces": 3,  # Assume all are smiling
+                    "smile_score": 0.0,  # Zero points for API failures
+                    "face_count": 0,
+                    "smiling_faces": 0,
                     "error": "vision_api_failed",
                 }
 
