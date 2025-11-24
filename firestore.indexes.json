@@ -33,7 +33,25 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "event_id",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "upload_timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "images",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "event_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "total_score",
           "order": "DESCENDING"
         }
       ]
