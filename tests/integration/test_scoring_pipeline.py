@@ -72,9 +72,10 @@ class TestScoringPipeline:
         assert initial_doc.to_dict()["status"] == "pending"
 
         # Execute scoring (mocked APIs)
+        # Note: Patch where classes are USED (scoring.main), not where they're DEFINED
         with patch("scoring.main.vision_client", mock_vision_client_integration), patch(
-            "vertexai.generative_models.GenerativeModel", mock_vertex_ai_integration
-        ), patch("vertexai.generative_models.Part"):
+            "scoring.main.GenerativeModel", mock_vertex_ai_integration
+        ), patch("scoring.main.Part"):
             # Calculate smile score (returns dict)
             smile_result = calculate_smile_score(test_image_bytes)
             assert smile_result["smile_score"] == 190.0  # 2 faces × 95.0

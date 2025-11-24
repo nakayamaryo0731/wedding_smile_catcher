@@ -156,12 +156,17 @@ def mock_vision_client_integration():
 def mock_vertex_ai_integration():
     """
     Mock Vertex AI for integration tests.
+    Returns a mock class (not instance) that can be used to patch GenerativeModel.
     """
-    with patch("vertexai.generative_models.GenerativeModel") as mock_model_class:
-        mock_model = Mock()
-        mock_response = Mock()
-        mock_response.text = '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
-        mock_model.generate_content = Mock(return_value=mock_response)
-        mock_model_class.return_value = mock_model
+    # Create mock instance that will be returned when GenerativeModel() is called
+    mock_instance = Mock()
+    mock_response = Mock()
+    mock_response.text = (
+        '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
+    )
+    mock_instance.generate_content = Mock(return_value=mock_response)
 
-        yield mock_model_class
+    # Create mock class that returns the mock instance
+    mock_class = Mock(return_value=mock_instance)
+
+    yield mock_class
