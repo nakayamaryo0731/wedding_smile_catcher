@@ -48,11 +48,14 @@ module "storage" {
   bucket_name = var.storage_bucket_name
   region      = var.region
 
-  # Allow bucket deletion for development (change to false for production)
-  force_destroy = true
+  # Prevent accidental bucket deletion in production
+  force_destroy = false
 
-  # CORS configuration for frontend access
-  cors_origins = ["*"] # TODO: Restrict to actual frontend domain in production
+  # CORS configuration for frontend access (restrict to production domains)
+  cors_origins = [
+    "https://wedding-smile-catcher.web.app",
+    "https://wedding-smile-catcher.firebaseapp.com"
+  ]
 
   # Lifecycle management (disabled for now)
   lifecycle_age_days = 0
@@ -75,9 +78,9 @@ module "firestore" {
   # Use default database name
   database_name = "(default)"
 
-  # Development settings (adjust for production)
+  # Production settings for data protection
   deletion_policy                = "DELETE"
-  point_in_time_recovery_enabled = false
+  point_in_time_recovery_enabled = true
 
   depends_on = [google_project_service.required_apis]
 }
