@@ -23,72 +23,155 @@
         <header class="header">
             <h1 class="title">Smile Ranking</h1>
             <p class="subtitle">最高の笑顔をありがとう</p>
+
+            <!-- Tab Buttons -->
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="recent">直近30枚</button>
+                <button class="tab-btn" data-tab="all">殿堂入り</button>
+            </div>
         </header>
 
-        <!-- Main Ranking Display -->
-        <main class="ranking-container">
-            <!-- Top 1 - Large Display -->
-            <div class="rank-1-container">
-                <div id="rank-1" class="ranking-card rank-1">
-                    <div class="rank-badge">
-                        <span class="crown">👑</span>
-                        <span class="rank-number">1st</span>
-                    </div>
-                    <div class="image-container">
-                        <img id="rank-1-image" src="" alt="Top 1" class="ranking-image">
-                    </div>
-                    <div class="ranking-info">
-                        <div class="user-score-row">
-                            <span class="label">投稿者：</span>
-                            <span id="rank-1-name" class="user-name">-</span>
-                            <span class="label">スコア：</span>
-                            <span id="rank-1-score" class="score">0</span>
+        <!-- Recent Ranking (Default View) -->
+        <div id="recent-ranking" class="tab-content active">
+            <main class="ranking-container">
+                <!-- Top 1 - Large Display -->
+                <div class="rank-1-container">
+                    <div id="rank-1" class="ranking-card rank-1">
+                        <div class="rank-badge">
+                            <span class="crown">👑</span>
+                            <span class="rank-number">1st</span>
                         </div>
-                        <h3 class="ai-comment-title">AI評価</h3>
-                        <p id="rank-1-comment" class="ai-comment">-</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top 2 & 3 - Smaller Side by Side -->
-            <div class="rank-2-3-container">
-                <!-- Rank 2 -->
-                <div id="rank-2" class="ranking-card rank-2">
-                    <div class="rank-badge">
-                        <span class="rank-number">2nd</span>
-                    </div>
-                    <div class="image-container">
-                        <img id="rank-2-image" src="" alt="Top 2" class="ranking-image">
-                    </div>
-                    <div class="ranking-info">
-                        <div class="user-score-row">
-                            <span class="label">投稿者：</span>
-                            <span id="rank-2-name" class="user-name">-</span>
-                            <span class="label">スコア：</span>
-                            <span id="rank-2-score" class="score">0</span>
+                        <div class="image-container">
+                            <img id="rank-1-image" src="" alt="Top 1" class="ranking-image">
+                        </div>
+                        <div class="ranking-info">
+                            <div class="user-score-row">
+                                <span class="label">投稿者：</span>
+                                <span id="rank-1-name" class="user-name">-</span>
+                                <span class="label">スコア：</span>
+                                <span id="rank-1-score" class="score">0</span>
+                            </div>
+                            <h3 class="ai-comment-title">AI評価</h3>
+                            <p id="rank-1-comment" class="ai-comment">-</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Rank 3 -->
-                <div id="rank-3" class="ranking-card rank-3">
-                    <div class="rank-badge">
-                        <span class="rank-number">3rd</span>
+                <!-- Top 2 & 3 - Smaller Side by Side -->
+                <div class="rank-2-3-container">
+                    <!-- Rank 2 -->
+                    <div id="rank-2" class="ranking-card rank-2">
+                        <div class="rank-badge">
+                            <span class="rank-number">2nd</span>
+                        </div>
+                        <div class="image-container">
+                            <img id="rank-2-image" src="" alt="Top 2" class="ranking-image">
+                        </div>
+                        <div class="ranking-info">
+                            <div class="user-score-row">
+                                <span class="label">投稿者：</span>
+                                <span id="rank-2-name" class="user-name">-</span>
+                                <span class="label">スコア：</span>
+                                <span id="rank-2-score" class="score">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="image-container">
-                        <img id="rank-3-image" src="" alt="Top 3" class="ranking-image">
-                    </div>
-                    <div class="ranking-info">
-                        <div class="user-score-row">
-                            <span class="label">投稿者：</span>
-                            <span id="rank-3-name" class="user-name">-</span>
-                            <span class="label">スコア：</span>
-                            <span id="rank-3-score" class="score">0</span>
+
+                    <!-- Rank 3 -->
+                    <div id="rank-3" class="ranking-card rank-3">
+                        <div class="rank-badge">
+                            <span class="rank-number">3rd</span>
+                        </div>
+                        <div class="image-container">
+                            <img id="rank-3-image" src="" alt="Top 3" class="ranking-image">
+                        </div>
+                        <div class="ranking-info">
+                            <div class="user-score-row">
+                                <span class="label">投稿者：</span>
+                                <span id="rank-3-name" class="user-name">-</span>
+                                <span class="label">スコア：</span>
+                                <span id="rank-3-score" class="score">0</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
+
+        <!-- All-Time Ranking (Hall of Fame) -->
+        <div id="all-ranking" class="tab-content">
+            <main class="ranking-container">
+                <!-- Top 1 - Large Display -->
+                <div class="rank-1-container">
+                    <div id="rank-1-all" class="ranking-card rank-1">
+                        <div class="rank-badge">
+                            <span class="crown">👑</span>
+                            <span class="rank-number">1st</span>
+                        </div>
+                        <div class="image-container">
+                            <img id="rank-1-all-image" src="" alt="Top 1" class="ranking-image">
+                        </div>
+                        <div class="ranking-info">
+                            <div class="user-score-row">
+                                <span class="label">投稿者：</span>
+                                <span id="rank-1-all-name" class="user-name">-</span>
+                                <span class="label">スコア：</span>
+                                <span id="rank-1-all-score" class="score">0</span>
+                            </div>
+                            <h3 class="ai-comment-title">AI評価</h3>
+                            <p id="rank-1-all-comment" class="ai-comment">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top 2 & 3 - Smaller Side by Side -->
+                <div class="rank-2-3-container">
+                    <!-- Rank 2 -->
+                    <div id="rank-2-all" class="ranking-card rank-2">
+                        <div class="rank-badge">
+                            <span class="rank-number">2nd</span>
+                        </div>
+                        <div class="image-container">
+                            <img id="rank-2-all-image" src="" alt="Top 2" class="ranking-image">
+                        </div>
+                        <div class="ranking-info">
+                            <div class="user-score-row">
+                                <span class="label">投稿者：</span>
+                                <span id="rank-2-all-name" class="user-name">-</span>
+                                <span class="label">スコア：</span>
+                                <span id="rank-2-all-score" class="score">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rank 3 -->
+                    <div id="rank-3-all" class="ranking-card rank-3">
+                        <div class="rank-badge">
+                            <span class="rank-number">3rd</span>
+                        </div>
+                        <div class="image-container">
+                            <img id="rank-3-all-image" src="" alt="Top 3" class="ranking-image">
+                        </div>
+                        <div class="ranking-info">
+                            <div class="user-score-row">
+                                <span class="label">投稿者：</span>
+                                <span id="rank-3-all-name" class="user-name">-</span>
+                                <span class="label">スコア：</span>
+                                <span id="rank-3-all-score" class="score">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Ranking List (4-10位) -->
+            <section class="ranking-list">
+                <h2 class="ranking-list-title">4位〜10位</h2>
+                <div id="ranking-list-items" class="ranking-list-items">
+                    <!-- Items will be dynamically inserted here -->
+                </div>
+            </section>
+        </div>
 
         <!-- Loading State -->
         <div id="loading" class="loading">
