@@ -40,7 +40,7 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --service-account=webhook-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},STORAGE_BUCKET=${{ secrets.STORAGE_BUCKET }},SCORING_FUNCTION_URL=https://asia-northeast1-${{ secrets.GCP_PROJECT_ID }}.cloudfunctions.net/scoring \
+            --set-env-vars=GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},STORAGE_BUCKET=${{ secrets.STORAGE_BUCKET }},SCORING_FUNCTION_URL=https://asia-northeast1-${{ secrets.GCP_PROJECT_ID }}.cloudfunctions.net/scoring,CURRENT_EVENT_ID=${{ secrets.CURRENT_EVENT_ID }} \
             --set-secrets=LINE_CHANNEL_SECRET=line-channel-secret:latest,LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest \
             --memory=512M \
             --timeout=60s \
