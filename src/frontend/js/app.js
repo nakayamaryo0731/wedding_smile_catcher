@@ -87,26 +87,11 @@ async function fetchUserName(userId) {
 }
 
 /**
- * Filter to unique users from image list
- * Same user cannot appear multiple times in top 3
+ * Get top N images from list
+ * No filtering by user - same user can appear multiple times
  */
-function filterToUniqueUsers(images) {
-  const seenUsers = new Set();
-  const uniqueImages = [];
-
-  for (const img of images) {
-    if (!seenUsers.has(img.user_id)) {
-      seenUsers.add(img.user_id);
-      uniqueImages.push(img);
-
-      // Stop after we have 3 unique users
-      if (uniqueImages.length >= 3) {
-        break;
-      }
-    }
-  }
-
-  return uniqueImages;
+function getTopImages(images, count = 3) {
+  return images.slice(0, count);
 }
 
 /**
@@ -201,27 +186,27 @@ function renderRankingList(images, startRank = 4) {
  * Update the ranking display
  */
 async function updateRankings(images) {
-  console.log(`Received ${images.length} images, filtering to unique users...`);
+  console.log(`Received ${images.length} images, getting top 3...`);
 
-  // Filter to unique users (same user can't appear twice)
-  const uniqueImages = filterToUniqueUsers(images);
-  console.log(`Top 3 unique users:`, uniqueImages);
+  // Get top 3 images (no filtering by user)
+  const topImages = getTopImages(images, 3);
+  console.log(`Top 3 images:`, topImages);
 
-  // Fetch user names for all unique users
-  const userNamesPromises = uniqueImages.map(img => fetchUserName(img.user_id));
+  // Fetch user names for all images
+  const userNamesPromises = topImages.map(img => fetchUserName(img.user_id));
   const userNames = await Promise.all(userNamesPromises);
 
   // Add user_name to each image data
-  uniqueImages.forEach((img, index) => {
+  topImages.forEach((img, index) => {
     img.user_name = userNames[index];
   });
 
   // Update state
-  currentTop3 = uniqueImages;
+  currentTop3 = topImages;
 
   // Update all three ranks
   for (let i = 1; i <= 3; i++) {
-    updateRankCard(i, uniqueImages[i - 1]);
+    updateRankCard(i, topImages[i - 1]);
   }
 
   // Hide loading
@@ -278,7 +263,7 @@ async function fetchAllTimeRankings() {
       imagesRef,
       where('event_id', '==', currentEventId),
       orderBy('total_score', 'desc'),
-      limit(100) // Fetch top 100 to filter to unique users
+      limit(10) // Fetch top 10 images directly
     );
 
     const snapshot = await getDocs(q);
@@ -289,36 +274,21 @@ async function fetchAllTimeRankings() {
       ...doc.data()
     }));
 
-    // Filter to unique users for top 10
-    const seenUsers = new Set();
-    const uniqueImages = [];
-
-    for (const img of images) {
-      if (!seenUsers.has(img.user_id)) {
-        seenUsers.add(img.user_id);
-        uniqueImages.push(img);
-
-        if (uniqueImages.length >= 10) {
-          break;
-        }
-      }
-    }
-
     // Fetch user names
-    const userNamesPromises = uniqueImages.map(img => fetchUserName(img.user_id));
+    const userNamesPromises = images.map(img => fetchUserName(img.user_id));
     const userNames = await Promise.all(userNamesPromises);
 
-    uniqueImages.forEach((img, index) => {
+    images.forEach((img, index) => {
       img.user_name = userNames[index];
     });
 
     // Update top 3 in all-time tab
     for (let i = 1; i <= 3; i++) {
-      updateRankCard(i, uniqueImages[i - 1], rankCardsAll);
+      updateRankCard(i, images[i - 1], rankCardsAll);
     }
 
     // Render 4-10 in list format
-    const listImages = uniqueImages.slice(3, 10);
+    const listImages = images.slice(3, 10);
     renderRankingList(listImages, 4);
 
     console.log(`Updated all-time top 10 rankings`);
