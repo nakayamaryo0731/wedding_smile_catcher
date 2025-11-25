@@ -73,35 +73,43 @@ class TestScoringPipeline:
 
         # Execute scoring (mocked APIs)
         # Note: Patch where classes are USED (scoring.main), not where they're DEFINED
+        mock_pil_image = Mock()
+        mock_pil_image.size = (1000, 1000)  # 1000x1000 image
+
+        # Calculate smile score with mocked PILImage (for image dimensions)
         with patch("scoring.main.vision_client", mock_vision_client_integration), patch(
-            "scoring.main.GenerativeModel", mock_vertex_ai_integration
-        ), patch("scoring.main.Part"):
-            # Calculate smile score (returns dict)
+            "scoring.main.PILImage.open", return_value=mock_pil_image
+        ):
+            # Each face: 95.0 base score × 0.4 size multiplier (1% relative size)
+            # Total: 2 faces × 95.0 × 0.4 = 76.0
             smile_result = calculate_smile_score(test_image_bytes)
-            assert smile_result["smile_score"] == 190.0  # 2 faces × 95.0
+            assert smile_result["smile_score"] == 76.0  # 2 faces × 95.0 × 0.4
             assert smile_result["face_count"] == 2
             assert smile_result["smiling_faces"] == 2
 
-            # Calculate AI score
+        # Calculate AI score (separate patch context, no PILImage mock needed)
+        with patch("scoring.main.GenerativeModel", mock_vertex_ai_integration), patch(
+            "scoring.main.Part"
+        ):
             ai_result = evaluate_theme(test_image_bytes)
             assert ai_result["score"] == 85
             assert "素晴らしい笑顔です" in ai_result["comment"]
 
-            # Calculate average hash
-            avg_hash = calculate_average_hash(test_image_bytes)
-            assert avg_hash is not None
-            assert len(avg_hash) == 16  # 64-bit hash as hex
+        # Calculate average hash (no mocking needed, uses real image bytes)
+        avg_hash = calculate_average_hash(test_image_bytes)
+        assert avg_hash is not None
+        assert len(avg_hash) == 16  # 64-bit hash as hex
 
-            # Check similarity (no existing images)
-            existing_hashes = []
-            is_similar = is_similar_image(avg_hash, existing_hashes)
-            assert not is_similar
+        # Check similarity (no existing images)
+        existing_hashes = []
+        is_similar = is_similar_image(avg_hash, existing_hashes)
+        assert not is_similar
 
-            # Calculate total score
-            similarity_penalty = 1.0 if not is_similar else 1 / 3
-            total_score = (
-                smile_result["smile_score"] * ai_result["score"] / 100
-            ) * similarity_penalty
+        # Calculate total score
+        similarity_penalty = 1.0 if not is_similar else 1 / 3
+        total_score = (
+            smile_result["smile_score"] * ai_result["score"] / 100
+        ) * similarity_penalty
 
         # Update Firestore with scores
         image_ref.update(
@@ -123,9 +131,9 @@ class TestScoringPipeline:
         assert updated_doc.exists
         doc_data = updated_doc.to_dict()
         assert doc_data["status"] == "completed"
-        assert doc_data["smile_score"] == 190.0
+        assert doc_data["smile_score"] == 76.0  # 2 faces × 95.0 × 0.4 (1% face size)
         assert doc_data["ai_score"] == 85
-        assert doc_data["total_score"] == 161.5  # 190.0 × 85 / 100
+        assert doc_data["total_score"] == 64.6  # 76.0 × 85 / 100
         assert doc_data["average_hash"] == avg_hash
         assert doc_data["similarity_penalty"] == 1.0
 
@@ -136,7 +144,7 @@ class TestScoringPipeline:
 
         # Verify user update
         updated_user = user_ref.get().to_dict()
-        assert updated_user["best_score"] == 161.5
+        assert updated_user["best_score"] == 64.6
         assert updated_user["total_uploads"] == 1
 
     def test_similarity_detection_integration(
@@ -318,19 +326,27 @@ class TestScoringPipeline:
             image_refs.append(image_ref)
 
         # Score all images (sequentially in test, but simulating concurrent)
-        with patch("scoring.main.vision_client", mock_vision_client_integration):
-            for image_ref in image_refs:
-                smile_result = calculate_smile_score(test_image_bytes)
-                avg_hash = calculate_average_hash(test_image_bytes)
+        mock_pil_image = Mock()
+        mock_pil_image.size = (1000, 1000)
 
-                image_ref.update(
-                    {
-                        "smile_score": smile_result["smile_score"],
-                        "average_hash": avg_hash,
-                        "total_score": smile_result["smile_score"],
-                        "status": "completed",
-                    }
-                )
+        for image_ref in image_refs:
+            # Calculate smile score with mocked PILImage
+            with patch(
+                "scoring.main.vision_client", mock_vision_client_integration
+            ), patch("scoring.main.PILImage.open", return_value=mock_pil_image):
+                smile_result = calculate_smile_score(test_image_bytes)
+
+            # Calculate average hash without mocking (uses real image)
+            avg_hash = calculate_average_hash(test_image_bytes)
+
+            image_ref.update(
+                {
+                    "smile_score": smile_result["smile_score"],
+                    "average_hash": avg_hash,
+                    "total_score": smile_result["smile_score"],
+                    "status": "completed",
+                }
+            )
 
         # Verify all images were scored
         completed_images = (

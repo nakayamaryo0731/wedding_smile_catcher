@@ -197,10 +197,71 @@ def get_joy_likelihood_score(joy_likelihood) -> float:
     return likelihood_map.get(joy_likelihood, 0.0)
 
 
+def get_face_size_multiplier(face, image_width: int, image_height: int) -> float:
+    """
+    Calculate a multiplier based on face size relative to image size.
+
+    Larger faces get higher multipliers (up to 1.0).
+    Smaller faces get lower multipliers (down to 0.4).
+
+    Args:
+        face: Vision API FaceAnnotation object
+        image_width: Image width in pixels
+        image_height: Image height in pixels
+
+    Returns:
+        Multiplier between 0.4 and 1.0
+    """
+    bbox = face.bounding_poly
+    vertices = [(v.x, v.y) for v in bbox.vertices]
+    xs = [v[0] for v in vertices]
+    ys = [v[1] for v in vertices]
+
+    face_width = max(xs) - min(xs)
+    face_height = max(ys) - min(ys)
+    face_area = face_width * face_height
+    image_area = image_width * image_height
+    relative_size = face_area / image_area if image_area > 0 else 0
+
+    # Thresholds and multipliers:
+    # - 5%+ (close-up, 2-3 people): 1.0
+    # - 2-5% (4-8 people group): 0.7-1.0 (linear interpolation)
+    # - 1-2% (10+ people group): 0.4-0.7 (linear interpolation)
+    # - <1% (large crowd, distant): 0.4
+    if relative_size >= 0.05:
+        return 1.0
+    elif relative_size >= 0.02:
+        return 0.7 + (relative_size - 0.02) / (0.05 - 0.02) * 0.3
+    elif relative_size >= 0.01:
+        return 0.4 + (relative_size - 0.01) / (0.02 - 0.01) * 0.3
+    else:
+        return 0.4
+
+
+def format_face_count(smiling_faces: int, face_count: int) -> str:
+    """
+    Format face count for display. Shows "大勢" for 10+ people.
+
+    Args:
+        smiling_faces: Number of smiling faces detected
+        face_count: Total number of faces detected
+
+    Returns:
+        Formatted string like "5人/6人" or "大勢"
+    """
+    if face_count >= 10:
+        return "大勢"
+    else:
+        return f"{smiling_faces}人/{face_count}人"
+
+
 def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
     """
-    Calculate smile score using Vision API.
+    Calculate smile score using Vision API with face size adjustment.
     Implements exponential backoff retry for rate limit and server errors.
+
+    Larger faces (close-up photos) get full score, while smaller faces
+    (distant/crowd photos) get reduced scores.
 
     Args:
         image_bytes: Image binary data
@@ -208,6 +269,10 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
     Returns:
         Dictionary with smile_score and face_count
     """
+    # Get image dimensions for face size calculation
+    img = PILImage.open(io.BytesIO(image_bytes))
+    image_width, image_height = img.size
+
     # Retry configuration
     max_retries = 3
     base_delay = 1.0  # seconds
@@ -224,25 +289,31 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
             if response.error.message:
                 raise Exception(f"Vision API error: {response.error.message}")
 
-            # Calculate total smile score
+            # Calculate total smile score with face size adjustment
             total_smile_score = 0.0
             smiling_faces = 0
 
             for face in response.face_annotations:
                 # Only count faces with LIKELY or VERY_LIKELY joy
                 if face.joy_likelihood >= vision.Likelihood.LIKELY:
-                    score = get_joy_likelihood_score(face.joy_likelihood)
-                    total_smile_score += score
+                    base_score = get_joy_likelihood_score(face.joy_likelihood)
+                    size_multiplier = get_face_size_multiplier(
+                        face, image_width, image_height
+                    )
+                    adjusted_score = base_score * size_multiplier
+                    total_smile_score += adjusted_score
                     smiling_faces += 1
                     logger.info(
-                        f"Face detected: joy={face.joy_likelihood.name}, score={score}"
+                        f"Face detected: joy={face.joy_likelihood.name}, "
+                        f"base_score={base_score}, size_multiplier={size_multiplier:.2f}, "
+                        f"adjusted_score={adjusted_score:.2f}"
                     )
 
             face_count = len(response.face_annotations)
 
             logger.info(
                 f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, "
-                f"total score={total_smile_score}"
+                f"total score={total_smile_score:.2f}"
             )
 
             return {
@@ -448,7 +519,7 @@ def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
 あなたは結婚式写真の専門家です。提供された写真を分析し、以下の基準に従って笑顔の評価を行ってください：
 
 ## 分析対象
-- 新郎新婦を中心に、写真に写っている全ての人物の表情を評価
+- 写真に写っている全ての人物の表情を評価
 - グループショットの場合は、全体的な雰囲気も考慮
 
 ## 評価基準（100点満点）
@@ -476,6 +547,7 @@ def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
 - 文化的背景や結婚式のスタイルを考慮
 - 否定的な表現は避け、建設的なフィードバックを心がける
 - プライバシーに配慮した表現を使用
+- 特定の人物を「新郎新婦」と呼ばない（誤認識の可能性があるため）
 
 ## 出力
 JSON形式でscoreとcommentのキーで返却する。JSONのみを出力すること。
@@ -483,7 +555,7 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 例:
 {
   "score": 85,
-  "comment": "新郎新婦の目元から溢れる自然な喜びが印象的で、周囲の参列者との一体感も素晴らしい"
+  "comment": "皆さんの目元から溢れる自然な喜びが印象的で、全体の一体感も素晴らしい"
 }
 """
 
@@ -710,18 +782,19 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> Dict[str,
             "⚠️ AI評価でエラーが発生しました。デフォルト値を使用しています。"
         )
 
+    # Format face count (show "大勢" for 10+ people)
+    smiling_faces = vision_result.get("smiling_faces", face_count)
+    face_count_display = format_face_count(smiling_faces, face_count)
+
     if error_warnings:
         warning_text = "\n".join(error_warnings)
         comment = (
             f"{warning_text}\n\n"
             f"{ai_comment}\n\n"
-            f"笑顔検出: {vision_result.get('smiling_faces', face_count)}人/{face_count}人が笑顔です！"
+            f"笑顔検出: {face_count_display}が笑顔です！"
         )
     else:
-        comment = (
-            f"{ai_comment}\n\n"
-            f"笑顔検出: {vision_result['smiling_faces']}人/{face_count}人が笑顔です！"
-        )
+        comment = f"{ai_comment}\n\n" f"笑顔検出: {face_count_display}が笑顔です！"
 
     result = {
         "smile_score": smile_score,
@@ -955,20 +1028,26 @@ def send_result_to_line(user_id: str, scores: Dict[str, Any]):
         logger.error(f"LINE user ID not found for user: {user_id}")
         return
 
-    # Build message
+    # Build message with face count display (show "大勢" for 10+ people)
+    face_count = scores["face_count"]
+    if face_count >= 10:
+        face_count_display = "大勢"
+    else:
+        face_count_display = f"{face_count}人"
+
     if scores["is_similar"]:
         message_text = (
             f"📸 スコア: {scores['total_score']}点\n\n"
             f"⚠️ この写真は、以前の投稿と似ています。\n"
             f"連写ではなく、違う構図で撮影してみましょう！\n\n"
-            f"😊 笑顔スコア: {scores['smile_score']}点（{scores['face_count']}人）\n"
+            f"😊 笑顔スコア: {scores['smile_score']}点（{face_count_display}）\n"
             f"🤖 AIテーマ評価: {scores['ai_score']}点"
         )
     else:
         message_text = (
             f"🎉 採点完了！\n\n"
             f"【最終スコア】{scores['total_score']}点\n\n"
-            f"😊 笑顔スコア: {scores['smile_score']}点（{scores['face_count']}人）\n"
+            f"😊 笑顔スコア: {scores['smile_score']}点（{face_count_display}）\n"
             f"🤖 AIテーマ評価: {scores['ai_score']}点\n"
             f"💬 {scores['comment']}"
         )
