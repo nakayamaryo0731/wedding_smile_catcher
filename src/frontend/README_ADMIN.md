@@ -8,10 +8,10 @@
 
 ```bash
 cd src/frontend
-python3 -m http.server 8000
+python3 -m http.server 8001
 ```
 
-ブラウザで `http://localhost:8000/admin` にアクセス
+ブラウザで `http://localhost:8001/admin` にアクセス
 
 ### 本番環境
 
