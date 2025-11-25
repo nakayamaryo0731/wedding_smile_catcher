@@ -6,6 +6,7 @@ Analyzes uploaded images using:
 - Vertex AI (Gemini) for theme evaluation (0-100 score + comment)
 - Average Hash for similarity detection (prevents spam uploads)
 - Face size multiplier to penalize small faces in group photos
+- Format face count as "大勢" for 10+ people
 """
 
 import os
