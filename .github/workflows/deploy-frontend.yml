@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'src/frontend/**'
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
       - '.github/workflows/deploy-frontend.yml'
 
 concurrency:
@@ -35,6 +37,10 @@ jobs:
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
+
+      - name: Deploy Firestore Rules and Indexes
+        working-directory: .
+        run: firebase deploy --only firestore --project wedding-smile-catcher --non-interactive
 
       - name: Deploy to Firebase Hosting
         run: firebase deploy --only hosting --project wedding-smile-catcher --non-interactive
