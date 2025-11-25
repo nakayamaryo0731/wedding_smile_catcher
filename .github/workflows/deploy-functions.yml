@@ -28,8 +28,30 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Check changed files
+        id: changes
+        run: |
+          # Get the list of changed files between the merge base and HEAD
+          git fetch origin main --depth=2
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Check if webhook or scoring files changed
+          if echo "$CHANGED_FILES" | grep -q "^src/functions/webhook/"; then
+            echo "webhook_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "webhook_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^src/functions/scoring/"; then
+            echo "scoring_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "scoring_changed=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy webhook function
-        if: contains(github.event.head_commit.modified, 'src/functions/webhook/')
+        if: steps.changes.outputs.webhook_changed == 'true'
         run: |
           gcloud functions deploy webhook \
             --gen2 \
@@ -47,7 +69,7 @@ jobs:
             --max-instances=100
 
       - name: Deploy scoring function
-        if: contains(github.event.head_commit.modified, 'src/functions/scoring/')
+        if: steps.changes.outputs.scoring_changed == 'true'
         run: |
           gcloud functions deploy scoring \
             --gen2 \
