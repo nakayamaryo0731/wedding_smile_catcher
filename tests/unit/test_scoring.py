@@ -16,7 +16,9 @@ from scoring.main import (  # noqa: E402
     calculate_average_hash,
     calculate_smile_score,
     evaluate_theme,
+    format_face_count,
     generate_scores_with_vision_api,
+    get_face_size_multiplier,
     is_similar_image,
 )
 
@@ -24,17 +26,36 @@ from scoring.main import (  # noqa: E402
 class TestCalculateSmileScore:
     """Tests for calculate_smile_score function."""
 
+    @patch("scoring.main.PILImage")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_two_happy_faces(self, mock_vision_client):
-        """Test with 2 very likely smiling faces (expected score: ~190)."""
+    def test_calculate_smile_score_two_happy_faces(self, mock_vision_client, mock_pil):
+        """Test with 2 very likely smiling faces with large faces (full multiplier)."""
+        # Setup PIL mock for image dimensions (1000x1000)
+        mock_img = Mock()
+        mock_img.size = (1000, 1000)
+        mock_pil.open.return_value = mock_img
+
         # Setup mock
         mock_response = Mock()
 
+        # Create faces with bounding boxes (5% of image = full multiplier)
         face1 = Mock()
-        face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 5 → 95.0 points
+        face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 points
+        face1.bounding_poly.vertices = [
+            Mock(x=0, y=0),
+            Mock(x=224, y=0),
+            Mock(x=224, y=224),
+            Mock(x=0, y=224),
+        ]  # ~5% of 1000x1000
 
         face2 = Mock()
-        face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 5 → 95.0 points
+        face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 points
+        face2.bounding_poly.vertices = [
+            Mock(x=300, y=0),
+            Mock(x=524, y=0),
+            Mock(x=524, y=224),
+            Mock(x=300, y=224),
+        ]  # ~5% of 1000x1000
 
         mock_response.face_annotations = [face1, face2]
         mock_response.error.message = ""
@@ -47,12 +68,19 @@ class TestCalculateSmileScore:
         # Assert
         assert result["face_count"] == 2
         assert result["smiling_faces"] == 2
-        assert result["smile_score"] == 190.0  # 95.0 × 2
+        # With 5%+ face size, multiplier = 1.0, so score = 95.0 × 2 = 190.0
+        assert result["smile_score"] == 190.0
         assert "error" not in result
 
+    @patch("scoring.main.PILImage")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_no_smiles(self, mock_vision_client):
+    def test_calculate_smile_score_no_smiles(self, mock_vision_client, mock_pil):
         """Test with no smiling faces (expected score: 0)."""
+        # Setup PIL mock
+        mock_img = Mock()
+        mock_img.size = (1000, 1000)
+        mock_pil.open.return_value = mock_img
+
         # Setup mock
         mock_response = Mock()
 
@@ -75,9 +103,15 @@ class TestCalculateSmileScore:
         assert result["smiling_faces"] == 0
         assert result["smile_score"] == 0.0
 
+    @patch("scoring.main.PILImage")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_no_faces(self, mock_vision_client):
+    def test_calculate_smile_score_no_faces(self, mock_vision_client, mock_pil):
         """Test with no faces detected (expected score: 0)."""
+        # Setup PIL mock
+        mock_img = Mock()
+        mock_img.size = (1000, 1000)
+        mock_pil.open.return_value = mock_img
+
         # Setup mock
         mock_response = Mock()
         mock_response.face_annotations = []
@@ -93,9 +127,17 @@ class TestCalculateSmileScore:
         assert result["smiling_faces"] == 0
         assert result["smile_score"] == 0.0
 
+    @patch("scoring.main.PILImage")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_api_error_fallback(self, mock_vision_client):
+    def test_calculate_smile_score_api_error_fallback(
+        self, mock_vision_client, mock_pil
+    ):
         """Test Vision API error triggers fallback score."""
+        # Setup PIL mock
+        mock_img = Mock()
+        mock_img.size = (1000, 1000)
+        mock_pil.open.return_value = mock_img
+
         # Setup mock to raise exception
         mock_vision_client.face_detection.side_effect = Exception("API Error")
 
@@ -107,6 +149,86 @@ class TestCalculateSmileScore:
         assert result["face_count"] == 0
         assert result["smiling_faces"] == 0
         assert result["error"] == "vision_api_failed"
+
+
+class TestGetFaceSizeMultiplier:
+    """Tests for get_face_size_multiplier function."""
+
+    def test_large_face_full_multiplier(self):
+        """Test that large face (5%+) gets full multiplier of 1.0."""
+        face = Mock()
+        # 224x224 face on 1000x1000 image = ~5%
+        face.bounding_poly.vertices = [
+            Mock(x=0, y=0),
+            Mock(x=224, y=0),
+            Mock(x=224, y=224),
+            Mock(x=0, y=224),
+        ]
+        result = get_face_size_multiplier(face, 1000, 1000)
+        assert result == 1.0
+
+    def test_medium_face_partial_multiplier(self):
+        """Test that medium face (2-5%) gets partial multiplier."""
+        face = Mock()
+        # 150x150 face on 1000x1000 image = 2.25%
+        face.bounding_poly.vertices = [
+            Mock(x=0, y=0),
+            Mock(x=150, y=0),
+            Mock(x=150, y=150),
+            Mock(x=0, y=150),
+        ]
+        result = get_face_size_multiplier(face, 1000, 1000)
+        assert 0.7 <= result <= 1.0
+
+    def test_small_face_low_multiplier(self):
+        """Test that small face (1-2%) gets low multiplier."""
+        face = Mock()
+        # 100x100 face on 1000x1000 image = 1%
+        face.bounding_poly.vertices = [
+            Mock(x=0, y=0),
+            Mock(x=100, y=0),
+            Mock(x=100, y=100),
+            Mock(x=0, y=100),
+        ]
+        result = get_face_size_multiplier(face, 1000, 1000)
+        assert 0.4 <= result <= 0.7
+
+    def test_tiny_face_minimum_multiplier(self):
+        """Test that tiny face (<1%) gets minimum multiplier of 0.4."""
+        face = Mock()
+        # 50x50 face on 1000x1000 image = 0.25%
+        face.bounding_poly.vertices = [
+            Mock(x=0, y=0),
+            Mock(x=50, y=0),
+            Mock(x=50, y=50),
+            Mock(x=0, y=50),
+        ]
+        result = get_face_size_multiplier(face, 1000, 1000)
+        assert result == 0.4
+
+
+class TestFormatFaceCount:
+    """Tests for format_face_count function."""
+
+    def test_small_group(self):
+        """Test with less than 10 people."""
+        result = format_face_count(5, 6)
+        assert result == "5人/6人"
+
+    def test_exactly_nine(self):
+        """Test with exactly 9 people."""
+        result = format_face_count(9, 9)
+        assert result == "9人/9人"
+
+    def test_ten_or_more(self):
+        """Test with 10+ people shows 大勢."""
+        result = format_face_count(10, 12)
+        assert result == "大勢"
+
+    def test_large_group(self):
+        """Test with large group."""
+        result = format_face_count(20, 25)
+        assert result == "大勢"
 
 
 class TestEvaluateTheme:
