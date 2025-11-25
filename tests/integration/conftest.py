@@ -132,12 +132,28 @@ def mock_vision_client_integration():
 
     mock_response = Mock()
 
+    # Create bounding_poly vertices for face size calculation
+    # Using a 100x100 face on a 1000x1000 image = 1% relative size
+    mock_vertex1 = Mock(x=100, y=100)
+    mock_vertex2 = Mock(x=200, y=100)
+    mock_vertex3 = Mock(x=200, y=200)
+    mock_vertex4 = Mock(x=100, y=200)
+    mock_bounding_poly = Mock()
+    mock_bounding_poly.vertices = [
+        mock_vertex1,
+        mock_vertex2,
+        mock_vertex3,
+        mock_vertex4,
+    ]
+
     # Default: 2 happy faces with VERY_LIKELY enum
     face1 = Mock()
     face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 points
+    face1.bounding_poly = mock_bounding_poly
 
     face2 = Mock()
     face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 points
+    face2.bounding_poly = mock_bounding_poly
 
     mock_response.face_annotations = [face1, face2]
 
