@@ -804,38 +804,132 @@ def update_firestore(image_id: str, user_id: str, scores: Dict[str, Any]):
         image_id: Image document ID
         user_id: User ID
         scores: Scoring results
+
+    Raises:
+        Exception: If Firestore update fails
     """
-    # Update image document
-    image_ref = db.collection("images").document(image_id)
-    image_ref.update(
-        {
-            "smile_score": scores["smile_score"],
-            "ai_score": scores["ai_score"],
-            "total_score": scores["total_score"],
-            "comment": scores["comment"],
-            "average_hash": scores["average_hash"],
-            "is_similar": scores["is_similar"],
-            "face_count": scores["face_count"],
-            "status": "completed",
-            "scored_at": firestore.SERVER_TIMESTAMP,
-        }
-    )
-
-    logger.info(f"Updated image document: {image_id}")
-
-    # Update user statistics
-    user_ref = db.collection("users").document(user_id)
-    user_doc = user_ref.get()
-
-    if user_doc.exists:
-        current_best = user_doc.to_dict().get("best_score", 0)
-        new_best = max(current_best, scores["total_score"])
-
-        user_ref.update(
-            {"total_uploads": firestore.Increment(1), "best_score": new_best}
+    try:
+        # Update image document
+        image_ref = db.collection("images").document(image_id)
+        image_ref.update(
+            {
+                "smile_score": scores["smile_score"],
+                "ai_score": scores["ai_score"],
+                "total_score": scores["total_score"],
+                "comment": scores["comment"],
+                "average_hash": scores["average_hash"],
+                "is_similar": scores["is_similar"],
+                "face_count": scores["face_count"],
+                "status": "completed",
+                "scored_at": firestore.SERVER_TIMESTAMP,
+            }
         )
 
-        logger.info(f"Updated user stats: {user_id}")
+        logger.info(f"Successfully updated image document: {image_id}")
+
+    except Exception as e:
+        logger.error(
+            f"Failed to update image document {image_id}: {str(e)}", exc_info=True
+        )
+        raise
+
+    # Update user statistics with transaction for concurrency safety
+    try:
+        user_ref = db.collection("users").document(user_id)
+        transaction = db.transaction()
+        _update_user_stats_in_transaction(transaction, user_ref, scores["total_score"])
+        logger.info(f"Successfully updated user stats: {user_id}")
+
+    except Exception as e:
+        logger.error(
+            f"Failed to update user stats for {user_id}: {str(e)}", exc_info=True
+        )
+        # Don't raise - image update succeeded, user stats update is secondary
+        # This will be logged for monitoring but won't fail the entire function
+
+
+@firestore.transactional
+def _update_user_stats_in_transaction(transaction, user_ref, new_score: float):
+    """
+    Update user statistics with transaction to prevent race conditions.
+
+    Args:
+        transaction: Firestore transaction
+        user_ref: User document reference
+        new_score: New score to compare with best_score
+    """
+    user_doc = user_ref.get(transaction=transaction)
+
+    if not user_doc.exists:
+        logger.warning(f"User document not found: {user_ref.id}")
+        return
+
+    user_data = user_doc.to_dict()
+    current_best = user_data.get("best_score", 0)
+    new_best = max(current_best, new_score)
+
+    transaction.update(
+        user_ref, {"total_uploads": firestore.Increment(1), "best_score": new_best}
+    )
+
+
+def _send_line_message_with_retry(line_user_id: str, message, max_retries: int = 3):
+    """
+    Send LINE message with retry logic for transient failures.
+
+    Args:
+        line_user_id: LINE user ID
+        message: LINE message object
+        max_retries: Maximum number of retry attempts (default: 3)
+    """
+    for attempt in range(max_retries):
+        try:
+            line_bot_api.push_message(line_user_id, message)
+            logger.info(f"Successfully sent message to LINE user: {line_user_id}")
+            return
+
+        except LineBotApiError as e:
+            is_last_attempt = attempt == max_retries - 1
+
+            # Check if error is retryable (5xx server errors or rate limit)
+            is_retryable = (
+                500 <= e.status_code < 600  # Server errors
+                or e.status_code == 429  # Rate limit
+            )
+
+            if is_retryable and not is_last_attempt:
+                wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
+                logger.warning(
+                    f"LINE API error {e.status_code}, retrying in {wait_time}s "
+                    f"(attempt {attempt + 1}/{max_retries}): {e.message}"
+                )
+                time.sleep(wait_time)
+                continue
+
+            # Non-retryable error or final attempt
+            logger.error(
+                f"LINE API error (final, status={e.status_code}): {e.message}",
+                exc_info=True,
+            )
+            return
+
+        except Exception as e:
+            is_last_attempt = attempt == max_retries - 1
+
+            if not is_last_attempt:
+                wait_time = 2**attempt
+                logger.warning(
+                    f"Failed to send LINE message, retrying in {wait_time}s "
+                    f"(attempt {attempt + 1}/{max_retries}): {str(e)}"
+                )
+                time.sleep(wait_time)
+                continue
+
+            logger.error(
+                f"Failed to send LINE message after {max_retries} attempts: {str(e)}",
+                exc_info=True,
+            )
+            return
 
 
 def send_result_to_line(user_id: str, scores: Dict[str, Any]):
@@ -879,15 +973,9 @@ def send_result_to_line(user_id: str, scores: Dict[str, Any]):
             f"💬 {scores['comment']}"
         )
 
-    try:
-        message = TextSendMessage(text=message_text)
-        line_bot_api.push_message(line_user_id, message)
-        logger.info(f"Sent result to LINE user: {line_user_id}")
-
-    except LineBotApiError as e:
-        logger.error(f"LINE API error: {e.status_code} {e.message}")
-    except Exception as e:
-        logger.error(f"Failed to send message: {str(e)}")
+    # Send message with retry logic
+    message = TextSendMessage(text=message_text)
+    _send_line_message_with_retry(line_user_id, message)
 
 
 def send_error_to_line(user_id: str):
@@ -910,12 +998,7 @@ def send_error_to_line(user_id: str):
     if not line_user_id:
         return
 
-    try:
-        message = TextSendMessage(
-            text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。"
-        )
-        line_bot_api.push_message(line_user_id, message)
-        logger.info(f"Sent error message to LINE user: {line_user_id}")
-
-    except Exception as e:
-        logger.error(f"Failed to send error message: {str(e)}")
+    message = TextSendMessage(
+        text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。"
+    )
+    _send_line_message_with_retry(line_user_id, message)
