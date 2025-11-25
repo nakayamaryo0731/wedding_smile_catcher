@@ -1,10 +1,12 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getFirestore, collection, getDocs, query, orderBy, limit, writeBatch, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-const ADMIN_PASSWORD_HASH = 'c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec';
+const ADMIN_PASSWORD_HASH = '23a68358cb853df2a850e11cbf705979dd65d570e3394b7af0904c2b153fcbb5';
 
 const app = initializeApp(window.FIREBASE_CONFIG);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 let selectedItems = {
     images: new Set(),
@@ -328,10 +330,16 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const success = await login(password);
 
     if (success) {
-        setAuth(true);
-        showScreen('adminScreen');
-        await loadStats();
-        await loadImages();
+        try {
+            await signInAnonymously(auth);
+            setAuth(true);
+            showScreen('adminScreen');
+            await loadStats();
+            await loadImages();
+        } catch (error) {
+            console.error('Error signing in anonymously:', error);
+            showError('Authentication error: ' + error.message);
+        }
     } else {
         showError('Invalid password');
     }
@@ -373,9 +381,15 @@ document.getElementById('cancelDelete').addEventListener('click', () => {
 });
 
 if (checkAuth()) {
-    showScreen('adminScreen');
-    loadStats();
-    loadImages();
+    signInAnonymously(auth).then(() => {
+        showScreen('adminScreen');
+        loadStats();
+        loadImages();
+    }).catch((error) => {
+        console.error('Error signing in anonymously:', error);
+        setAuth(false);
+        showScreen('loginScreen');
+    });
 } else {
     showScreen('loginScreen');
 }
