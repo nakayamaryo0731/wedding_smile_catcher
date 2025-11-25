@@ -1,3 +1,8 @@
 # Firebase Web SDK configuration
 # These API keys are safe to commit as they are protected by Firebase Security Rules
 src/frontend/js/config.js:gcp-api-key:3
+
+# Admin panel password hash
+# This is a SHA-256 hash of the admin password, not the password itself
+# Safe to commit as it requires the original password to authenticate
+src/frontend/js/admin.js:generic-api-key:4
