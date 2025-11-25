@@ -1,9 +1,11 @@
 """
 Wedding Smile Catcher - Scoring Function
+
 Analyzes uploaded images using:
 - Vision API for smile detection (face count + joy likelihood)
 - Vertex AI (Gemini) for theme evaluation (0-100 score + comment)
 - Average Hash for similarity detection (prevents spam uploads)
+- Face size multiplier to penalize small faces in group photos
 """
 
 import os
