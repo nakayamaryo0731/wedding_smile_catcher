@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Wedding Smile Catcher</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div id="loginScreen" class="screen">
+        <div class="login-container">
+            <h1>Admin Panel</h1>
+            <p class="subtitle">Wedding Smile Catcher</p>
+            <form id="loginForm">
+                <input
+                    type="password"
+                    id="passwordInput"
+                    placeholder="Enter admin password"
+                    required
+                    autocomplete="current-password"
+                >
+                <button type="submit">Login</button>
+            </form>
+            <div id="loginError" class="error"></div>
+        </div>
+    </div>
+
+    <div id="adminScreen" class="screen" style="display: none;">
+        <header>
+            <h1>Admin Dashboard</h1>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </header>
+
+        <main>
+            <section class="stats">
+                <div class="stat-card">
+                    <h3>Total Images</h3>
+                    <p id="totalImages" class="stat-value">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <p id="totalUsers" class="stat-value">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Events</h3>
+                    <p id="totalEvents" class="stat-value">-</p>
+                </div>
+            </section>
+
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="images">Images</button>
+                <button class="tab-btn" data-tab="users">Users</button>
+                <button class="tab-btn" data-tab="events">Events</button>
+            </nav>
+
+            <section id="imagesTab" class="tab-content active">
+                <div class="tab-header">
+                    <h2>Images Management</h2>
+                    <div class="actions">
+                        <button id="selectAllImages" class="btn-secondary">Select All</button>
+                        <button id="deleteSelectedImages" class="btn-danger" disabled>Delete Selected (<span id="selectedImagesCount">0</span>)</button>
+                    </div>
+                </div>
+                <div id="imagesList" class="data-list">
+                    <p class="loading">Loading images...</p>
+                </div>
+            </section>
+
+            <section id="usersTab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Users Management</h2>
+                    <div class="actions">
+                        <button id="selectAllUsers" class="btn-secondary">Select All</button>
+                        <button id="deleteSelectedUsers" class="btn-danger" disabled>Delete Selected (<span id="selectedUsersCount">0</span>)</button>
+                    </div>
+                </div>
+                <div id="usersList" class="data-list">
+                    <p class="loading">Loading users...</p>
+                </div>
+            </section>
+
+            <section id="eventsTab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Events Management</h2>
+                    <div class="actions">
+                        <button id="selectAllEvents" class="btn-secondary">Select All</button>
+                        <button id="deleteSelectedEvents" class="btn-danger" disabled>Delete Selected (<span id="selectedEventsCount">0</span>)</button>
+                    </div>
+                </div>
+                <div id="eventsList" class="data-list">
+                    <p class="loading">Loading events...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h2>Confirm Deletion</h2>
+            <p id="confirmMessage"></p>
+            <div class="modal-actions">
+                <button id="confirmDelete" class="btn-danger">Delete</button>
+                <button id="cancelDelete" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>
