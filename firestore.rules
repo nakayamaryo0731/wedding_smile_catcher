@@ -8,37 +8,42 @@ service cloud.firestore {
 
     // Users collection
     // Frontend can read user names for display
-    // Only Cloud Functions (with service account) can write
+    // Authenticated users (including anonymous) can delete for admin panel
     match /users/{userId} {
       allow read: if true;
-      allow write: if false;
+      allow delete: if request.auth != null;
+      allow create, update: if false;
     }
 
     // Images collection
     // Frontend can read images and scores for ranking display
-    // Only Cloud Functions (with service account) can write
+    // Authenticated users (including anonymous) can delete for admin panel
     match /images/{imageId} {
       allow read: if true;
-      allow write: if false;
+      allow delete: if request.auth != null;
+      allow create, update: if false;
     }
 
     // Events collection (for multi-event support)
     // Frontend can read event metadata
-    // Only Cloud Functions (with service account) can write
+    // Authenticated users (including anonymous) can delete for admin panel
     match /events/{eventId} {
       allow read: if true;
-      allow write: if false;
+      allow delete: if request.auth != null;
+      allow create, update: if false;
 
       // Event-specific users subcollection
       match /users/{userId} {
         allow read: if true;
-        allow write: if false;
+        allow delete: if request.auth != null;
+        allow create, update: if false;
       }
 
       // Event-specific images subcollection
       match /images/{imageId} {
         allow read: if true;
-        allow write: if false;
+        allow delete: if request.auth != null;
+        allow create, update: if false;
       }
     }
   }

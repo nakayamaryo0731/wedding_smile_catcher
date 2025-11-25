@@ -55,16 +55,16 @@ window.FIREBASE_CONFIG = {
 
 ```bash
 # Pythonの場合
-python3 -m http.server 8000
+python3 -m http.server 8001
 
 # Node.jsの場合
-npx http-server -p 8000
+npx http-server -p 8001
 
 # VS Code Live Server拡張機能を使用
 # index.htmlを開いて "Go Live" をクリック
 ```
 
-ブラウザで <http://localhost:8000> にアクセス
+ブラウザで <http://localhost:8001> にアクセス
 
 ### 4. Firebase Hostingにデプロイ
 
