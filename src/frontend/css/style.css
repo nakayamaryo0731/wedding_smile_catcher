@@ -6,9 +6,9 @@
 }
 
 :root {
-    /* Wedding Color Palette */
-    --primary-color: #f8b4d9;
-    --secondary-color: #a8d5e2;
+    /* Christmas Color Palette */
+    --primary-color: #c41e3a;
+    --secondary-color: #d4af37;
     --accent-gold: #ffd700;
     --text-primary: #2c3e50;
     --text-secondary: #7f8c8d;
@@ -17,8 +17,8 @@
     --shadow-medium: rgba(0, 0, 0, 0.15);
     --shadow-heavy: rgba(0, 0, 0, 0.3);
 
-    /* Gradients */
-    --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    /* Gradients - Christmas deep green */
+    --gradient-bg: linear-gradient(135deg, #1a472a 0%, #2d5a27 50%, #0d2818 100%);
     --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
 }
 
@@ -97,9 +97,8 @@ body {
 
 .tab-btn.active {
     color: var(--white);
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    border-color: transparent;
-    box-shadow: 0 4px 15px rgba(248, 180, 217, 0.4);
+    background: rgba(45, 90, 39, 0.8);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Tab Content */
@@ -345,10 +344,7 @@ body {
     font-family: 'Playfair Display', serif;
     font-size: 1.8rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #e85a6b;
 }
 
 /* Rank 1 specific sizes */
@@ -551,10 +547,7 @@ body {
     font-family: 'Playfair Display', serif;
     font-size: 1.4rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #e85a6b;
 }
 
 /* Responsive Design */
