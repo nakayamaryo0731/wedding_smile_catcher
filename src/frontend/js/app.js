@@ -237,6 +237,9 @@ async function fetchRecentRankings() {
       ...doc.data()
     }));
 
+    // Filter out images without valid scores (scoring not completed)
+    images = images.filter(img => typeof img.total_score === 'number' && !isNaN(img.total_score));
+
     // Sort by total_score descending
     images.sort((a, b) => b.total_score - a.total_score);
 
@@ -273,6 +276,9 @@ async function fetchAllTimeRankings() {
       id: doc.id,
       ...doc.data()
     }));
+
+    // Filter out images without valid scores (scoring not completed)
+    images = images.filter(img => typeof img.total_score === 'number' && !isNaN(img.total_score));
 
     // Fetch user names
     const userNamesPromises = images.map(img => fetchUserName(img.user_id));
