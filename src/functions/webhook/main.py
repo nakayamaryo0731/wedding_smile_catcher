@@ -148,8 +148,7 @@ def handle_follow(event: FollowEvent):
         user_data = user_doc.to_dict()
         name = user_data.get("name", "ゲスト")
         message = TextSendMessage(
-            text=f"{name}さん、おかえりなさい！\n\n"
-            "写真を送信してスコアを取得しましょう！"
+            text=f"{name}さん、おかえりなさい！\n\n" "笑顔の写真をアップロードしよう！"
         )
         line_bot_api.reply_message(event.reply_token, message)
 
@@ -230,7 +229,7 @@ def handle_command(text: str, reply_token: str, user_ref):
         message = get_ranking_message(user_ref)
     else:
         message = TextSendMessage(
-            text="写真を送信してスコアを取得しましょう！\n\n"
+            text="笑顔の写真をアップロードしよう！\n\n"
             "「ヘルプ」と送信すると使い方を確認できます。"
         )
 
