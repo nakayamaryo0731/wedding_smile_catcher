@@ -33,9 +33,9 @@ body {
 
 /* Container */
 .container {
-    max-width: 1300px;
+    width: 100%;
     margin: 0 auto;
-    padding: 0.8rem 0.5rem 1rem 0.5rem;
+    padding: 0.8rem 6rem 1rem 6rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -115,8 +115,8 @@ body {
 /* Ranking Container */
 .ranking-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
+    grid-template-columns: 5fr 4fr;
+    gap: 1rem;
     animation: fadeIn 1.5s ease-out;
     align-items: start;
     margin-bottom: 0;
@@ -177,7 +177,6 @@ body {
 
 /* Rank 1 Specific */
 .rank-1 {
-    max-width: 615px;
     width: 100%;
     max-height: calc(100vh - 140px);
     display: flex;
