@@ -221,13 +221,9 @@ def handle_command(text: str, reply_token: str, user_ref):
             text="【Wedding Smile Catcher 使い方】\n\n"
             "📸 写真を送信\n"
             "  → AIが笑顔を分析してスコアをお伝えします\n\n"
-            "🏆 「ランキング」\n"
-            "  → 現在のランキングを確認\n\n"
             "❓ 「ヘルプ」\n"
             "  → この使い方を表示"
         )
-    elif text in ["ランキング", "順位", "ranking"]:
-        message = get_ranking_message(user_ref)
     else:
         message = TextSendMessage(
             text="写真を送信してスコアを取得しましょう！\n\n"
@@ -235,65 +231,6 @@ def handle_command(text: str, reply_token: str, user_ref):
         )
 
     line_bot_api.reply_message(reply_token, message)
-
-
-def get_ranking_message(user_ref) -> TextSendMessage:
-    """
-    Get current ranking message.
-
-    Args:
-        user_ref: Firestore user document reference
-
-    Returns:
-        TextSendMessage with ranking information
-    """
-    try:
-        # Get top 10 images for current event
-        top_images = (
-            db.collection("images")
-            .where("event_id", "==", CURRENT_EVENT_ID)
-            .where("status", "==", "completed")
-            .order_by("total_score", direction=firestore.Query.DESCENDING)
-            .limit(10)
-            .get()
-        )
-
-        if not top_images:
-            return TextSendMessage(text="まだ投稿がありません。")
-
-        # Build ranking text
-        ranking_text = "🏆 現在のランキング TOP10\n\n"
-
-        user_data = user_ref.get().to_dict()
-        user_id = user_data.get("line_user_id")
-        user_rank = None
-
-        for idx, doc in enumerate(top_images, 1):
-            data = doc.to_dict()
-            user_name = data.get("user_id", "Unknown")  # Will be improved
-            score = data.get("total_score", 0)
-
-            # Get user name from users collection
-            image_user_ref = db.collection("users").document(data.get("user_id"))
-            image_user = image_user_ref.get()
-            if image_user.exists:
-                user_name = image_user.to_dict().get("name", "Unknown")
-
-            ranking_text += f"{idx}. {user_name}: {score:.2f}点\n"
-
-            if data.get("user_id") == user_id:
-                user_rank = idx
-
-        if user_rank:
-            ranking_text += f"\n📍 あなたの順位: {user_rank}位"
-        else:
-            ranking_text += "\n📍 あなたの順位: 圏外"
-
-        return TextSendMessage(text=ranking_text)
-
-    except Exception as e:
-        logger.error(f"Failed to get ranking: {str(e)}")
-        return TextSendMessage(text="ランキング取得に失敗しました。")
 
 
 @handler.add(MessageEvent, message=ImageMessage)
