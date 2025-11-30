@@ -28,6 +28,7 @@ repos:
       - id: check-yaml
         args: [--unsafe]  # Allow custom YAML tags
       - id: check-json
+        exclude: ^\.vscode/  # VS Code uses JSONC (JSON with comments)
       - id: check-added-large-files
         args: [--maxkb=500]
       - id: check-case-conflict
