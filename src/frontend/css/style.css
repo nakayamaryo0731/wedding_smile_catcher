@@ -33,7 +33,7 @@ body {
 
 /* Container */
 .container {
-    max-width: 1300px;
+    max-width: 1500px;
     margin: 0 auto;
     padding: 0.8rem 0.5rem 1rem 0.5rem;
     min-height: 100vh;
@@ -116,7 +116,7 @@ body {
 .ranking-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0;
+    gap: 1.2rem;
     animation: fadeIn 1.5s ease-out;
     align-items: start;
     margin-bottom: 0;
@@ -135,7 +135,7 @@ body {
 .rank-2-3-container {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 1.2rem;
     height: calc(100vh - 140px);
     overflow: hidden;
 }
@@ -177,7 +177,7 @@ body {
 
 /* Rank 1 Specific */
 .rank-1 {
-    max-width: 615px;
+    max-width: 750px;
     width: 100%;
     max-height: calc(100vh - 140px);
     display: flex;
@@ -244,8 +244,8 @@ body {
 /* Rank 2 & 3 cards should split the height equally */
 .rank-2,
 .rank-3 {
-    flex: 0 0 calc(50% - 0.375rem);
-    height: calc(50% - 0.375rem);
+    flex: 0 0 calc(50% - 0.6rem);
+    height: calc(50% - 0.6rem);
     display: flex;
     flex-direction: column;
     padding: 0.25rem;
