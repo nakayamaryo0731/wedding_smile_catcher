@@ -554,11 +554,12 @@ def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
 
 ## 出力
 JSON形式でscoreとcommentのキーで返却する。JSONのみを出力すること。
+commentは100文字以内で簡潔に記述すること。
 
 例:
 {
   "score": 85,
-  "comment": "皆さんの目元から溢れる自然な喜びが印象的で、全体の一体感も素晴らしい"
+  "comment": "全員の目元から溢れる自然な喜びが印象的です。グループ全体の一体感も素晴らしく、幸せな瞬間が伝わってきます"
 }
 """
 
