@@ -262,14 +262,15 @@ async function fetchRecentRankings() {
     // Sort by total_score descending
     images.sort((a, b) => b.total_score - a.total_score);
 
+    // TEMPORARILY DISABLED for photo session
     // Limit same user to max 2 images in top rankings
-    const userCount = new Map();
-    images = images.filter(img => {
-      const count = userCount.get(img.user_id) || 0;
-      if (count >= 2) return false;
-      userCount.set(img.user_id, count + 1);
-      return true;
-    });
+    // const userCount = new Map();
+    // images = images.filter(img => {
+    //   const count = userCount.get(img.user_id) || 0;
+    //   if (count >= 2) return false;
+    //   userCount.set(img.user_id, count + 1);
+    //   return true;
+    // });
 
     await updateRankings(images);
   } catch (error) {
@@ -319,13 +320,14 @@ async function fetchAllTimeRankings() {
       return (b.smile_score || 0) - (a.smile_score || 0);
     });
 
+    // TEMPORARILY DISABLED for photo session
     // Unique users only (best score per user)
-    const seenUsers = new Set();
-    images = images.filter(img => {
-      if (seenUsers.has(img.user_id)) return false;
-      seenUsers.add(img.user_id);
-      return true;
-    });
+    // const seenUsers = new Set();
+    // images = images.filter(img => {
+    //   if (seenUsers.has(img.user_id)) return false;
+    //   seenUsers.add(img.user_id);
+    //   return true;
+    // });
 
     // Take top 10
     images = images.slice(0, 10);
