@@ -96,8 +96,12 @@ function getTopImages(images, count = 3) {
 
 /**
  * Update a ranking card with image data
+ * @param {number} rank - The rank (1, 2, or 3)
+ * @param {object} imageData - The image data from Firestore
+ * @param {object} cards - The card elements to update (rankCards or rankCardsAll)
+ * @param {boolean} useDecimal - Whether to display score with 2 decimal places
  */
-function updateRankCard(rank, imageData, cards = rankCards) {
+function updateRankCard(rank, imageData, cards = rankCards, useDecimal = false) {
   const card = cards[rank];
 
   if (!imageData) {
@@ -126,21 +130,14 @@ function updateRankCard(rank, imageData, cards = rankCards) {
   const userName = imageData.user_name || imageData.user_id || 'ゲスト';
   card.image.alt = `${userName}'s smile`;
   card.name.textContent = userName;
-  card.score.textContent = Math.round(imageData.total_score);
+  // Display score with decimals for all-time tab, rounded for recent tab
+  card.score.textContent = useDecimal ? imageData.total_score.toFixed(2) : Math.round(imageData.total_score);
 
   // Update AI comment for rank 1 only
   if (card.comment) {
-    // Debug: log available fields
-    if (rank === 1) {
-      console.log('Rank 1 imageData:', imageData);
-      console.log('Available comment fields:', {
-        comment: imageData.comment,
-        ai_comment: imageData.ai_comment,
-        gemini_comment: imageData.gemini_comment
-      });
-    }
-
-    const comment = imageData.comment || imageData.ai_comment || imageData.gemini_comment || 'すばらしい笑顔です！';
+    const rawComment = imageData.comment || imageData.ai_comment || imageData.gemini_comment || 'すばらしい笑顔です！';
+    // Remove existing newlines, add single line break after each sentence (。)
+    const comment = rawComment.replace(/\n/g, '').replace(/。/g, '。\n').trimEnd();
     card.comment.textContent = comment;
   }
 
@@ -152,8 +149,11 @@ function updateRankCard(rank, imageData, cards = rankCards) {
 
 /**
  * Render ranking list items (4-10位)
+ * @param {array} images - Array of image data
+ * @param {number} startRank - Starting rank number (default 4)
+ * @param {boolean} useDecimal - Whether to display score with 2 decimal places
  */
-function renderRankingList(images, startRank = 4) {
+function renderRankingList(images, startRank = 4, useDecimal = false) {
   const listContainer = document.getElementById('ranking-list-items');
   listContainer.innerHTML = '';
 
@@ -164,7 +164,7 @@ function renderRankingList(images, startRank = 4) {
     const imageUrl = imageData.storage_url ||
                      `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
     const userName = imageData.user_name || imageData.user_id || 'ゲスト';
-    const score = Math.round(imageData.total_score);
+    const score = useDecimal ? imageData.total_score.toFixed(2) : Math.round(imageData.total_score);
 
     const itemEl = document.createElement('div');
     itemEl.className = 'ranking-list-item';
@@ -243,6 +243,15 @@ async function fetchRecentRankings() {
     // Sort by total_score descending
     images.sort((a, b) => b.total_score - a.total_score);
 
+    // Limit same user to max 2 images in top rankings
+    const userCount = new Map();
+    images = images.filter(img => {
+      const count = userCount.get(img.user_id) || 0;
+      if (count >= 2) return false;
+      userCount.set(img.user_id, count + 1);
+      return true;
+    });
+
     await updateRankings(images);
   } catch (error) {
     console.error('Error fetching recent rankings:', error);
@@ -255,6 +264,9 @@ async function fetchRecentRankings() {
 
 /**
  * Fetch all-time top 10 rankings from Firestore
+ * - Unique users only (best score per user)
+ * - Sort by total_score, then smile_score for tiebreaker
+ * - Display score with 2 decimal places
  */
 async function fetchAllTimeRankings() {
   try {
@@ -266,7 +278,7 @@ async function fetchAllTimeRankings() {
       imagesRef,
       where('event_id', '==', currentEventId),
       orderBy('total_score', 'desc'),
-      limit(10) // Fetch top 10 images directly
+      limit(100) // Fetch more to ensure we have 10 unique users
     );
 
     const snapshot = await getDocs(q);
@@ -280,6 +292,25 @@ async function fetchAllTimeRankings() {
     // Filter out images without valid scores (scoring not completed)
     images = images.filter(img => typeof img.total_score === 'number' && !isNaN(img.total_score));
 
+    // Sort by total_score desc, then smile_score desc for tiebreaker
+    images.sort((a, b) => {
+      if (b.total_score !== a.total_score) {
+        return b.total_score - a.total_score;
+      }
+      return (b.smile_score || 0) - (a.smile_score || 0);
+    });
+
+    // Unique users only (best score per user)
+    const seenUsers = new Set();
+    images = images.filter(img => {
+      if (seenUsers.has(img.user_id)) return false;
+      seenUsers.add(img.user_id);
+      return true;
+    });
+
+    // Take top 10
+    images = images.slice(0, 10);
+
     // Fetch user names
     const userNamesPromises = images.map(img => fetchUserName(img.user_id));
     const userNames = await Promise.all(userNamesPromises);
@@ -288,14 +319,14 @@ async function fetchAllTimeRankings() {
       img.user_name = userNames[index];
     });
 
-    // Update top 3 in all-time tab
+    // Update top 3 in all-time tab (with decimal display)
     for (let i = 1; i <= 3; i++) {
-      updateRankCard(i, images[i - 1], rankCardsAll);
+      updateRankCard(i, images[i - 1], rankCardsAll, true);
     }
 
     // Render 4-10 in list format
     const listImages = images.slice(3, 10);
-    renderRankingList(listImages, 4);
+    renderRankingList(listImages, 4, true);
 
     console.log(`Updated all-time top 10 rankings`);
   } catch (error) {

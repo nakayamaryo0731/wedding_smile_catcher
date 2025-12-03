@@ -35,7 +35,7 @@ body {
 .container {
     width: 90%;
     margin: 0 auto;
-    padding: 0.8rem 6rem 1rem 6rem;
+    padding: 0.5rem 6rem 0.5rem 6rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -45,13 +45,13 @@ body {
 /* Header */
 .header {
     text-align: center;
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.2rem;
     animation: fadeInDown 1s ease-out;
 }
 
 .title {
     font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
+    font-size: 2.5rem;
     font-weight: 700;
     color: var(--white);
     text-shadow: 2px 4px 8px var(--shadow-heavy);
@@ -60,7 +60,7 @@ body {
 }
 
 .subtitle {
-    font-size: 0.85rem;
+    font-size: 1.2rem;
     color: rgba(255, 255, 255, 0.9);
     font-weight: 300;
     text-shadow: 1px 2px 4px var(--shadow-medium);
@@ -71,12 +71,12 @@ body {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
-    margin-top: 0.4rem;
+    margin-top: 0.3rem;
 }
 
 .tab-btn {
-    padding: 0.5rem 1.5rem;
-    font-size: 0.9rem;
+    padding: 0.4rem 1.6rem;
+    font-size: 1.3rem;
     font-weight: 600;
     font-family: 'Noto Sans JP', sans-serif;
     color: rgba(255, 255, 255, 0.7);
@@ -105,7 +105,7 @@ body {
 .tab-content {
     display: none;
     animation: fadeIn 0.5s ease-out;
-    margin-top: 0.5rem;
+    margin-top: 0.3rem;
 }
 
 .tab-content.active {
@@ -120,7 +120,7 @@ body {
     animation: fadeIn 1.5s ease-out;
     align-items: start;
     margin-bottom: 0;
-    max-height: calc(100vh - 140px);
+    max-height: calc(100vh - 180px);
 }
 
 /* Rank 1 Container */
@@ -135,8 +135,8 @@ body {
 .rank-2-3-container {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
-    height: calc(100vh - 140px);
+    gap: 0.8rem;
+    height: calc(100vh - 180px);
     overflow: hidden;
 }
 
@@ -178,14 +178,14 @@ body {
 /* Rank 1 Specific */
 .rank-1 {
     width: 100%;
-    max-height: calc(100vh - 140px);
+    max-height: calc(100vh - 180px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
 .rank-1 .image-container {
-    flex: 0.85;
+    flex: 1.5;
     min-height: 0;
 }
 
@@ -211,8 +211,8 @@ body {
 }
 
 .rank-1 .rank-badge {
-    width: 80px;
-    height: 80px;
+    width: 120px;
+    height: 120px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -220,21 +220,21 @@ body {
 }
 
 .crown {
-    font-size: 2rem;
+    font-size: 3rem;
     display: block;
 }
 
 .rank-number {
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 1.5rem;
     color: var(--text-primary);
     margin-top: 0.15rem;
 }
 
 .rank-2 .rank-badge,
 .rank-3 .rank-badge {
-    width: 60px;
-    height: 60px;
+    width: 95px;
+    height: 95px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,8 +243,8 @@ body {
 /* Rank 2 & 3 cards should split the height equally */
 .rank-2,
 .rank-3 {
-    flex: 0 0 calc(50% - 0.6rem);
-    height: calc(50% - 0.6rem);
+    flex: 0 0 calc(50% - 0.4rem);
+    height: calc(50% - 0.4rem);
     display: flex;
     flex-direction: column;
     padding: 0.25rem;
@@ -270,22 +270,22 @@ body {
 
 .rank-2 .user-name,
 .rank-3 .user-name {
-    font-size: 1.1rem;
+    font-size: 1.6rem;
 }
 
 .rank-2 .score,
 .rank-3 .score {
-    font-size: 1.5rem;
+    font-size: 2.2rem;
 }
 
 .rank-2 .rank-number,
 .rank-3 .rank-number {
-    font-size: 0.8rem;
+    font-size: 1.3rem;
 }
 
 .rank-2 .label,
 .rank-3 .label {
-    font-size: 0.75rem;
+    font-size: 1rem;
 }
 
 /* Image Container */
@@ -313,6 +313,13 @@ body {
     text-align: center;
 }
 
+.rank-1 .ranking-info {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
 .user-score-row {
     display: flex;
     align-items: baseline;
@@ -327,58 +334,56 @@ body {
 }
 
 .label {
-    font-size: 0.9rem;
+    font-size: 1.4rem;
     color: var(--text-secondary);
     font-weight: 400;
 }
 
 .user-name {
     font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--text-primary);
 }
 
 .score {
     font-family: 'Playfair Display', serif;
-    font-size: 1.8rem;
+    font-size: 2.8rem;
     font-weight: 700;
     color: #e85a6b;
 }
 
 /* Rank 1 specific sizes */
 .rank-1 .user-name {
-    font-size: 1.3rem;
+    font-size: 2.4rem;
 }
 
 .rank-1 .score {
-    font-size: 1.7rem;
+    font-size: 3.5rem;
 }
 
+/* AI Comment */
 .ai-comment-title {
-    font-size: 0.85rem;
+    font-size: 1.6rem;
     font-weight: 600;
     color: var(--text-primary);
+    margin-top: 0.2rem;
     margin-bottom: 0.3rem;
     margin-left: 0.2rem;
     text-align: left;
 }
 
 .ai-comment {
-    font-size: 0.88rem;
+    font-size: 1.7rem;
     color: var(--text-secondary);
-    line-height: 1.35;
+    line-height: 1.5;
     font-style: italic;
-    padding: 0.35rem 0.7rem;
+    padding: 0.5rem 1rem;
     background: rgba(255, 255, 255, 0.3);
     border-radius: 10px;
-    border-left: 3px solid var(--primary-color);
-    max-height: 160px;
-    overflow-y: auto;
-}
-
-.rank-1 .ai-comment {
-    max-height: 140px;
+    border-left: 4px solid var(--primary-color);
+    white-space: pre-line;
+    text-align: left;
 }
 
 /* Loading State */
@@ -505,16 +510,16 @@ body {
 
 .list-rank {
     font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
+    font-size: 2.2rem;
     font-weight: 700;
     color: var(--text-primary);
-    min-width: 50px;
+    min-width: 60px;
     text-align: center;
 }
 
 .list-image-container {
-    width: 80px;
-    height: 80px;
+    width: 100px;
+    height: 100px;
     border-radius: 8px;
     overflow: hidden;
     flex-shrink: 0;
@@ -537,14 +542,14 @@ body {
 
 .list-name {
     font-family: 'Noto Sans JP', sans-serif;
-    font-size: 1rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-primary);
 }
 
 .list-score {
     font-family: 'Playfair Display', serif;
-    font-size: 1.4rem;
+    font-size: 2rem;
     font-weight: 700;
     color: #e85a6b;
 }
