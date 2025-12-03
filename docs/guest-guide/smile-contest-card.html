@@ -215,11 +215,14 @@
       margin-top: 3px;
     }
 
-    .qr-inline {
+    .qr-flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       margin-top: 2px;
     }
 
-    .qr-inline .qr-placeholder {
+    .qr-flow .qr-placeholder {
       width: 60px;
       height: 60px;
       border: 2px dashed #2d5a3d;
@@ -230,6 +233,19 @@
       background: white;
       color: #888;
       font-size: 8px;
+    }
+
+    .qr-flow .arrow {
+      font-size: 16px;
+      color: #2d5a3d;
+      font-weight: bold;
+    }
+
+    .step-with-img .add-bot-img {
+      height: 60px;
+      width: auto;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     }
 
     .section {
@@ -330,8 +346,10 @@
           <div class="steps">
             <div class="step-with-img">
               <span>① LINEで友達追加</span>
-              <div class="qr-inline">
+              <div class="qr-flow">
                 <div class="qr-placeholder">QRコード</div>
+                <span class="arrow">→</span>
+                <img src="add_bot.png" alt="友だち追加" class="add-bot-img">
               </div>
             </div>
             <div class="step-with-img">
