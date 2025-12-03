@@ -95,6 +95,20 @@ function getTopImages(images, count = 3) {
 }
 
 /**
+ * Detect image orientation and apply appropriate CSS class
+ * Portrait images get 'portrait' class for object-fit: contain
+ */
+function applyImageOrientation(imgElement) {
+  imgElement.onload = () => {
+    if (imgElement.naturalHeight > imgElement.naturalWidth) {
+      imgElement.classList.add('portrait');
+    } else {
+      imgElement.classList.remove('portrait');
+    }
+  };
+}
+
+/**
  * Update a ranking card with image data
  * @param {number} rank - The rank (1, 2, or 3)
  * @param {object} imageData - The image data from Firestore
@@ -127,6 +141,7 @@ function updateRankCard(rank, imageData, cards = rankCards, useDecimal = false) 
 
   // Update content
   card.image.src = imageUrl;
+  applyImageOrientation(card.image);
   const userName = imageData.user_name || imageData.user_id || 'ゲスト';
   card.image.alt = `${userName}'s smile`;
   card.name.textContent = userName;
@@ -179,6 +194,10 @@ function renderRankingList(images, startRank = 4, useDecimal = false) {
       </div>
     `;
     listContainer.appendChild(itemEl);
+
+    // Apply portrait class for vertical images
+    const imgEl = itemEl.querySelector('.list-image');
+    applyImageOrientation(imgEl);
   });
 }
 
@@ -335,19 +354,19 @@ async function fetchAllTimeRankings() {
 }
 
 /**
- * Set up periodic polling (fetch rankings every 1 minute)
+ * Set up periodic polling (fetch rankings every 10 seconds)
  */
 function setupPeriodicPolling() {
-  console.log('Setting up periodic polling (every 1 minute)...');
+  console.log('Setting up periodic polling (every 10 seconds)...');
 
   // Initial fetch
   fetchRecentRankings();
 
-  // Fetch every 60 seconds
+  // Fetch every 10 seconds
   const intervalId = setInterval(() => {
     console.log('Periodic update: fetching rankings...');
     fetchRecentRankings();
-  }, 60000); // 60000ms = 1 minute
+  }, 10000); // 10000ms = 10 seconds
 
   // Store interval ID for cleanup
   window.rankingIntervalId = intervalId;
@@ -424,7 +443,7 @@ function init() {
   // Set up tab switching
   setupTabListeners();
 
-  // Set up periodic polling (every 1 minute)
+  // Set up periodic polling (every 10 seconds)
   setupPeriodicPolling();
 }
 
