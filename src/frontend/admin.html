@@ -51,6 +51,7 @@
                 <button class="tab-btn active" data-tab="images">Images</button>
                 <button class="tab-btn" data-tab="users">Users</button>
                 <button class="tab-btn" data-tab="events">Events</button>
+                <button class="tab-btn" data-tab="statistics">Statistics</button>
             </nav>
 
             <section id="imagesTab" class="tab-content active">
@@ -91,6 +92,128 @@
                     <p class="loading">Loading events...</p>
                 </div>
             </section>
+
+            <section id="statisticsTab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Event Statistics</h2>
+                    <div class="actions">
+                        <button id="refreshStats" class="btn-secondary">Refresh</button>
+                    </div>
+                </div>
+
+                <!-- Basic Statistics -->
+                <div class="stats-section">
+                    <h3 class="stats-section-title">Basic Statistics</h3>
+                    <div class="stats-grid stats-grid-7">
+                        <div class="stat-card-mini">
+                            <h4>Total Images</h4>
+                            <p id="statTotalImages" class="stat-value-mini">-</p>
+                        </div>
+                        <div class="stat-card-mini">
+                            <h4>Scored</h4>
+                            <p id="statScoredImages" class="stat-value-mini">-</p>
+                        </div>
+                        <div class="stat-card-mini">
+                            <h4>Participants</h4>
+                            <p id="statUniqueUsers" class="stat-value-mini">-</p>
+                        </div>
+                        <div class="stat-card-mini">
+                            <h4>Avg Score</h4>
+                            <p id="statAvgScore" class="stat-value-mini">-</p>
+                        </div>
+                        <div class="stat-card-mini">
+                            <h4>Max Score</h4>
+                            <p id="statMaxScore" class="stat-value-mini">-</p>
+                        </div>
+                        <div class="stat-card-mini">
+                            <h4>Median</h4>
+                            <p id="statMedianScore" class="stat-value-mini">-</p>
+                        </div>
+                        <div class="stat-card-mini">
+                            <h4>Posts/User</h4>
+                            <p id="statAvgPosts" class="stat-value-mini">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ranking Details -->
+                <div class="stats-section">
+                    <h3 class="stats-section-title">Ranking Details</h3>
+
+                    <!-- Overall Top 10 -->
+                    <div class="ranking-table-container">
+                        <h4>Overall Top 10</h4>
+                        <table class="ranking-table" id="overallTop10Table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Photo</th>
+                                    <th>Name</th>
+                                    <th>Total</th>
+                                    <th>Smile</th>
+                                    <th>AI</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Most Active Users -->
+                    <div class="ranking-table-container">
+                        <h4>Most Active Users (Top 5)</h4>
+                        <table class="ranking-table" id="mostActiveTable">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Name</th>
+                                    <th>Uploads</th>
+                                    <th>Best Score</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Special Awards -->
+                    <div class="special-awards">
+                        <h4>Special Awards</h4>
+                        <div class="awards-grid">
+                            <div class="award-card" id="awardBestSmile">
+                                <div class="award-icon">😊</div>
+                                <div class="award-title">Best Smile Score</div>
+                                <img class="award-image" src="" alt="">
+                                <div class="award-winner">-</div>
+                                <div class="award-value">-</div>
+                            </div>
+                            <div class="award-card" id="awardBestAI">
+                                <div class="award-icon">🤖</div>
+                                <div class="award-title">Best AI Score</div>
+                                <img class="award-image" src="" alt="">
+                                <div class="award-winner">-</div>
+                                <div class="award-value">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Analysis -->
+                <div class="stats-section">
+                    <h3 class="stats-section-title">Timeline Analysis</h3>
+
+                    <!-- Hourly Distribution -->
+                    <div class="chart-container">
+                        <h4>Hourly Distribution</h4>
+                        <div id="hourlyChart" class="bar-chart"></div>
+                        <div id="peakTimeInfo" class="peak-info"></div>
+                    </div>
+
+                    <!-- Cumulative Timeline -->
+                    <div class="chart-container">
+                        <h4>Cumulative Uploads</h4>
+                        <canvas id="cumulativeChart"></canvas>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -105,6 +228,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="js/config.js"></script>
     <script type="module" src="js/admin.js"></script>
 </body>

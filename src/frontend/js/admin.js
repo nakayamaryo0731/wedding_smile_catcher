@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, getDocs, query, orderBy, limit, writeBatch, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, getDocs, query, orderBy, limit, writeBatch, doc, where, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 const ADMIN_PASSWORD_HASH = '23a68358cb853df2a850e11cbf705979dd65d570e3394b7af0904c2b153fcbb5';
@@ -322,6 +322,340 @@ function switchTab(tabName) {
     if (tabName === 'images') loadImages();
     if (tabName === 'users') loadUsers();
     if (tabName === 'events') loadEvents();
+    if (tabName === 'statistics') loadStatistics();
+}
+
+// Statistics functions
+let cumulativeChartInstance = null;
+
+function getEventId() {
+    return window.CURRENT_EVENT_ID || 'test';
+}
+
+function getImageUrl(imageData) {
+    const bucketName = window.GCS_BUCKET_NAME || 'wedding-smile-images-wedding-smile-catcher';
+    return imageData.storage_url ||
+           `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
+}
+
+async function fetchUserName(userId) {
+    try {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            return userSnap.data().name || userId;
+        }
+        return userId;
+    } catch (error) {
+        console.error('Error fetching user name:', error);
+        return userId;
+    }
+}
+
+async function enrichImagesWithUserNames(images) {
+    const userCache = new Map();
+
+    for (const img of images) {
+        if (!img.user_id) continue;
+
+        if (img.user_name) continue; // Already has user_name
+
+        if (userCache.has(img.user_id)) {
+            img.user_name = userCache.get(img.user_id);
+        } else {
+            const name = await fetchUserName(img.user_id);
+            userCache.set(img.user_id, name);
+            img.user_name = name;
+        }
+    }
+
+    return images;
+}
+
+function calculateBasicStats(images) {
+    const scoredImages = images.filter(img =>
+        typeof img.total_score === 'number' && !isNaN(img.total_score)
+    );
+
+    const scores = scoredImages.map(img => img.total_score).sort((a, b) => a - b);
+    const uniqueUsers = new Set(scoredImages.map(img => img.user_id));
+
+    const getMedian = (arr) => {
+        if (arr.length === 0) return 0;
+        const mid = Math.floor(arr.length / 2);
+        return arr.length % 2 !== 0
+            ? arr[mid]
+            : (arr[mid - 1] + arr[mid]) / 2;
+    };
+
+    return {
+        totalImages: images.length,
+        scoredImages: scoredImages.length,
+        uniqueUsers: uniqueUsers.size,
+        avgScore: scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
+        maxScore: scores.length ? Math.max(...scores) : 0,
+        medianScore: getMedian(scores),
+        avgUploadsPerUser: uniqueUsers.size ? (scoredImages.length / uniqueUsers.size) : 0
+    };
+}
+
+function calculateRankings(images) {
+    const scoredImages = images.filter(img =>
+        typeof img.total_score === 'number' && !isNaN(img.total_score)
+    );
+
+    // Overall Top 10 (unique users)
+    const userBestScores = new Map();
+    scoredImages.forEach(img => {
+        const existing = userBestScores.get(img.user_id);
+        if (!existing || img.total_score > existing.total_score) {
+            userBestScores.set(img.user_id, img);
+        }
+    });
+    const overallTop10 = Array.from(userBestScores.values())
+        .sort((a, b) => b.total_score - a.total_score)
+        .slice(0, 10);
+
+    // Most Active Users (Top 5)
+    const userUploadCounts = new Map();
+    scoredImages.forEach(img => {
+        const data = userUploadCounts.get(img.user_id) || { count: 0, name: img.user_name || img.user_id, bestScore: 0 };
+        data.count++;
+        data.bestScore = Math.max(data.bestScore, img.total_score);
+        userUploadCounts.set(img.user_id, data);
+    });
+    const mostActiveUsers = Array.from(userUploadCounts.entries())
+        .map(([userId, data]) => ({ userId, ...data }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    // Special Awards
+    const bestSmile = scoredImages.reduce((best, img) =>
+        (img.smile_score || 0) > (best?.smile_score || 0) ? img : best, null);
+    const bestAI = scoredImages.reduce((best, img) =>
+        (img.ai_score || 0) > (best?.ai_score || 0) ? img : best, null);
+
+    return {
+        overallTop10,
+        mostActiveUsers,
+        specialAwards: { bestSmile, bestAI }
+    };
+}
+
+function calculateTimelineStats(images) {
+    const scoredImages = images.filter(img =>
+        img.upload_timestamp && typeof img.total_score === 'number'
+    );
+
+    // Hourly distribution
+    const hourlyCount = new Map();
+    scoredImages.forEach(img => {
+        const date = new Date(img.upload_timestamp.seconds * 1000);
+        const hour = date.getHours();
+        hourlyCount.set(hour, (hourlyCount.get(hour) || 0) + 1);
+    });
+
+    const hourlyData = [];
+    for (let h = 0; h <= 23; h++) {
+        hourlyData.push({ hour: h, count: hourlyCount.get(h) || 0 });
+    }
+
+    // Peak hour
+    const peakHour = hourlyData.reduce((peak, curr) =>
+        curr.count > peak.count ? curr : peak, { hour: 0, count: 0 });
+
+    // Cumulative timeline
+    const sortedImages = [...scoredImages].sort((a, b) =>
+        a.upload_timestamp.seconds - b.upload_timestamp.seconds
+    );
+
+    const cumulativeData = sortedImages.map((img, index) => ({
+        time: new Date(img.upload_timestamp.seconds * 1000),
+        cumulative: index + 1
+    }));
+
+    return { hourlyData, peakHour, cumulativeData };
+}
+
+async function loadStatistics() {
+    const eventId = getEventId();
+
+    try {
+        const q = query(
+            collection(db, 'images'),
+            where('event_id', '==', eventId),
+            orderBy('upload_timestamp', 'asc')
+        );
+        const snapshot = await getDocs(q);
+
+        let images = snapshot.docs.map(docSnap => ({
+            id: docSnap.id,
+            ...docSnap.data()
+        }));
+
+        // Enrich with user names from users collection
+        images = await enrichImagesWithUserNames(images);
+
+        console.log(`Loaded ${images.length} images for statistics (event_id: ${eventId})`);
+
+        renderBasicStats(images);
+        renderRankings(images);
+        renderTimelineAnalysis(images);
+
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+function renderBasicStats(images) {
+    const stats = calculateBasicStats(images);
+
+    document.getElementById('statTotalImages').textContent = stats.totalImages;
+    document.getElementById('statScoredImages').textContent = stats.scoredImages;
+    document.getElementById('statUniqueUsers').textContent = stats.uniqueUsers;
+    document.getElementById('statAvgScore').textContent = stats.avgScore.toFixed(1);
+    document.getElementById('statMaxScore').textContent = stats.maxScore.toFixed(1);
+    document.getElementById('statMedianScore').textContent = stats.medianScore.toFixed(1);
+    document.getElementById('statAvgPosts').textContent = stats.avgUploadsPerUser.toFixed(1);
+}
+
+function renderRankings(images) {
+    const rankings = calculateRankings(images);
+
+    // Overall Top 10
+    const tbody = document.querySelector('#overallTop10Table tbody');
+    if (rankings.overallTop10.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">No data</td></tr>';
+    } else {
+        tbody.innerHTML = rankings.overallTop10.map((img, i) => `
+            <tr>
+                <td class="rank-cell">${i + 1}</td>
+                <td><img src="${getImageUrl(img)}" class="thumbnail" alt="" loading="lazy"></td>
+                <td>${img.user_name || img.user_id || 'Unknown'}</td>
+                <td>${img.total_score.toFixed(1)}</td>
+                <td>${(img.smile_score || 0).toFixed(0)}</td>
+                <td>${(img.ai_score || 0)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Most Active Users
+    const activeBody = document.querySelector('#mostActiveTable tbody');
+    if (rankings.mostActiveUsers.length === 0) {
+        activeBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;">No data</td></tr>';
+    } else {
+        activeBody.innerHTML = rankings.mostActiveUsers.map((user, i) => `
+            <tr>
+                <td class="rank-cell">${i + 1}</td>
+                <td>${user.name || user.userId}</td>
+                <td>${user.count}</td>
+                <td>${user.bestScore.toFixed(1)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Special Awards
+    renderAward('awardBestSmile', rankings.specialAwards.bestSmile, 'smile_score', 'Smile');
+    renderAward('awardBestAI', rankings.specialAwards.bestAI, 'ai_score', 'AI');
+}
+
+function renderAward(elementId, imageData, scoreField, label) {
+    const card = document.getElementById(elementId);
+    const imgEl = card.querySelector('.award-image');
+    const winnerEl = card.querySelector('.award-winner');
+    const valueEl = card.querySelector('.award-value');
+
+    if (!imageData) {
+        imgEl.src = '';
+        winnerEl.textContent = '-';
+        valueEl.textContent = '-';
+        return;
+    }
+
+    imgEl.src = getImageUrl(imageData);
+    winnerEl.textContent = imageData.user_name || imageData.user_id || 'Unknown';
+    valueEl.textContent = `${label}: ${imageData[scoreField]}`;
+}
+
+function renderTimelineAnalysis(images) {
+    const timeline = calculateTimelineStats(images);
+
+    // Hourly Bar Chart
+    const chartContainer = document.getElementById('hourlyChart');
+    const maxCount = Math.max(...timeline.hourlyData.map(d => d.count), 1);
+
+    // Filter to hours with activity (or adjacent)
+    const activeHours = timeline.hourlyData.filter(d => d.count > 0);
+    if (activeHours.length === 0) {
+        chartContainer.innerHTML = '<p style="text-align:center;color:#888;padding:2rem;">No data</p>';
+        document.getElementById('peakTimeInfo').innerHTML = '';
+    } else {
+        const minHour = Math.max(0, Math.min(...activeHours.map(d => d.hour)) - 1);
+        const maxHour = Math.min(23, Math.max(...activeHours.map(d => d.hour)) + 1);
+
+        chartContainer.innerHTML = timeline.hourlyData
+            .filter(d => d.hour >= minHour && d.hour <= maxHour)
+            .map(d => `
+                <div class="bar"
+                     style="--height: ${(d.count / maxCount) * 100}%;"
+                     data-value="${d.count}">
+                    <span class="bar-label">${d.hour}時</span>
+                </div>
+            `).join('');
+
+        document.getElementById('peakTimeInfo').innerHTML =
+            `Peak Time: <strong>${timeline.peakHour.hour}:00-${timeline.peakHour.hour + 1}:00</strong> (${timeline.peakHour.count} uploads)`;
+    }
+
+    // Cumulative Chart
+    renderCumulativeChart(timeline.cumulativeData);
+}
+
+function renderCumulativeChart(data) {
+    const canvas = document.getElementById('cumulativeChart');
+    const ctx = canvas.getContext('2d');
+
+    if (cumulativeChartInstance) {
+        cumulativeChartInstance.destroy();
+    }
+
+    if (data.length === 0) {
+        canvas.style.display = 'none';
+        return;
+    }
+    canvas.style.display = 'block';
+
+    cumulativeChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.time.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })),
+            datasets: [{
+                label: 'Cumulative Uploads',
+                data: data.map(d => d.cumulative),
+                borderColor: '#1a472a',
+                backgroundColor: 'rgba(26, 71, 42, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    ticks: { maxTicksLimit: 8 }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
 }
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -365,6 +699,8 @@ document.getElementById('selectAllEvents').addEventListener('click', () => selec
 document.getElementById('deleteSelectedImages').addEventListener('click', () => deleteSelected('images'));
 document.getElementById('deleteSelectedUsers').addEventListener('click', () => deleteSelected('users'));
 document.getElementById('deleteSelectedEvents').addEventListener('click', () => deleteSelected('events'));
+
+document.getElementById('refreshStats').addEventListener('click', () => loadStatistics());
 
 document.getElementById('confirmDelete').addEventListener('click', () => {
     if (pendingDeleteAction) {
