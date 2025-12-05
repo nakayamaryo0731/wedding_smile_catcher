@@ -362,6 +362,254 @@ main {
     justify-content: flex-end;
 }
 
+/* Statistics Section */
+.stats-section {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: #f9f9f9;
+    border-radius: 12px;
+}
+
+.stats-section-title {
+    font-size: 1.1rem;
+    color: #1a472a;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e8f5e9;
+}
+
+/* Stats Grid */
+.stats-grid-7 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.stat-card-mini {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card-mini h4 {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.stat-value-mini {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a472a;
+}
+
+/* Ranking Tables */
+.ranking-table-container {
+    margin-bottom: 1.5rem;
+}
+
+.ranking-table-container h4 {
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 0.75rem;
+}
+
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ranking-table th,
+.ranking-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.ranking-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+    color: #666;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.ranking-table td {
+    font-size: 0.9rem;
+}
+
+.ranking-table .rank-cell {
+    font-weight: 700;
+    color: #1a472a;
+    width: 50px;
+}
+
+.ranking-table .thumbnail {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.ranking-table tr:hover {
+    background: #f9f9f9;
+}
+
+/* Special Awards */
+.special-awards h4 {
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 0.75rem;
+}
+
+.awards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.award-card {
+    background: linear-gradient(135deg, #fffbeb, #fff);
+    border: 2px solid #fbbf24;
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.award-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.award-title {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+}
+
+.award-image {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border: 3px solid #fbbf24;
+    display: none;
+}
+
+.award-image[src]:not([src=""]) {
+    display: inline-block;
+}
+
+.award-winner {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.award-value {
+    font-size: 0.9rem;
+    color: #1a472a;
+    font-weight: 600;
+}
+
+/* Chart Container */
+.chart-container {
+    margin-bottom: 1.5rem;
+}
+
+.chart-container h4 {
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 0.75rem;
+}
+
+/* Pure CSS Bar Chart */
+.bar-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 180px;
+    gap: 2px;
+    padding: 10px;
+    background: white;
+    border-radius: 8px;
+}
+
+.bar {
+    flex: 1;
+    min-width: 16px;
+    max-width: 40px;
+    height: var(--height, 0%);
+    background: linear-gradient(180deg, #2d5a27 0%, #1a472a 100%);
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    transition: height 0.3s ease;
+    cursor: pointer;
+}
+
+.bar:hover {
+    background: linear-gradient(180deg, #3d7a37 0%, #2a5a2a 100%);
+}
+
+.bar::after {
+    content: attr(data-value);
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: #666;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.bar:hover::after {
+    opacity: 1;
+}
+
+.bar-label {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    color: #888;
+    white-space: nowrap;
+}
+
+.peak-info {
+    margin-top: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: #e8f5e9;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #1a472a;
+}
+
+.peak-info strong {
+    font-weight: 700;
+}
+
+/* Canvas Chart */
+#cumulativeChart {
+    max-height: 220px;
+    background: white;
+    border-radius: 8px;
+    padding: 10px;
+}
+
 @media (max-width: 768px) {
     header {
         padding: 1rem;
@@ -387,5 +635,22 @@ main {
     .tabs {
         overflow-x: auto;
         flex-wrap: nowrap;
+    }
+
+    .stats-grid-7 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .awards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ranking-table {
+        font-size: 0.8rem;
+    }
+
+    .ranking-table .thumbnail {
+        width: 40px;
+        height: 40px;
     }
 }
