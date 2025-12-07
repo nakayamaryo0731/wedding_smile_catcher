@@ -480,10 +480,6 @@ async function startFinalPresentation() {
   const overlay = document.getElementById("final-overlay");
   overlay.classList.add("hidden");
 
-  // Show loading animation
-  const animationType = window.FINAL_ANIMATION_TYPE || "envelope";
-  showFinalLoadingAnimation(animationType);
-
   // Hide ranking cards initially for reveal animation
   Object.values(rankCards).forEach((card) => {
     card.card.classList.remove("visible");
@@ -508,17 +504,9 @@ async function startFinalPresentation() {
   if (finalBtn) finalBtn.classList.add("hidden");
   if (backBtn) backBtn.classList.remove("hidden");
 
-  // Wait for minimum animation time + fetch rankings in parallel
-  const minAnimationTime = new Promise((r) => setTimeout(r, 3600));
-  const fetchPromise = fetchAllTimeRankings();
-
-  // Wait for both to complete
-  await Promise.all([minAnimationTime, fetchPromise]);
-
-  // Hide loading animation
-  hideFinalLoadingAnimation();
-
-  // Fire confetti celebration
+  // Brief pause before showing results, then fetch and show with confetti
+  await new Promise((r) => setTimeout(r, 1000));
+  await fetchAllTimeRankings();
   fireConfetti();
 
   console.log("Final presentation complete");
