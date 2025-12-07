@@ -19,21 +19,15 @@ const UPDATE_DEBOUNCE_MS = 2000; // Debounce updates by 2 seconds
 const userNameCache = new Map(); // Cache user names to avoid repeated queries
 
 /**
- * Get current event ID from URL parameters or config
+ * Get current event ID from URL parameters
  * Supports: ?event_id=wedding_20250315_tanaka
+ * Defaults to "test" if not specified
  */
 function getCurrentEventId() {
   const params = new URLSearchParams(window.location.search);
-  const eventIdFromUrl = params.get("event_id");
-
-  if (eventIdFromUrl) {
-    console.log(`Using event_id from URL: ${eventIdFromUrl}`);
-    return eventIdFromUrl;
-  }
-
-  const defaultEventId = window.CURRENT_EVENT_ID || "test";
-  console.log(`Using default event_id: ${defaultEventId}`);
-  return defaultEventId;
+  const eventId = params.get("event_id") || "test";
+  console.log(`Using event_id: ${eventId}`);
+  return eventId;
 }
 
 // DOM Elements
