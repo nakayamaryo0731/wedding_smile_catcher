@@ -184,12 +184,15 @@ function createImageDataItem(id, data) {
     // Get user name from cache
     const userName = data.user_id ? (userNameCache.get(data.user_id) || data.user_id) : 'N/A';
 
+    const aiComment = data.ai_comment || data.comment || '';
+
     const fields = {
         'ID': id.substring(0, 12) + '...',
         'User': userName,
         'Score': data.total_score != null ? Math.round(data.total_score) : 'N/A',
         'Status': data.status || 'N/A',
-        'Uploaded': data.upload_timestamp ? new Date(data.upload_timestamp.seconds * 1000).toLocaleString('ja-JP') : 'N/A'
+        'Uploaded': data.upload_timestamp ? new Date(data.upload_timestamp.seconds * 1000).toLocaleString('ja-JP') : 'N/A',
+        'AI Comment': aiComment || '-'
     };
 
     Object.entries(fields).forEach(([label, value]) => {
@@ -201,32 +204,13 @@ function createImageDataItem(id, data) {
         fieldLabel.textContent = label;
 
         const fieldValue = document.createElement('div');
-        fieldValue.className = 'data-field-value';
+        fieldValue.className = label === 'AI Comment' ? 'data-field-value data-field-comment' : 'data-field-value';
         fieldValue.textContent = value;
 
         field.appendChild(fieldLabel);
         field.appendChild(fieldValue);
         content.appendChild(field);
     });
-
-    // AI Comment (full width row)
-    const aiComment = data.ai_comment || data.comment || '';
-    if (aiComment) {
-        const commentField = document.createElement('div');
-        commentField.className = 'data-field data-field-full';
-
-        const commentLabel = document.createElement('div');
-        commentLabel.className = 'data-field-label';
-        commentLabel.textContent = 'AI Comment';
-
-        const commentValue = document.createElement('div');
-        commentValue.className = 'data-field-value data-field-comment';
-        commentValue.textContent = aiComment;
-
-        commentField.appendChild(commentLabel);
-        commentField.appendChild(commentValue);
-        content.appendChild(commentField);
-    }
 
     item.appendChild(checkbox);
     item.appendChild(thumbnail);
