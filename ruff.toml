@@ -1,0 +1,21 @@
+# Ruff configuration
+# https://docs.astral.sh/ruff/configuration/
+
+line-length = 120
+target-version = "py311"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"

@@ -143,11 +143,11 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install dependencies
-        run: uv pip install --system black flake8
+      - name: Install ruff
+        run: uv pip install --system ruff
 
       - name: Check Python formatting
-        run: black --check src/
+        run: ruff format --check src/
 
       - name: Lint Python code
-        run: flake8 src/ --max-line-length=100 --extend-ignore=E203
+        run: ruff check src/

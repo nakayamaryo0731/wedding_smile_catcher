@@ -50,15 +50,9 @@ repos:
       - id: markdownlint
         args: [--fix]
 
-  # Python hooks
-  - repo: https://github.com/psf/black
-    rev: 24.2.0
-    hooks:
-      - id: black
-        language_version: python3
-
+  # Python hooks (ruff replaces black + flake8)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.0
+    rev: v0.8.2
     hooks:
       - id: ruff
         args: [--fix]

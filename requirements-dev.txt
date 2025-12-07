@@ -10,8 +10,7 @@ pytest-asyncio>=0.23.6      # Async testing support
 responses>=0.25.0           # Mock HTTP requests
 
 # Code quality
-black>=24.2.0               # Code formatter
-flake8>=7.0.0               # Linter
+ruff>=0.8.0                 # Linter and formatter (replaces black + flake8)
 mypy>=1.8.0                 # Type checker
 
 # Load testing (install separately: pip install locust)
