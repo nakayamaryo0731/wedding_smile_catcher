@@ -987,6 +987,7 @@ body {
     z-index: 5;
     animation: flap-open 1s cubic-bezier(0.4, 0, 0.2, 1) 0.5s forwards;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    backface-visibility: hidden;
 }
 
 /* Wax seal on flap */
@@ -1011,9 +1012,17 @@ body {
 @keyframes flap-open {
     0% {
         transform: rotateX(0deg);
+        z-index: 5;
+    }
+    40% {
+        z-index: 5;
+    }
+    41% {
+        z-index: -1;
     }
     100% {
-        transform: rotateX(160deg);
+        transform: rotateX(180deg);
+        z-index: -1;
     }
 }
 
@@ -1050,17 +1059,6 @@ body {
     }
 }
 
-/* Decorative line on letter */
-.envelope-letter::before {
-    content: '';
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #d4af37, transparent);
-}
 
 .letter-text {
     font-family: 'Playfair Display', serif;
@@ -1071,7 +1069,7 @@ body {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     opacity: 0;
-    animation: text-appear 0.6s ease-out 2s forwards;
+    animation: text-appear 0.6s ease-out 1.5s forwards;
     letter-spacing: 0.05em;
     text-align: center;
     margin-top: 10px;

@@ -393,27 +393,44 @@ function fireConfetti() {
     return;
   }
 
-  // Main burst
-  confetti({
-    particleCount: 200,
-    spread: 100,
-    origin: { y: 0.6 },
-  });
-
-  // Side bursts
-  setTimeout(() => {
-    confetti({ particleCount: 100, angle: 60, spread: 55, origin: { x: 0 } });
-    confetti({ particleCount: 100, angle: 120, spread: 55, origin: { x: 1 } });
-  }, 500);
-
-  // Extra celebration
-  setTimeout(() => {
+  // Random burst helper - creates natural, scattered confetti
+  function randomBurst() {
     confetti({
-      particleCount: 150,
-      spread: 120,
-      origin: { y: 0.7 },
+      particleCount: Math.floor(Math.random() * 50) + 30,
+      spread: Math.random() * 60 + 40,
+      origin: {
+        x: Math.random(),
+        y: Math.random() * 0.4 + 0.3,
+      },
+      angle: Math.random() * 360,
+      scalar: Math.random() * 0.8 + 1.2,
+      gravity: Math.random() * 0.5 + 0.6,
+      ticks: 300,
     });
-  }, 1000);
+  }
+
+  // Initial big burst from multiple random points
+  for (let i = 0; i < 8; i++) {
+    randomBurst();
+  }
+
+  // Continuous random bursts over time
+  let burstCount = 0;
+  const burstInterval = setInterval(() => {
+    randomBurst();
+    randomBurst();
+    burstCount++;
+    if (burstCount >= 10) {
+      clearInterval(burstInterval);
+    }
+  }, 150);
+
+  // Final celebration burst
+  setTimeout(() => {
+    for (let i = 0; i < 6; i++) {
+      randomBurst();
+    }
+  }, 1800);
 }
 
 /**
@@ -504,7 +521,7 @@ async function startFinalPresentation() {
   if (backBtn) backBtn.classList.remove("hidden");
 
   // Wait for minimum animation time + fetch rankings in parallel
-  const minAnimationTime = new Promise((r) => setTimeout(r, 2500));
+  const minAnimationTime = new Promise((r) => setTimeout(r, 4500));
   const fetchPromise = fetchAllTimeRankings();
 
   // Wait for both to complete
