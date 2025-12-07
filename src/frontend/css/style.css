@@ -901,3 +901,141 @@ body {
     background: linear-gradient(135deg, rgba(196, 30, 58, 0.3), rgba(212, 175, 55, 0.3));
     border: 2px solid var(--accent-gold);
 }
+
+/* =========================
+   Final Loading Animation
+   ========================= */
+.final-loading {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 1001;
+}
+
+.final-loading.hidden {
+    display: none;
+}
+
+/* --- Envelope Animation --- */
+.envelope-container {
+    perspective: 1000px;
+}
+
+.envelope-container.hidden {
+    display: none;
+}
+
+.envelope {
+    width: 350px;
+    height: 220px;
+    position: relative;
+    transform-style: preserve-3d;
+}
+
+.envelope-body {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #d4af37, #f4d03f);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 20px 60px rgba(212, 175, 55, 0.5);
+}
+
+.envelope-flap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 55%;
+    background: linear-gradient(135deg, #c9a227, #e6c656);
+    transform-origin: top center;
+    clip-path: polygon(0 0, 50% 100%, 100% 0);
+    animation: envelope-open 2s ease-out forwards;
+    z-index: 1;
+}
+
+@keyframes envelope-open {
+    0% {
+        transform: rotateX(0deg);
+    }
+    100% {
+        transform: rotateX(-180deg);
+    }
+}
+
+.envelope-letter {
+    background: white;
+    width: 85%;
+    height: 75%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: letter-rise 2s ease-out 0.5s forwards;
+    transform: translateY(0);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes letter-rise {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-60px);
+    }
+}
+
+.letter-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    opacity: 0;
+    animation: text-appear 0.5s ease-out 1.5s forwards;
+}
+
+@keyframes text-appear {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* --- Particles Animation --- */
+.particles-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.particles-container.hidden {
+    display: none;
+}
+
+#particles-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.particles-center-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.9) 0%, rgba(196, 30, 58, 0.5) 40%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+    pointer-events: none;
+    filter: blur(10px);
+}

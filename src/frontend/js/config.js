@@ -14,3 +14,6 @@ window.CURRENT_EVENT_ID = "test";
 
 // GCS Bucket Name for image storage
 window.GCS_BUCKET_NAME = "wedding-smile-images-wedding-smile-catcher";
+
+// Final presentation loading animation type: "envelope" or "particles"
+window.FINAL_ANIMATION_TYPE = "envelope";
