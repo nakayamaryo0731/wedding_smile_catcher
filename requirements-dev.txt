@@ -1,21 +1,22 @@
 # Development and testing dependencies for Wedding Smile Catcher
 
 # Testing framework
-pytest==8.1.0
-pytest-cov==4.1.0          # Code coverage
-pytest-mock==3.12.0         # Mocking utilities
-pytest-asyncio==0.23.6      # Async testing support
+pytest>=8.1.0
+pytest-cov>=4.1.0           # Code coverage
+pytest-mock>=3.12.0         # Mocking utilities
+pytest-asyncio>=0.23.6      # Async testing support
 
 # Mocking and testing utilities
-responses==0.25.0           # Mock HTTP requests
+responses>=0.25.0           # Mock HTTP requests
 
 # Code quality
-black==24.2.0               # Code formatter
-flake8==7.0.0               # Linter
-mypy==1.8.0                 # Type checker
+black>=24.2.0               # Code formatter
+flake8>=7.0.0               # Linter
+mypy>=1.8.0                 # Type checker
 
-# Load testing
-locust==2.24.0              # Load testing framework
+# Load testing (install separately: pip install locust)
+# locust is excluded from CI due to heavy dependencies (numpy build issues)
+# For local load testing, run: pip install locust>=2.32.0
 
 # Include production dependencies
 -r requirements.txt
