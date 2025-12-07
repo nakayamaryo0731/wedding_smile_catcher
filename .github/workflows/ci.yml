@@ -133,19 +133,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.11'
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
 
       - name: Install dependencies
-        run: |
-          pip install black flake8
+        run: uv pip install --system black flake8
 
       - name: Check Python formatting
-        run: |
-          black --check src/
+        run: black --check src/
 
       - name: Lint Python code
-        run: |
-          flake8 src/ --max-line-length=100 --extend-ignore=E203
+        run: flake8 src/ --max-line-length=100 --extend-ignore=E203
