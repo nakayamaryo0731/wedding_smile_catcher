@@ -1,8 +1,10 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, getDocs, query, orderBy, limit, writeBatch, doc, where, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, getDocs, getCountFromServer, query, orderBy, limit, startAfter, writeBatch, doc, where, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 const ADMIN_PASSWORD_HASH = '23a68358cb853df2a850e11cbf705979dd65d570e3394b7af0904c2b153fcbb5';
+const ITEMS_PER_PAGE = 30;
+const GCS_BUCKET_NAME = window.GCS_BUCKET_NAME || 'wedding-smile-images-wedding-smile-catcher';
 
 const app = initializeApp(window.FIREBASE_CONFIG);
 const db = getFirestore(app);
@@ -16,6 +18,11 @@ let selectedItems = {
 
 let currentTab = 'images';
 let pendingDeleteAction = null;
+
+// Pagination state
+let imagesCache = [];
+let currentPage = 1;
+let totalImages = 0;
 
 async function sha256(message) {
     const msgBuffer = new TextEncoder().encode(message);
@@ -67,41 +74,191 @@ async function loadStats() {
     }
 }
 
-async function loadImages() {
+async function loadImages(page = 1) {
     const container = document.getElementById('imagesList');
     container.innerHTML = '<p class="loading">Loading images...</p>';
 
     try {
-        const q = query(
-            collection(db, 'images'),
-            orderBy('upload_timestamp', 'desc'),
-            limit(500)
-        );
-        const snapshot = await getDocs(q);
+        // First load: get all images and cache them
+        if (imagesCache.length === 0 || page === 1) {
+            const q = query(
+                collection(db, 'images'),
+                orderBy('upload_timestamp', 'desc'),
+                limit(1000)
+            );
+            const snapshot = await getDocs(q);
+            imagesCache = snapshot.docs;
+            totalImages = imagesCache.length;
+        }
 
-        if (snapshot.empty) {
+        if (imagesCache.length === 0) {
             container.innerHTML = '<p class="loading">No images found</p>';
+            renderPagination(0, 0);
             return;
         }
 
+        currentPage = page;
+        const startIndex = (page - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const pageImages = imagesCache.slice(startIndex, endIndex);
+
         container.innerHTML = '';
-        snapshot.forEach(docSnap => {
+        pageImages.forEach(docSnap => {
             const data = docSnap.data();
-            const item = createDataItem(docSnap.id, {
-                'ID': docSnap.id.substring(0, 12) + '...',
-                'User': data.user_id || 'N/A',
-                'Score': data.total_score ? Math.round(data.total_score) : 'N/A',
-                'Status': data.status || 'N/A',
-                'Uploaded': data.upload_timestamp ? new Date(data.upload_timestamp.seconds * 1000).toLocaleString('ja-JP') : 'N/A'
-            }, 'images');
+            const item = createImageDataItem(docSnap.id, data);
             container.appendChild(item);
         });
 
         updateSelectionCount('images');
+
+        // Render pagination
+        const totalPages = Math.ceil(totalImages / ITEMS_PER_PAGE);
+        renderPagination(currentPage, totalPages);
     } catch (error) {
         console.error('Error loading images:', error);
         container.innerHTML = '<p class="loading">Error loading images</p>';
     }
+}
+
+function createImageDataItem(id, data) {
+    const item = document.createElement('div');
+    item.className = 'data-item';
+    item.dataset.id = id;
+    item.dataset.type = 'images';
+
+    // Checkbox
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = selectedItems.images.has(id);
+    checkbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            selectedItems.images.add(id);
+        } else {
+            selectedItems.images.delete(id);
+        }
+        updateSelectionCount('images');
+    });
+
+    // Thumbnail
+    const thumbnail = document.createElement('img');
+    thumbnail.className = 'data-item-thumbnail';
+    if (data.storage_path) {
+        thumbnail.src = `https://storage.googleapis.com/${GCS_BUCKET_NAME}/${data.storage_path}`;
+    } else {
+        thumbnail.src = '';
+    }
+    thumbnail.alt = 'thumbnail';
+    thumbnail.onerror = () => { thumbnail.style.display = 'none'; };
+
+    // Content
+    const content = document.createElement('div');
+    content.className = 'data-item-content';
+
+    const fields = {
+        'ID': id.substring(0, 12) + '...',
+        'User': data.user_id || 'N/A',
+        'Score': data.total_score != null ? Math.round(data.total_score) : 'N/A',
+        'Status': data.status || 'N/A',
+        'Uploaded': data.upload_timestamp ? new Date(data.upload_timestamp.seconds * 1000).toLocaleString('ja-JP') : 'N/A'
+    };
+
+    Object.entries(fields).forEach(([label, value]) => {
+        const field = document.createElement('div');
+        field.className = 'data-field';
+
+        const fieldLabel = document.createElement('div');
+        fieldLabel.className = 'data-field-label';
+        fieldLabel.textContent = label;
+
+        const fieldValue = document.createElement('div');
+        fieldValue.className = 'data-field-value';
+        fieldValue.textContent = value;
+
+        field.appendChild(fieldLabel);
+        field.appendChild(fieldValue);
+        content.appendChild(field);
+    });
+
+    item.appendChild(checkbox);
+    item.appendChild(thumbnail);
+    item.appendChild(content);
+
+    return item;
+}
+
+function renderPagination(currentPage, totalPages) {
+    const container = document.getElementById('imagesPagination');
+    container.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    // Previous button
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'pagination-btn';
+    prevBtn.textContent = '←';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.addEventListener('click', () => loadImages(currentPage - 1));
+    container.appendChild(prevBtn);
+
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    if (startPage > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.className = 'pagination-btn';
+        firstBtn.textContent = '1';
+        firstBtn.addEventListener('click', () => loadImages(1));
+        container.appendChild(firstBtn);
+
+        if (startPage > 2) {
+            const dots = document.createElement('span');
+            dots.className = 'pagination-info';
+            dots.textContent = '...';
+            container.appendChild(dots);
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = 'pagination-btn' + (i === currentPage ? ' active' : '');
+        pageBtn.textContent = i;
+        pageBtn.addEventListener('click', () => loadImages(i));
+        container.appendChild(pageBtn);
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const dots = document.createElement('span');
+            dots.className = 'pagination-info';
+            dots.textContent = '...';
+            container.appendChild(dots);
+        }
+
+        const lastBtn = document.createElement('button');
+        lastBtn.className = 'pagination-btn';
+        lastBtn.textContent = totalPages;
+        lastBtn.addEventListener('click', () => loadImages(totalPages));
+        container.appendChild(lastBtn);
+    }
+
+    // Next button
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'pagination-btn';
+    nextBtn.textContent = '→';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.addEventListener('click', () => loadImages(currentPage + 1));
+    container.appendChild(nextBtn);
+
+    // Page info
+    const info = document.createElement('span');
+    info.className = 'pagination-info';
+    info.textContent = `(${totalImages}件)`;
+    container.appendChild(info);
 }
 
 async function loadUsers() {
@@ -293,7 +450,11 @@ async function deleteSelected(type) {
 
         selectedItems[type].clear();
 
-        if (type === 'images') await loadImages();
+        // Clear cache and reload
+        if (type === 'images') {
+            imagesCache = [];
+            await loadImages(1);
+        }
         if (type === 'users') await loadUsers();
         if (type === 'events') await loadEvents();
 
