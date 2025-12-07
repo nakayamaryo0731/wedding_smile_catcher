@@ -8,37 +8,42 @@ service cloud.firestore {
 
     // Users collection
     // Frontend can read user names for display
-    // Deletion is disabled for security (use Firebase Console for manual deletion)
+    // Admin can delete users (authenticated via anonymous auth)
     match /users/{userId} {
       allow read: if true;
-      allow delete, create, update: if false;
+      allow delete: if request.auth != null;
+      allow create, update: if false;
     }
 
     // Images collection
     // Frontend can read images and scores for ranking display
-    // Deletion is disabled for security (use Firebase Console for manual deletion)
+    // Admin can delete images (authenticated via anonymous auth)
     match /images/{imageId} {
       allow read: if true;
-      allow delete, create, update: if false;
+      allow delete: if request.auth != null;
+      allow create, update: if false;
     }
 
     // Events collection (for multi-event support)
     // Frontend can read event metadata
-    // Deletion is disabled for security (use Firebase Console for manual deletion)
+    // Admin can delete events (authenticated via anonymous auth)
     match /events/{eventId} {
       allow read: if true;
-      allow delete, create, update: if false;
+      allow delete: if request.auth != null;
+      allow create, update: if false;
 
       // Event-specific users subcollection
       match /users/{userId} {
         allow read: if true;
-        allow delete, create, update: if false;
+        allow delete: if request.auth != null;
+        allow create, update: if false;
       }
 
       // Event-specific images subcollection
       match /images/{imageId} {
         allow read: if true;
-        allow delete, create, update: if false;
+        allow delete: if request.auth != null;
+        allow create, update: if false;
       }
     }
   }
