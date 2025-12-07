@@ -629,6 +629,32 @@ body {
 }
 
 /* Responsive Design */
+@media (max-width: 1600px) {
+    .user-name {
+        font-size: 1.6rem;
+    }
+
+    .score {
+        font-size: 2.2rem;
+    }
+
+    .rank-1 .user-name {
+        font-size: 1.9rem;
+    }
+
+    .rank-1 .score {
+        font-size: 2.8rem;
+    }
+
+    .ai-comment-title {
+        font-size: 1.4rem;
+    }
+
+    .ai-comment {
+        font-size: 1.4rem;
+    }
+}
+
 @media (max-width: 1024px) {
     .title {
         font-size: 3rem;
@@ -636,6 +662,14 @@ body {
 
     .rank-1 .image-container {
         height: 400px;
+    }
+
+    .ai-comment-title {
+        font-size: 1.2rem;
+    }
+
+    .ai-comment {
+        font-size: 1.2rem;
     }
 }
 
