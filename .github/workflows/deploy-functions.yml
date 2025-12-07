@@ -15,9 +15,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Run tests once, shared by both deploy jobs
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v6
@@ -39,41 +40,44 @@ jobs:
         run: uv pip install --system -r requirements-dev.txt
 
       - name: Run unit tests
+        run: pytest tests/unit/ -v --tb=short
+
+  # Deploy webhook function (parallel with scoring)
+  deploy-webhook:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Check if webhook changed
+        id: changes
         run: |
-          pytest tests/unit/ -v --tb=short
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | grep -qE "^src/functions/webhook/|^requirements.*\.txt$|^\.github/workflows/deploy-functions\.yml$"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
 
       - id: auth
+        if: steps.changes.outputs.changed == 'true'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
+        if: steps.changes.outputs.changed == 'true'
         uses: google-github-actions/setup-gcloud@v3
 
-      - name: Check changed files
-        id: changes
-        run: |
-          # Get the list of changed files between the merge base and HEAD
-          git fetch origin main --depth=2
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
-
-          # Check if webhook or scoring files changed
-          if echo "$CHANGED_FILES" | grep -q "^src/functions/webhook/"; then
-            echo "webhook_changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "webhook_changed=false" >> $GITHUB_OUTPUT
-          fi
-
-          if echo "$CHANGED_FILES" | grep -q "^src/functions/scoring/"; then
-            echo "scoring_changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "scoring_changed=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Deploy webhook function
-        if: steps.changes.outputs.webhook_changed == 'true'
+        if: steps.changes.outputs.changed == 'true'
         run: |
           gcloud functions deploy webhook \
             --gen2 \
@@ -90,8 +94,46 @@ jobs:
             --timeout=60s \
             --max-instances=100
 
+      - name: Skip notification
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "No webhook changes detected, skipping deploy"
+
+  # Deploy scoring function (parallel with webhook)
+  deploy-scoring:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Check if scoring changed
+        id: changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | grep -qE "^src/functions/scoring/|^requirements.*\.txt$|^\.github/workflows/deploy-functions\.yml$"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - id: auth
+        if: steps.changes.outputs.changed == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: steps.changes.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v3
+
       - name: Deploy scoring function
-        if: steps.changes.outputs.scoring_changed == 'true'
+        if: steps.changes.outputs.changed == 'true'
         run: |
           gcloud functions deploy scoring \
             --gen2 \
@@ -107,3 +149,7 @@ jobs:
             --memory=1Gi \
             --timeout=300s \
             --max-instances=100
+
+      - name: Skip notification
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "No scoring changes detected, skipping deploy"
