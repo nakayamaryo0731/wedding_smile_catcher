@@ -113,17 +113,11 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          uv pip install --system flake8 black
+      - name: Install ruff
+        run: uv pip install --system ruff
 
-      - name: Run black (check only)
-        run: |
-          black --check src/ tests/
+      - name: Run ruff format (check only)
+        run: ruff format --check src/ tests/
 
-      - name: Run flake8
-        run: |
-          # Stop the build if there are Python syntax errors or undefined names
-          flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Exit-zero treats all errors as warnings. Line length set to 120
-          flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+      - name: Run ruff lint
+        run: ruff check src/ tests/

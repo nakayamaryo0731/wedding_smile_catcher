@@ -5,8 +5,8 @@ This module sets up mocks for Google Cloud clients to avoid authentication
 errors during test collection and execution.
 """
 
-from unittest.mock import Mock, patch
 import os
+from unittest.mock import Mock, patch
 
 # Set environment variables before any Google Cloud imports
 os.environ["GCP_PROJECT_ID"] = "wedding-smile-catcher-test"

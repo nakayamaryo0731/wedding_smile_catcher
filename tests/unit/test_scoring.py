@@ -129,9 +129,7 @@ class TestCalculateSmileScore:
 
     @patch("scoring.main.PILImage")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_api_error_fallback(
-        self, mock_vision_client, mock_pil
-    ):
+    def test_calculate_smile_score_api_error_fallback(self, mock_vision_client, mock_pil):
         """Test Vision API error triggers fallback score."""
         # Setup PIL mock
         mock_img = Mock()
@@ -309,9 +307,7 @@ class TestCalculateAverageHash:
         # Assert
         assert isinstance(hash_value, str)
         assert len(hash_value) == 16
-        assert hash_value.replace("_", "").replace(
-            "error", ""
-        ).isalnum() or hash_value.startswith("error_")
+        assert hash_value.replace("_", "").replace("error", "").isalnum() or hash_value.startswith("error_")
 
     def test_calculate_average_hash_same_image_same_hash(self, test_image_bytes):
         """Test that same image produces same hash (reproducibility)."""

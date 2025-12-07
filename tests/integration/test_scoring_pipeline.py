@@ -10,19 +10,20 @@ Tests the complete flow:
 Requires Firestore emulator: firebase emulators:start --only firestore
 """
 
-from google.cloud import firestore
-from unittest.mock import Mock, patch
 import sys
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+from google.cloud import firestore
 
 # Add src directory to path
 src_path = Path(__file__).parent.parent.parent / "src" / "functions" / "scoring"
 sys.path.insert(0, str(src_path.parent))
 
 from scoring.main import (  # noqa: E402
+    calculate_average_hash,
     calculate_smile_score,
     evaluate_theme,
-    calculate_average_hash,
     is_similar_image,
 )
 
@@ -77,8 +78,9 @@ class TestScoringPipeline:
         mock_pil_image.size = (1000, 1000)  # 1000x1000 image
 
         # Calculate smile score with mocked PILImage (for image dimensions)
-        with patch("scoring.main.vision_client", mock_vision_client_integration), patch(
-            "scoring.main.PILImage.open", return_value=mock_pil_image
+        with (
+            patch("scoring.main.vision_client", mock_vision_client_integration),
+            patch("scoring.main.PILImage.open", return_value=mock_pil_image),
         ):
             # Each face: 95.0 base score × 0.4 size multiplier (1% relative size)
             # Total: 2 faces × 95.0 × 0.4 = 76.0
@@ -88,9 +90,7 @@ class TestScoringPipeline:
             assert smile_result["smiling_faces"] == 2
 
         # Calculate AI score (separate patch context, no PILImage mock needed)
-        with patch("scoring.main.GenerativeModel", mock_vertex_ai_integration), patch(
-            "scoring.main.Part"
-        ):
+        with patch("scoring.main.GenerativeModel", mock_vertex_ai_integration), patch("scoring.main.Part"):
             ai_result = evaluate_theme(test_image_bytes)
             assert ai_result["score"] == 85
             assert "素晴らしい笑顔です" in ai_result["comment"]
@@ -107,9 +107,7 @@ class TestScoringPipeline:
 
         # Calculate total score
         similarity_penalty = 1.0 if not is_similar else 1 / 3
-        total_score = (
-            smile_result["smile_score"] * ai_result["score"] / 100
-        ) * similarity_penalty
+        total_score = (smile_result["smile_score"] * ai_result["score"] / 100) * similarity_penalty
 
         # Update Firestore with scores
         image_ref.update(
@@ -147,9 +145,7 @@ class TestScoringPipeline:
         assert updated_user["best_score"] == 64.6
         assert updated_user["total_uploads"] == 1
 
-    def test_similarity_detection_integration(
-        self, firestore_client, test_image_bytes, mock_vision_client_integration
-    ):
+    def test_similarity_detection_integration(self, firestore_client, test_image_bytes, mock_vision_client_integration):
         """
         Test similarity detection with multiple images.
         """
@@ -181,11 +177,7 @@ class TestScoringPipeline:
             .where("status", "==", "completed")
             .stream()
         )
-        existing_hashes = [
-            doc.to_dict()["average_hash"]
-            for doc in existing_images
-            if "average_hash" in doc.to_dict()
-        ]
+        existing_hashes = [doc.to_dict()["average_hash"] for doc in existing_images if "average_hash" in doc.to_dict()]
 
         # Check similarity
         is_similar = is_similar_image(hash2, existing_hashes)
@@ -214,17 +206,12 @@ class TestScoringPipeline:
         assert image2_data["similarity_penalty"] == 1 / 3
         assert image2_data["total_score"] == 50.0  # 150.0 / 3
 
-    def test_ranking_query_integration(
-        self, firestore_client, sample_user_data, sample_scored_image_data
-    ):
+    def test_ranking_query_integration(self, firestore_client, sample_user_data, sample_scored_image_data):
         """
         Test ranking queries against Firestore.
         """
         # Create multiple users and images
-        users_data = [
-            {"line_user_id": f"user_{i}", "name": f"User {i}", "best_score": 0}
-            for i in range(1, 6)
-        ]
+        users_data = [{"line_user_id": f"user_{i}", "name": f"User {i}", "best_score": 0} for i in range(1, 6)]
 
         images_data = [
             {
@@ -265,9 +252,7 @@ class TestScoringPipeline:
         top_users = {doc.to_dict()["user_id"] for doc in top_list}
         assert len(top_users) == 3  # All unique users
 
-    def test_error_handling_in_pipeline(
-        self, firestore_client, test_image_bytes, mock_vision_client_integration
-    ):
+    def test_error_handling_in_pipeline(self, firestore_client, test_image_bytes, mock_vision_client_integration):
         """
         Test error handling when APIs fail.
         """
@@ -286,9 +271,7 @@ class TestScoringPipeline:
 
         # Mock Vision API error
         mock_vision_error = Mock()
-        mock_vision_error.face_detection = Mock(
-            side_effect=Exception("Vision API error")
-        )
+        mock_vision_error.face_detection = Mock(side_effect=Exception("Vision API error"))
 
         # The function should not raise exceptions, but return error dict with fallback
         with patch("scoring.main.vision_client", mock_vision_error):
@@ -301,9 +284,7 @@ class TestScoringPipeline:
         assert result["face_count"] == 0
         assert result["smiling_faces"] == 0
 
-    def test_concurrent_scoring_no_conflicts(
-        self, firestore_client, test_image_bytes, mock_vision_client_integration
-    ):
+    def test_concurrent_scoring_no_conflicts(self, firestore_client, test_image_bytes, mock_vision_client_integration):
         """
         Test that concurrent scoring operations don't conflict.
         Simulates multiple images being scored simultaneously.
@@ -331,9 +312,10 @@ class TestScoringPipeline:
 
         for image_ref in image_refs:
             # Calculate smile score with mocked PILImage
-            with patch(
-                "scoring.main.vision_client", mock_vision_client_integration
-            ), patch("scoring.main.PILImage.open", return_value=mock_pil_image):
+            with (
+                patch("scoring.main.vision_client", mock_vision_client_integration),
+                patch("scoring.main.PILImage.open", return_value=mock_pil_image),
+            ):
                 smile_result = calculate_smile_score(test_image_bytes)
 
             # Calculate average hash without mocking (uses real image)

@@ -9,27 +9,27 @@ Analyzes uploaded images using:
 - Format face count as "大勢" for 10+ people
 """
 
-import os
-import logging
-import random
-import json
-import time
 import io
-from typing import Dict, Any, List
+import json
+import logging
+import os
+import random
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import functions_framework
+import imagehash
+import vertexai
 from flask import Request, jsonify
-from linebot import LineBotApi
-from linebot.models import TextSendMessage
-from linebot.exceptions import LineBotApiError
 from google.cloud import firestore, storage, vision
 from google.cloud import logging as cloud_logging
-import vertexai
-from vertexai.generative_models import GenerativeModel, Part
+from linebot import LineBotApi
+from linebot.exceptions import LineBotApiError
+from linebot.models import TextSendMessage
 from PIL import Image as PILImage
-import imagehash
+from vertexai.generative_models import GenerativeModel, Part
 
 # Initialize Cloud Logging
 logging_client = cloud_logging.Client()
@@ -258,7 +258,7 @@ def format_face_count(smiling_faces: int, face_count: int) -> str:
         return f"{smiling_faces}人/{face_count}人"
 
 
-def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
+def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
     """
     Calculate smile score using Vision API with face size adjustment.
     Implements exponential backoff retry for rate limit and server errors.
@@ -300,9 +300,7 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
                 # Only count faces with LIKELY or VERY_LIKELY joy
                 if face.joy_likelihood >= vision.Likelihood.LIKELY:
                     base_score = get_joy_likelihood_score(face.joy_likelihood)
-                    size_multiplier = get_face_size_multiplier(
-                        face, image_width, image_height
-                    )
+                    size_multiplier = get_face_size_multiplier(face, image_width, image_height)
                     adjusted_score = base_score * size_multiplier
                     total_smile_score += adjusted_score
                     smiling_faces += 1
@@ -327,9 +325,7 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
 
         except Exception as e:
             error_message = str(e)
-            logger.warning(
-                f"Vision API error (attempt {attempt + 1}/{max_retries}): {error_message}"
-            )
+            logger.warning(f"Vision API error (attempt {attempt + 1}/{max_retries}): {error_message}")
 
             # Check if error is retryable (rate limit or server error)
             is_retryable = (
@@ -418,9 +414,7 @@ def calculate_average_hash(image_bytes: bytes) -> str:
         return f"error_{random.randint(1000, 9999)}"
 
 
-def is_similar_image(
-    new_hash: str, existing_hashes: List[str], threshold: int = 8
-) -> bool:
+def is_similar_image(new_hash: str, existing_hashes: list[str], threshold: int = 8) -> bool:
     """
     Check if the image is similar to any existing images.
 
@@ -449,15 +443,10 @@ def is_similar_image(
                 existing_hash_obj = imagehash.hex_to_hash(existing_hash)
                 hamming_distance = new_hash_obj - existing_hash_obj
 
-                logger.info(
-                    f"Comparing hashes: new={new_hash}, existing={existing_hash}, "
-                    f"distance={hamming_distance}"
-                )
+                logger.info(f"Comparing hashes: new={new_hash}, existing={existing_hash}, distance={hamming_distance}")
 
                 if hamming_distance <= threshold:
-                    logger.warning(
-                        f"Similar image detected! Distance={hamming_distance} <= {threshold}"
-                    )
+                    logger.warning(f"Similar image detected! Distance={hamming_distance} <= {threshold}")
                     return True
 
             except Exception as e:
@@ -473,7 +462,7 @@ def is_similar_image(
         return False
 
 
-def get_existing_hashes_for_user(user_id: str) -> List[str]:
+def get_existing_hashes_for_user(user_id: str) -> list[str]:
     """
     Get all existing average hashes for a user's uploaded images in the current event.
 
@@ -508,7 +497,7 @@ def get_existing_hashes_for_user(user_id: str) -> List[str]:
         return []
 
 
-def evaluate_theme(image_bytes: bytes) -> Dict[str, Any]:
+def evaluate_theme(image_bytes: bytes) -> dict[str, Any]:
     """
     Evaluate image theme relevance using Vertex AI (Gemini).
     Implements exponential backoff retry for rate limit and server errors.
@@ -602,10 +591,7 @@ commentは100文字以内で簡潔に記述すること。
             # Ensure score is an integer
             result["score"] = int(result["score"])
 
-            logger.info(
-                f"Theme evaluation complete: score={result['score']}, "
-                f"comment={result['comment'][:50]}..."
-            )
+            logger.info(f"Theme evaluation complete: score={result['score']}, comment={result['comment'][:50]}...")
 
             return result
 
@@ -622,9 +608,7 @@ commentは100文字以内で簡潔に記述すること。
 
         except Exception as e:
             error_message = str(e)
-            logger.warning(
-                f"Gemini API error (attempt {attempt + 1}/{max_retries}): {error_message}"
-            )
+            logger.warning(f"Gemini API error (attempt {attempt + 1}/{max_retries}): {error_message}")
 
             # Check if error is retryable (rate limit or server error)
             is_retryable = (
@@ -662,7 +646,7 @@ commentは100文字以内で簡潔に記述すること。
     }
 
 
-def generate_scores_with_vision_api(image_id: str, request_id: str) -> Dict[str, Any]:
+def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str, Any]:
     """
     Generate scores using Vision API for smile detection, Vertex AI for theme evaluation,
     and Average Hash for similarity detection.
@@ -778,14 +762,10 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> Dict[str,
     error_warnings = []
     if vision_error:
         logger.warning(f"Vision API error occurred: {vision_error}")
-        error_warnings.append(
-            "⚠️ 笑顔検出でエラーが発生しました。推定値を使用しています。"
-        )
+        error_warnings.append("⚠️ 笑顔検出でエラーが発生しました。推定値を使用しています。")
     if ai_error:
         logger.warning(f"Vertex AI error occurred: {ai_error}")
-        error_warnings.append(
-            "⚠️ AI評価でエラーが発生しました。デフォルト値を使用しています。"
-        )
+        error_warnings.append("⚠️ AI評価でエラーが発生しました。デフォルト値を使用しています。")
 
     # Format face count (show "大勢" for 10+ people)
     smiling_faces = vision_result.get("smiling_faces", face_count)
@@ -793,13 +773,9 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> Dict[str,
 
     if error_warnings:
         warning_text = "\n".join(error_warnings)
-        comment = (
-            f"{warning_text}\n\n"
-            f"{ai_comment}\n\n"
-            f"笑顔検出: {face_count_display}が笑顔です！"
-        )
+        comment = f"{warning_text}\n\n{ai_comment}\n\n笑顔検出: {face_count_display}が笑顔です！"
     else:
-        comment = f"{ai_comment}\n\n" f"笑顔検出: {face_count_display}が笑顔です！"
+        comment = f"{ai_comment}\n\n笑顔検出: {face_count_display}が笑顔です！"
 
     result = {
         "smile_score": smile_score,
@@ -843,7 +819,7 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> Dict[str,
     return result
 
 
-def generate_dummy_scores() -> Dict[str, Any]:
+def generate_dummy_scores() -> dict[str, Any]:
     """
     Generate dummy scores for testing.
     This function is kept for backwards compatibility.
@@ -874,7 +850,7 @@ def generate_dummy_scores() -> Dict[str, Any]:
     }
 
 
-def update_firestore(image_id: str, user_id: str, scores: Dict[str, Any]):
+def update_firestore(image_id: str, user_id: str, scores: dict[str, Any]):
     """
     Update Firestore with scoring results.
 
@@ -892,9 +868,7 @@ def update_firestore(image_id: str, user_id: str, scores: Dict[str, Any]):
     try:
         transaction = db.transaction()
         _update_image_and_user_stats(transaction, image_ref, user_ref, scores)
-        logger.info(
-            f"Successfully updated image {image_id} and user stats {user_id} in transaction"
-        )
+        logger.info(f"Successfully updated image {image_id} and user stats {user_id} in transaction")
 
     except Exception as e:
         logger.error(
@@ -945,9 +919,7 @@ def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict)
     current_best = user_data.get("best_score", 0)
     new_best = max(current_best, scores["total_score"])
 
-    transaction.update(
-        user_ref, {"total_uploads": firestore.Increment(1), "best_score": new_best}
-    )
+    transaction.update(user_ref, {"total_uploads": firestore.Increment(1), "best_score": new_best})
 
 
 def _send_line_message_with_retry(line_user_id: str, message, max_retries: int = 3):
@@ -1009,7 +981,7 @@ def _send_line_message_with_retry(line_user_id: str, message, max_retries: int =
             return
 
 
-def send_result_to_line(user_id: str, scores: Dict[str, Any]):
+def send_result_to_line(user_id: str, scores: dict[str, Any]):
     """
     Send scoring result to LINE user.
 
@@ -1081,7 +1053,5 @@ def send_error_to_line(user_id: str):
     if not line_user_id:
         return
 
-    message = TextSendMessage(
-        text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。"
-    )
+    message = TextSendMessage(text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。")
     _send_line_message_with_retry(line_user_id, message)

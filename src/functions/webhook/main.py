@@ -3,28 +3,28 @@ Wedding Smile Catcher - Webhook Function
 Handles LINE Bot webhook events for user registration and image uploads.
 """
 
-import os
 import logging
+import os
 import time
 import uuid
 from datetime import datetime
 
 import functions_framework
+import requests
 from flask import Request, jsonify
+from google.auth.transport.requests import Request as AuthRequest
+from google.cloud import firestore, storage
+from google.cloud import logging as cloud_logging
+from google.oauth2 import id_token
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from linebot.models import (
+    FollowEvent,
+    ImageMessage,
     MessageEvent,
     TextMessage,
-    ImageMessage,
-    FollowEvent,
     TextSendMessage,
 )
-from google.cloud import firestore, storage
-from google.cloud import logging as cloud_logging
-from google.auth.transport.requests import Request as AuthRequest
-from google.oauth2 import id_token
-import requests
 
 # Initialize Cloud Logging
 logging_client = cloud_logging.Client()
@@ -147,9 +147,7 @@ def handle_follow(event: FollowEvent):
         # Already registered
         user_data = user_doc.to_dict()
         name = user_data.get("name", "ゲスト")
-        message = TextSendMessage(
-            text=f"{name}さん、おかえりなさい！\n\n" "笑顔の写真をアップロードしよう！"
-        )
+        message = TextSendMessage(text=f"{name}さん、おかえりなさい！\n\n笑顔の写真をアップロードしよう！")
         line_bot_api.reply_message(event.reply_token, message)
 
 
@@ -189,17 +187,12 @@ def handle_text_message(event: MessageEvent):
 
             logger.info(f"User registered: {user_id} - {text}")
 
-            message = TextSendMessage(
-                text=f"{text}さん、登録完了です！\n\n"
-                "早速、笑顔の写真を送ってみましょう！📸"
-            )
+            message = TextSendMessage(text=f"{text}さん、登録完了です！\n\n早速、笑顔の写真を送ってみましょう！📸")
             line_bot_api.reply_message(reply_token, message)
 
         except Exception as e:
             logger.error(f"Failed to register user: {str(e)}")
-            message = TextSendMessage(
-                text="登録に失敗しました。もう一度お試しください。"
-            )
+            message = TextSendMessage(text="登録に失敗しました。もう一度お試しください。")
             line_bot_api.reply_message(reply_token, message)
     else:
         # User already registered, handle commands
@@ -225,8 +218,7 @@ def handle_command(text: str, reply_token: str, user_ref):
         )
     else:
         message = TextSendMessage(
-            text="笑顔の写真をアップロードしよう！\n\n"
-            "「ヘルプ」と送信すると使い方を確認できます。"
+            text="笑顔の写真をアップロードしよう！\n\n「ヘルプ」と送信すると使い方を確認できます。"
         )
 
     line_bot_api.reply_message(reply_token, message)
@@ -257,17 +249,14 @@ def handle_image_message(event: MessageEvent):
 
     if not user_doc.exists:
         message = TextSendMessage(
-            text="まずはお名前を登録してください。\n\n"
-            "お名前（フルネーム）をテキストで送信してください。"
+            text="まずはお名前を登録してください。\n\nお名前（フルネーム）をテキストで送信してください。"
         )
         line_bot_api.reply_message(reply_token, message)
         return
 
     # Send loading message
     loading_message = TextSendMessage(
-        text="📸 画像を受け取りました！\n\n"
-        "AIが笑顔を分析中...\n"
-        "しばらくお待ちください ⏳"
+        text="📸 画像を受け取りました！\n\nAIが笑顔を分析中...\nしばらくお待ちください ⏳"
     )
     line_bot_api.reply_message(reply_token, loading_message)
 
@@ -279,9 +268,7 @@ def handle_image_message(event: MessageEvent):
         # Generate unique image ID and path
         image_id = str(uuid.uuid4())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        storage_path = (
-            f"{CURRENT_EVENT_ID}/original/{user_id}/{timestamp}_{image_id}.jpg"
-        )
+        storage_path = f"{CURRENT_EVENT_ID}/original/{user_id}/{timestamp}_{image_id}.jpg"
 
         # Upload to Cloud Storage
         bucket = storage_client.bucket(STORAGE_BUCKET)
@@ -313,17 +300,13 @@ def handle_image_message(event: MessageEvent):
 
     except LineBotApiError as e:
         logger.error(f"LINE API error: {e.status_code} {e.message}")
-        error_message = TextSendMessage(
-            text="❌ 画像の取得に失敗しました。\n\nもう一度お試しください。"
-        )
+        error_message = TextSendMessage(text="❌ 画像の取得に失敗しました。\n\nもう一度お試しください。")
         # Can't use reply_message here as reply_token might be consumed
         line_bot_api.push_message(user_id, error_message)
 
     except Exception as e:
         logger.error(f"Failed to process image: {str(e)}")
-        error_message = TextSendMessage(
-            text="❌ 画像の処理に失敗しました。\n\nもう一度お試しください。"
-        )
+        error_message = TextSendMessage(text="❌ 画像の処理に失敗しました。\n\nもう一度お試しください。")
         line_bot_api.push_message(user_id, error_message)
 
 
