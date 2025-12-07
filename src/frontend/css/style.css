@@ -23,12 +23,19 @@
 }
 
 body {
-    font-family: 'Noto Sans JP', sans-serif;
+    font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
     background: var(--gradient-bg);
     background-attachment: fixed;
     color: var(--text-primary);
     overflow-x: hidden;
     min-height: 100vh;
+}
+
+/* Font loading optimization - show fallback fonts immediately */
+@supports (font-display: swap) {
+    body {
+        font-display: swap;
+    }
 }
 
 /* Container */
