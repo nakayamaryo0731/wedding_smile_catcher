@@ -279,10 +279,12 @@ def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
     img = PILImage.open(io.BytesIO(image_bytes))
     image_width, image_height = img.size
 
-    # Retry configuration
-    max_retries = 3
-    base_delay = 1.0  # seconds
-    max_delay = 10.0  # seconds
+    # Retry configuration - generous settings for handling burst traffic
+    # With 90 concurrent users, rate limits may trigger temporarily
+    # Total max wait: 2 + 4 + 8 + 16 + 30 = 60 seconds (well within 300s timeout)
+    max_retries = 5
+    base_delay = 2.0  # seconds
+    max_delay = 30.0  # seconds
 
     for attempt in range(max_retries):
         try:
@@ -555,10 +557,12 @@ commentは100文字以内で簡潔に記述すること。
 }
 """
 
-    # Retry configuration
-    max_retries = 3
-    base_delay = 1.0  # seconds
-    max_delay = 10.0  # seconds
+    # Retry configuration - generous settings for handling burst traffic
+    # With 90 concurrent users, rate limits may trigger temporarily
+    # Total max wait: 2 + 4 + 8 + 16 + 30 = 60 seconds (well within 300s timeout)
+    max_retries = 5
+    base_delay = 2.0  # seconds
+    max_delay = 30.0  # seconds
 
     for attempt in range(max_retries):
         try:
