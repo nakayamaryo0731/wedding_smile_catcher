@@ -886,56 +886,55 @@ def update_firestore(image_id: str, user_id: str, scores: Dict[str, Any]):
     Raises:
         Exception: If Firestore update fails
     """
-    try:
-        # Update image document
-        image_ref = db.collection("images").document(image_id)
-        image_ref.update(
-            {
-                "smile_score": scores["smile_score"],
-                "ai_score": scores["ai_score"],
-                "total_score": scores["total_score"],
-                "comment": scores["comment"],
-                "average_hash": scores["average_hash"],
-                "is_similar": scores["is_similar"],
-                "face_count": scores["face_count"],
-                "status": "completed",
-                "scored_at": firestore.SERVER_TIMESTAMP,
-            }
-        )
+    image_ref = db.collection("images").document(image_id)
+    user_ref = db.collection("users").document(user_id)
 
-        logger.info(f"Successfully updated image document: {image_id}")
+    try:
+        transaction = db.transaction()
+        _update_image_and_user_stats(transaction, image_ref, user_ref, scores)
+        logger.info(
+            f"Successfully updated image {image_id} and user stats {user_id} in transaction"
+        )
 
     except Exception as e:
         logger.error(
-            f"Failed to update image document {image_id}: {str(e)}", exc_info=True
+            f"Failed to update image {image_id} and user stats {user_id}: {str(e)}",
+            exc_info=True,
         )
         raise
 
-    # Update user statistics with transaction for concurrency safety
-    try:
-        user_ref = db.collection("users").document(user_id)
-        transaction = db.transaction()
-        _update_user_stats_in_transaction(transaction, user_ref, scores["total_score"])
-        logger.info(f"Successfully updated user stats: {user_id}")
-
-    except Exception as e:
-        logger.error(
-            f"Failed to update user stats for {user_id}: {str(e)}", exc_info=True
-        )
-        # Don't raise - image update succeeded, user stats update is secondary
-        # This will be logged for monitoring but won't fail the entire function
-
 
 @firestore.transactional
-def _update_user_stats_in_transaction(transaction, user_ref, new_score: float):
+def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict):
     """
-    Update user statistics with transaction to prevent race conditions.
+    Update image document and user statistics in a single transaction.
+
+    This ensures atomicity - either both updates succeed or neither does,
+    preventing data inconsistency between image and user documents.
 
     Args:
         transaction: Firestore transaction
+        image_ref: Image document reference
         user_ref: User document reference
-        new_score: New score to compare with best_score
+        scores: Scoring results containing total_score, smile_score, etc.
     """
+    # Update image document
+    transaction.update(
+        image_ref,
+        {
+            "smile_score": scores["smile_score"],
+            "ai_score": scores["ai_score"],
+            "total_score": scores["total_score"],
+            "comment": scores["comment"],
+            "average_hash": scores["average_hash"],
+            "is_similar": scores["is_similar"],
+            "face_count": scores["face_count"],
+            "status": "completed",
+            "scored_at": firestore.SERVER_TIMESTAMP,
+        },
+    )
+
+    # Update user statistics
     user_doc = user_ref.get(transaction=transaction)
 
     if not user_doc.exists:
@@ -944,7 +943,7 @@ def _update_user_stats_in_transaction(transaction, user_ref, new_score: float):
 
     user_data = user_doc.to_dict()
     current_best = user_data.get("best_score", 0)
-    new_best = max(current_best, new_score)
+    new_best = max(current_best, scores["total_score"])
 
     transaction.update(
         user_ref, {"total_uploads": firestore.Increment(1), "best_score": new_best}
