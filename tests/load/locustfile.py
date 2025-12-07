@@ -18,9 +18,9 @@ Usage:
 
 import random
 import time
-from locust import HttpUser, task, between, events
 from pathlib import Path
 
+from locust import HttpUser, between, events, task
 
 # Test image path
 TEST_IMAGE_PATH = Path(__file__).parent.parent / "test_data" / "happy_couple.jpg"
