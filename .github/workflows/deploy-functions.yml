@@ -6,7 +6,9 @@ on:
       - main
     paths:
       - 'src/functions/**'
+      - 'requirements*.txt'
       - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch:
 
 concurrency:
   group: deploy-functions
