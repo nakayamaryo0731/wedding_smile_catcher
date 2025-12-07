@@ -89,8 +89,8 @@ class TestScoringPipeline:
             assert smile_result["face_count"] == 2
             assert smile_result["smiling_faces"] == 2
 
-        # Calculate AI score (separate patch context, no PILImage mock needed)
-        with patch("scoring.main.GenerativeModel", mock_vertex_ai_integration), patch("scoring.main.Part"):
+        # Calculate AI score (patch gemini_model directly, no PILImage mock needed)
+        with patch("scoring.main.gemini_model", mock_vertex_ai_integration):
             ai_result = evaluate_theme(test_image_bytes)
             assert ai_result["score"] == 85
             assert "素晴らしい笑顔です" in ai_result["comment"]

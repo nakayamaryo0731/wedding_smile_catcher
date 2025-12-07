@@ -232,14 +232,14 @@ class TestFormatFaceCount:
 class TestEvaluateTheme:
     """Tests for evaluate_theme function."""
 
-    @patch("scoring.main.GenerativeModel")
+    @patch("scoring.main.gemini_model")
     def test_evaluate_theme_high_score(self, mock_model):
         """Test with high score evaluation (on-theme image)."""
         # Setup mock
         mock_response = Mock()
         mock_response.text = '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
 
-        mock_model.return_value.generate_content.return_value = mock_response
+        mock_model.generate_content.return_value = mock_response
 
         # Test
         result = evaluate_theme(b"fake_image_bytes")
@@ -249,14 +249,14 @@ class TestEvaluateTheme:
         assert "素晴らしい" in result["comment"]
         assert "error" not in result
 
-    @patch("scoring.main.GenerativeModel")
+    @patch("scoring.main.gemini_model")
     def test_evaluate_theme_low_score(self, mock_model):
         """Test with low score evaluation (off-theme image)."""
         # Setup mock
         mock_response = Mock()
         mock_response.text = '{"score": 20, "comment": "風景写真のようですね。"}'
 
-        mock_model.return_value.generate_content.return_value = mock_response
+        mock_model.generate_content.return_value = mock_response
 
         # Test
         result = evaluate_theme(b"fake_image_bytes")
@@ -265,14 +265,14 @@ class TestEvaluateTheme:
         assert result["score"] == 20
         assert "風景" in result["comment"]
 
-    @patch("scoring.main.GenerativeModel")
+    @patch("scoring.main.gemini_model")
     def test_evaluate_theme_json_parse_error(self, mock_model):
         """Test JSON parse error triggers fallback."""
         # Setup mock with invalid JSON
         mock_response = Mock()
         mock_response.text = "This is not JSON"
 
-        mock_model.return_value.generate_content.return_value = mock_response
+        mock_model.generate_content.return_value = mock_response
 
         # Test
         result = evaluate_theme(b"fake_image_bytes")
@@ -282,11 +282,11 @@ class TestEvaluateTheme:
         assert "解析" in result["comment"] or "エラー" in result["comment"]
         assert result["error"] == "vertex_ai_parse_failed"
 
-    @patch("scoring.main.GenerativeModel")
+    @patch("scoring.main.gemini_model")
     def test_evaluate_theme_api_error(self, mock_model):
         """Test Vertex AI error triggers fallback."""
         # Setup mock to raise exception
-        mock_model.return_value.generate_content.side_effect = Exception("API Error")
+        mock_model.generate_content.side_effect = Exception("API Error")
 
         # Test
         result = evaluate_theme(b"fake_image_bytes")
