@@ -36,8 +36,9 @@ let selectedItems = {
 let currentTab = "images";
 let pendingDeleteAction = null;
 
-// Tabulator instance
+// Tabulator instances
 let imagesTable = null;
+let usersTable = null;
 
 // Images data cache - maintains pagination stability
 let imagesDataCache = null;
@@ -226,9 +227,16 @@ async function fetchUserNames(userIds) {
   }
 }
 
-async function loadUsers() {
-  const container = document.getElementById("usersList");
-  container.innerHTML = '<p class="loading">Loading users...</p>';
+// Users data cache - maintains pagination stability
+let usersDataCache = null;
+
+async function loadUsers(forceRefresh = false) {
+  const container = document.getElementById("usersTable");
+
+  // Use cached data if available and not forcing refresh
+  if (!forceRefresh && usersDataCache && usersTable) {
+    return;
+  }
 
   try {
     const q = query(
@@ -238,28 +246,78 @@ async function loadUsers() {
     );
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      container.innerHTML = '<p class="loading">No users found</p>';
-      return;
-    }
-
-    container.innerHTML = "";
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const item = createDataItem(
-        docSnap.id,
-        {
-          ID: docSnap.id.substring(0, 12) + "...",
-          Name: data.name || "N/A",
-          Uploads: data.total_uploads || 0,
-          "Best Score": data.best_score ? Math.round(data.best_score) : 0,
-        },
-        "users"
-      );
-      container.appendChild(item);
+    // Transform data for Tabulator
+    const data = snapshot.docs.map((docSnap) => {
+      const d = docSnap.data();
+      return {
+        id: docSnap.id,
+        name: d.name || "N/A",
+        total_uploads: d.total_uploads || 0,
+        best_score: d.best_score ?? null,
+        created_at: d.created_at?.seconds
+          ? new Date(d.created_at.seconds * 1000)
+          : null,
+      };
     });
 
-    updateSelectionCount("users");
+    // Cache the data for pagination stability
+    usersDataCache = data;
+
+    if (usersTable) {
+      usersTable.setData(data);
+    } else {
+      usersTable = new Tabulator("#usersTable", {
+        data: data,
+        layout: "fitDataFill",
+        pagination: true,
+        paginationSize: 30,
+        paginationSizeSelector: [10, 30, 50, 100],
+        selectable: true,
+        columns: [
+          {
+            formatter: "rowSelection",
+            titleFormatter: "rowSelection",
+            hozAlign: "center",
+            headerSort: false,
+            width: 40,
+          },
+          { title: "Name", field: "name", sorter: "string", widthGrow: 2 },
+          {
+            title: "Uploads",
+            field: "total_uploads",
+            sorter: "number",
+            width: 100,
+          },
+          {
+            title: "Best Score",
+            field: "best_score",
+            sorter: "number",
+            width: 120,
+            formatter: (cell) =>
+              cell.getValue() != null ? Math.round(cell.getValue()) : "N/A",
+          },
+          {
+            title: "Created",
+            field: "created_at",
+            width: 160,
+            sorter: (a, b) => {
+              if (!a) return 1;
+              if (!b) return -1;
+              return a.getTime() - b.getTime();
+            },
+            formatter: (cell) => {
+              const val = cell.getValue();
+              return val ? val.toLocaleString("ja-JP") : "N/A";
+            },
+          },
+        ],
+      });
+
+      usersTable.on("rowSelectionChanged", function (data) {
+        selectedItems.users = new Set(data.map((d) => d.id));
+        updateSelectionCount("users");
+      });
+    }
   } catch (error) {
     console.error("Error loading users:", error);
     container.innerHTML = '<p class="loading">Error loading users</p>';
@@ -435,7 +493,11 @@ async function deleteSelected(type) {
       imagesDataCache = null;
       await loadImages(true);
     }
-    if (type === "users") await loadUsers();
+    if (type === "users") {
+      usersTable = null;
+      usersDataCache = null;
+      await loadUsers(true);
+    }
     if (type === "events") await loadEvents();
 
     await loadStats();
@@ -896,6 +958,9 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 document
   .getElementById("refreshImages")
   .addEventListener("click", () => loadImages(true));
+document
+  .getElementById("refreshUsers")
+  .addEventListener("click", () => loadUsers(true));
 
 document.getElementById("selectAllImages").addEventListener("click", () => {
   if (imagesTable) {
@@ -908,9 +973,17 @@ document.getElementById("selectAllImages").addEventListener("click", () => {
     }
   }
 });
-document
-  .getElementById("selectAllUsers")
-  .addEventListener("click", () => selectAllItems("users"));
+document.getElementById("selectAllUsers").addEventListener("click", () => {
+  if (usersTable) {
+    const allSelected =
+      usersTable.getSelectedData().length === usersTable.getData().length;
+    if (allSelected) {
+      usersTable.deselectRow();
+    } else {
+      usersTable.selectRow();
+    }
+  }
+});
 document
   .getElementById("selectAllEvents")
   .addEventListener("click", () => selectAllItems("events"));

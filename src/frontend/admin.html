@@ -71,13 +71,12 @@
                 <div class="tab-header">
                     <h2>Users Management</h2>
                     <div class="actions">
+                        <button id="refreshUsers" class="btn-secondary">Refresh</button>
                         <button id="selectAllUsers" class="btn-secondary">Select All</button>
                         <button id="deleteSelectedUsers" class="btn-danger" disabled>Delete Selected (<span id="selectedUsersCount">0</span>)</button>
                     </div>
                 </div>
-                <div id="usersList" class="data-list">
-                    <p class="loading">Loading users...</p>
-                </div>
+                <div id="usersTable"></div>
             </section>
 
             <section id="eventsTab" class="tab-content">
