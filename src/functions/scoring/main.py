@@ -894,12 +894,42 @@ def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict)
     This ensures atomicity - either both updates succeed or neither does,
     preventing data inconsistency between image and user documents.
 
+    IMPORTANT: In Firestore transactions, all reads must happen before any writes.
+
     Args:
         transaction: Firestore transaction
         image_ref: Image document reference
         user_ref: User document reference
         scores: Scoring results containing total_score, smile_score, etc.
     """
+    # IMPORTANT: All reads must come before any writes in a transaction
+    # Read user document first to get current best score
+    user_doc = user_ref.get(transaction=transaction)
+
+    if not user_doc.exists:
+        logger.warning(f"User document not found: {user_ref.id}")
+        # Still update the image document even if user not found
+        transaction.update(
+            image_ref,
+            {
+                "smile_score": scores["smile_score"],
+                "ai_score": scores["ai_score"],
+                "total_score": scores["total_score"],
+                "comment": scores["comment"],
+                "average_hash": scores["average_hash"],
+                "is_similar": scores["is_similar"],
+                "face_count": scores["face_count"],
+                "status": "completed",
+                "scored_at": firestore.SERVER_TIMESTAMP,
+            },
+        )
+        return
+
+    user_data = user_doc.to_dict()
+    current_best = user_data.get("best_score", 0)
+    new_best = max(current_best, scores["total_score"])
+
+    # Now perform all writes
     # Update image document
     transaction.update(
         image_ref,
@@ -917,16 +947,6 @@ def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict)
     )
 
     # Update user statistics
-    user_doc = user_ref.get(transaction=transaction)
-
-    if not user_doc.exists:
-        logger.warning(f"User document not found: {user_ref.id}")
-        return
-
-    user_data = user_doc.to_dict()
-    current_best = user_data.get("best_score", 0)
-    new_best = max(current_best, scores["total_score"])
-
     transaction.update(user_ref, {"total_uploads": firestore.Increment(1), "best_score": new_best})
 
 
