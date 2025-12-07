@@ -294,9 +294,10 @@ main {
 
 .data-item-content {
     flex: 1;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
+    min-width: 0;
 }
 
 .data-field {
@@ -653,4 +654,36 @@ main {
         width: 40px;
         height: 40px;
     }
+}
+
+/* =========================
+   Tabulator Customizations
+   ========================= */
+#imagesTable {
+    margin-top: 1rem;
+}
+
+#imagesTable .tabulator-cell img {
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+#imagesTable .tabulator-header .tabulator-col {
+    background: #f5f5f5;
+}
+
+#imagesTable .tabulator-header .tabulator-col.tabulator-sortable:hover {
+    background: #e8f5e9;
+}
+
+#imagesTable .tabulator-row:hover {
+    background: #e8f5e9;
+}
+
+#imagesTable .tabulator-row.tabulator-selected {
+    background: #c8e6c9;
+}
+
+#imagesTable .tabulator-footer {
+    background: #f5f5f5;
 }
