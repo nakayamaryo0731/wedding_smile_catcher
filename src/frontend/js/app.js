@@ -393,27 +393,44 @@ function fireConfetti() {
     return;
   }
 
-  // Main burst
-  confetti({
-    particleCount: 200,
-    spread: 100,
-    origin: { y: 0.6 },
-  });
-
-  // Side bursts
-  setTimeout(() => {
-    confetti({ particleCount: 100, angle: 60, spread: 55, origin: { x: 0 } });
-    confetti({ particleCount: 100, angle: 120, spread: 55, origin: { x: 1 } });
-  }, 500);
-
-  // Extra celebration
-  setTimeout(() => {
+  // Random burst helper - creates natural, scattered confetti
+  function randomBurst() {
     confetti({
-      particleCount: 150,
-      spread: 120,
-      origin: { y: 0.7 },
+      particleCount: Math.floor(Math.random() * 50) + 30,
+      spread: Math.random() * 60 + 40,
+      origin: {
+        x: Math.random(),
+        y: Math.random() * 0.4 + 0.3,
+      },
+      angle: Math.random() * 360,
+      scalar: Math.random() * 0.8 + 1.2,
+      gravity: Math.random() * 0.5 + 0.6,
+      ticks: 300,
     });
-  }, 1000);
+  }
+
+  // Initial big burst from multiple random points
+  for (let i = 0; i < 8; i++) {
+    randomBurst();
+  }
+
+  // Continuous random bursts over time
+  let burstCount = 0;
+  const burstInterval = setInterval(() => {
+    randomBurst();
+    randomBurst();
+    burstCount++;
+    if (burstCount >= 10) {
+      clearInterval(burstInterval);
+    }
+  }, 150);
+
+  // Final celebration burst
+  setTimeout(() => {
+    for (let i = 0; i < 6; i++) {
+      randomBurst();
+    }
+  }, 1800);
 }
 
 /**
@@ -475,6 +492,10 @@ async function startFinalPresentation() {
   const overlay = document.getElementById("final-overlay");
   overlay.classList.add("hidden");
 
+  // Show loading animation
+  const animationType = window.FINAL_ANIMATION_TYPE || "envelope";
+  showFinalLoadingAnimation(animationType);
+
   // Hide ranking cards initially for reveal animation
   Object.values(rankCards).forEach((card) => {
     card.card.classList.remove("visible");
@@ -490,9 +511,6 @@ async function startFinalPresentation() {
     labelContainer.classList.add("final-mode");
   }
 
-  // Brief pause for dramatic effect
-  await new Promise((r) => setTimeout(r, 1500));
-
   // Set final mode flag
   isFinalMode = true;
 
@@ -502,13 +520,214 @@ async function startFinalPresentation() {
   if (finalBtn) finalBtn.classList.add("hidden");
   if (backBtn) backBtn.classList.remove("hidden");
 
-  // Fetch and display all-time rankings
-  await fetchAllTimeRankings();
+  // Wait for minimum animation time + fetch rankings in parallel
+  const minAnimationTime = new Promise((r) => setTimeout(r, 4500));
+  const fetchPromise = fetchAllTimeRankings();
+
+  // Wait for both to complete
+  await Promise.all([minAnimationTime, fetchPromise]);
+
+  // Hide loading animation
+  hideFinalLoadingAnimation();
 
   // Fire confetti celebration
   fireConfetti();
 
   console.log("Final presentation complete");
+}
+
+// =========================
+// Final Loading Animation Functions
+// =========================
+
+let particlesAnimationId = null;
+
+/**
+ * Show the final loading animation
+ * @param {string} type - Animation type: "envelope" or "particles"
+ */
+function showFinalLoadingAnimation(type) {
+  const container = document.getElementById("final-loading");
+  if (!container) return;
+
+  container.classList.remove("hidden");
+
+  if (type === "envelope") {
+    const envelope = document.getElementById("envelope-animation");
+    if (envelope) {
+      envelope.classList.remove("hidden");
+      // Reset animation by removing and re-adding the element
+      resetEnvelopeAnimation();
+    }
+  } else if (type === "particles") {
+    const particles = document.getElementById("particles-animation");
+    if (particles) {
+      particles.classList.remove("hidden");
+      startParticlesAnimation();
+    }
+  }
+}
+
+/**
+ * Reset envelope animation to play from start
+ */
+function resetEnvelopeAnimation() {
+  const flap = document.querySelector(".envelope-flap");
+  const letter = document.querySelector(".envelope-letter");
+  const text = document.querySelector(".letter-text");
+
+  if (flap) {
+    flap.style.animation = "none";
+    flap.offsetHeight; // Trigger reflow
+    flap.style.animation = null;
+  }
+  if (letter) {
+    letter.style.animation = "none";
+    letter.offsetHeight;
+    letter.style.animation = null;
+  }
+  if (text) {
+    text.style.animation = "none";
+    text.offsetHeight;
+    text.style.animation = null;
+  }
+}
+
+/**
+ * Hide the final loading animation
+ */
+function hideFinalLoadingAnimation() {
+  const container = document.getElementById("final-loading");
+  if (container) {
+    container.classList.add("hidden");
+  }
+
+  const envelope = document.getElementById("envelope-animation");
+  if (envelope) {
+    envelope.classList.add("hidden");
+  }
+
+  const particles = document.getElementById("particles-animation");
+  if (particles) {
+    particles.classList.add("hidden");
+  }
+
+  stopParticlesAnimation();
+}
+
+/**
+ * Start particles animation using canvas
+ */
+function startParticlesAnimation() {
+  const canvas = document.getElementById("particles-canvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+
+  // Create particles from edges
+  for (let i = 0; i < 120; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.max(canvas.width, canvas.height) * 0.8;
+    particles.push({
+      x: centerX + Math.cos(angle) * distance,
+      y: centerY + Math.sin(angle) * distance,
+      targetX: centerX + (Math.random() - 0.5) * 50,
+      targetY: centerY + (Math.random() - 0.5) * 50,
+      size: Math.random() * 5 + 2,
+      speed: Math.random() * 0.025 + 0.015,
+      color: `hsl(${35 + Math.random() * 25}, 100%, ${55 + Math.random() * 25}%)`,
+      trail: [],
+    });
+  }
+
+  function animate() {
+    // Semi-transparent background for trail effect
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let totalDist = 0;
+
+    particles.forEach((p) => {
+      // Store trail
+      p.trail.push({ x: p.x, y: p.y });
+      if (p.trail.length > 8) p.trail.shift();
+
+      // Move towards center
+      p.x += (p.targetX - p.x) * p.speed;
+      p.y += (p.targetY - p.y) * p.speed;
+
+      // Draw trail
+      p.trail.forEach((point, idx) => {
+        const alpha = (idx / p.trail.length) * 0.5;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, p.size * (idx / p.trail.length), 0, Math.PI * 2);
+        ctx.fillStyle = p.color.replace(")", `, ${alpha})`).replace("hsl", "hsla");
+        ctx.fill();
+      });
+
+      // Draw particle
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+
+      // Add glow
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+      const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2);
+      gradient.addColorStop(0, p.color.replace(")", ", 0.3)").replace("hsl", "hsla"));
+      gradient.addColorStop(1, "transparent");
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      totalDist += Math.hypot(p.x - centerX, p.y - centerY);
+    });
+
+    // Update center glow based on particle proximity
+    const glow = document.querySelector(".particles-center-glow");
+    if (glow) {
+      const maxDist = particles.length * Math.max(canvas.width, canvas.height) * 0.8;
+      const progress = 1 - totalDist / maxDist;
+      const scale = 0.3 + progress * 3;
+      const opacity = Math.min(progress * 1.5, 1);
+      glow.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      glow.style.opacity = opacity;
+    }
+
+    particlesAnimationId = requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+
+/**
+ * Stop particles animation
+ */
+function stopParticlesAnimation() {
+  if (particlesAnimationId) {
+    cancelAnimationFrame(particlesAnimationId);
+    particlesAnimationId = null;
+  }
+
+  // Clear canvas
+  const canvas = document.getElementById("particles-canvas");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Reset glow
+  const glow = document.querySelector(".particles-center-glow");
+  if (glow) {
+    glow.style.transform = "translate(-50%, -50%) scale(0.3)";
+    glow.style.opacity = "0";
+  }
 }
 
 /**
