@@ -19,7 +19,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const ADMIN_PASSWORD_HASH =
-  "23a68358cb853df2a850e11cbf705979dd65d570e3394b7af0904c2b153fcbb5";
+  "89172bc8b8d32e96df22b913262238f45155909b6262d452d5c16e073e27edeb";
 const GCS_BUCKET_NAME =
   window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
 
