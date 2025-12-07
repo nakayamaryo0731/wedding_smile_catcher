@@ -393,44 +393,38 @@ function fireConfetti() {
     return;
   }
 
-  // Random burst helper - creates natural, scattered confetti
-  function randomBurst() {
-    confetti({
-      particleCount: Math.floor(Math.random() * 50) + 30,
-      spread: Math.random() * 60 + 40,
-      origin: {
-        x: Math.random(),
-        y: Math.random() * 0.4 + 0.3,
-      },
-      angle: Math.random() * 360,
-      scalar: Math.random() * 0.8 + 1.2,
-      gravity: Math.random() * 0.5 + 0.6,
-      ticks: 300,
-    });
-  }
+  // One big dramatic burst from center
+  confetti({
+    particleCount: 500,
+    spread: 180,
+    origin: { x: 0.5, y: 0.5 },
+    scalar: 1.8,
+    gravity: 1.2,
+    ticks: 200,
+    startVelocity: 60,
+  });
 
-  // Initial big burst from multiple random points
-  for (let i = 0; i < 8; i++) {
-    randomBurst();
-  }
-
-  // Continuous random bursts over time
-  let burstCount = 0;
-  const burstInterval = setInterval(() => {
-    randomBurst();
-    randomBurst();
-    burstCount++;
-    if (burstCount >= 10) {
-      clearInterval(burstInterval);
-    }
-  }, 150);
-
-  // Final celebration burst
-  setTimeout(() => {
-    for (let i = 0; i < 6; i++) {
-      randomBurst();
-    }
-  }, 1800);
+  // Side cannons for extra coverage
+  confetti({
+    particleCount: 250,
+    angle: 60,
+    spread: 80,
+    origin: { x: 0, y: 0.5 },
+    scalar: 1.5,
+    gravity: 1.4,
+    ticks: 175,
+    startVelocity: 50,
+  });
+  confetti({
+    particleCount: 250,
+    angle: 120,
+    spread: 80,
+    origin: { x: 1, y: 0.5 },
+    scalar: 1.5,
+    gravity: 1.4,
+    ticks: 175,
+    startVelocity: 50,
+  });
 }
 
 /**
@@ -521,7 +515,7 @@ async function startFinalPresentation() {
   if (backBtn) backBtn.classList.remove("hidden");
 
   // Wait for minimum animation time + fetch rankings in parallel
-  const minAnimationTime = new Promise((r) => setTimeout(r, 4500));
+  const minAnimationTime = new Promise((r) => setTimeout(r, 3600));
   const fetchPromise = fetchAllTimeRankings();
 
   // Wait for both to complete
