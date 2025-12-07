@@ -634,35 +634,200 @@ body {
 
 @media (max-width: 768px) {
     .container {
-        padding: 1rem;
+        padding: 0.5rem;
+    }
+
+    /* Header */
+    .header {
+        margin-bottom: 0.3rem;
+    }
+
+    .header-top {
+        flex-direction: column;
+        gap: 0.5rem;
     }
 
     .title {
-        font-size: 2.5rem;
+        font-size: 1.8rem;
     }
 
     .subtitle {
-        font-size: 1.2rem;
+        font-size: 1rem;
+    }
+
+    .final-btn,
+    .back-btn {
+        position: static;
+        padding: 0.4rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    /* Ranking Label */
+    .ranking-label {
+        padding: 0.3rem 0.8rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .ranking-label-icon {
+        font-size: 1rem;
+    }
+
+    #ranking-label-text {
+        font-size: 0.9rem;
+    }
+
+    /* Layout: 1 column */
+    .ranking-container {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        max-height: none;
+    }
+
+    .rank-1-container {
+        order: 1;
     }
 
     .rank-2-3-container {
-        grid-template-columns: 1fr;
+        order: 2;
+        flex-direction: row;
+        height: auto;
+        gap: 0.5rem;
+    }
+
+    /* Cards */
+    .rank-1 {
+        max-height: none;
     }
 
     .rank-1 .image-container {
-        height: 300px;
+        height: 200px;
+    }
+
+    .rank-2,
+    .rank-3 {
+        flex: 1;
+        height: auto;
+    }
+
+    .rank-2 .image-container,
+    .rank-3 .image-container {
+        height: 120px;
     }
 
     .image-container {
-        height: 250px;
+        height: 150px;
     }
 
+    /* Font sizes */
     .rank-1 .user-name {
-        font-size: 2rem;
+        font-size: 1.4rem;
     }
 
     .rank-1 .score {
-        font-size: 3rem;
+        font-size: 2rem;
+    }
+
+    .rank-2 .user-name,
+    .rank-3 .user-name {
+        font-size: 1rem;
+    }
+
+    .rank-2 .score,
+    .rank-3 .score {
+        font-size: 1.4rem;
+    }
+
+    .label {
+        font-size: 0.9rem;
+    }
+
+    .rank-2 .label,
+    .rank-3 .label {
+        font-size: 0.75rem;
+    }
+
+    .ai-comment-title {
+        font-size: 1rem;
+        margin-top: 0.3rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .ai-comment {
+        font-size: 1rem;
+        padding: 0.3rem 0.5rem;
+    }
+
+    /* Rank Badge */
+    .rank-badge {
+        padding: 0.5rem;
+    }
+
+    .rank-1 .rank-badge {
+        width: 70px;
+        height: 70px;
+    }
+
+    .crown {
+        font-size: 1.8rem;
+    }
+
+    .rank-number {
+        font-size: 1rem;
+    }
+
+    .rank-2 .rank-badge,
+    .rank-3 .rank-badge {
+        width: 50px;
+        height: 50px;
+    }
+
+    .rank-2 .rank-number,
+    .rank-3 .rank-number {
+        font-size: 0.9rem;
+    }
+
+    /* 4-10 List */
+    .ranking-list {
+        margin-top: 1rem;
+        padding: 0 0.5rem;
+    }
+
+    .ranking-list-title {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .ranking-list-items {
+        gap: 0.5rem;
+    }
+
+    .ranking-list-item {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .list-rank {
+        font-size: 1.2rem;
+        min-width: 40px;
+    }
+
+    .list-image-container {
+        width: 60px;
+        height: 60px;
+    }
+
+    .list-name {
+        font-size: 1rem;
+    }
+
+    .list-score {
+        font-size: 1.2rem;
+    }
+
+    /* Reveal Button */
+    .reveal-button {
+        padding: 1.5rem 3rem;
+        font-size: 2rem;
     }
 }
 
