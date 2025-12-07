@@ -71,9 +71,12 @@ jobs:
         run: |
           uv pip install --system -r requirements-dev.txt
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
       - name: Start Firestore Emulator
         run: |
-          npx firebase-tools emulators:start --only firestore --project=wedding-smile-catcher-test &
+          firebase emulators:start --only firestore --project=wedding-smile-catcher-test &
           # Wait for emulator to be ready
           timeout 30 bash -c 'until curl -s http://localhost:8080 > /dev/null; do sleep 1; done'
         env:
