@@ -7,11 +7,16 @@ import {
   getDocs,
   doc,
   getDoc,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // State
 let currentTop3 = [];
 let isFinalMode = false;
+let unsubscribeSnapshot = null; // Firestore listener unsubscribe function
+let pendingUpdate = null; // For debouncing updates
+const UPDATE_DEBOUNCE_MS = 2000; // Debounce updates by 2 seconds
+const userNameCache = new Map(); // Cache user names to avoid repeated queries
 
 /**
  * Get current event ID from URL parameters or config
@@ -56,17 +61,23 @@ const rankCards = {
 };
 
 /**
- * Fetch user name from users collection
+ * Fetch user name from users collection with caching
  */
 async function fetchUserName(userId) {
+  // Check cache first
+  if (userNameCache.has(userId)) {
+    return userNameCache.get(userId);
+  }
+
   try {
     const userRef = doc(window.db, "users", userId);
     const userSnap = await getDoc(userRef);
 
-    if (userSnap.exists()) {
-      return userSnap.data().name || userId;
-    }
-    return userId;
+    const userName = userSnap.exists() ? userSnap.data().name || userId : userId;
+
+    // Cache the result
+    userNameCache.set(userId, userName);
+    return userName;
   } catch (error) {
     console.error("Error fetching user name:", error);
     return userId;
@@ -411,12 +422,8 @@ function fireConfetti() {
 function showFinalOverlay() {
   console.log("Showing final presentation overlay");
 
-  // Stop periodic polling
-  if (window.rankingIntervalId) {
-    clearInterval(window.rankingIntervalId);
-    window.rankingIntervalId = null;
-    console.log("Stopped periodic polling");
-  }
+  // Stop real-time listener
+  stopRealtimeListener();
 
   // Show overlay
   const overlay = document.getElementById("final-overlay");
@@ -454,8 +461,8 @@ function backToRecent() {
   if (finalBtn) finalBtn.classList.remove("hidden");
   if (backBtn) backBtn.classList.add("hidden");
 
-  // Restart periodic polling
-  setupPeriodicPolling();
+  // Restart real-time listener
+  setupRealtimeListener();
 }
 
 /**
@@ -528,27 +535,97 @@ function setupFinalButton() {
 }
 
 /**
- * Set up periodic polling (fetch rankings every 10 seconds)
+ * Process snapshot data and update rankings with debouncing
  */
-function setupPeriodicPolling() {
-  console.log("Setting up periodic polling (every 10 seconds)...");
+function processSnapshotData(snapshot) {
+  // Clear any pending update
+  if (pendingUpdate) {
+    clearTimeout(pendingUpdate);
+  }
 
-  // Initial fetch
-  fetchRecentRankings();
+  // Debounce: wait for UPDATE_DEBOUNCE_MS before processing
+  pendingUpdate = setTimeout(async () => {
+    console.log(`Processing ${snapshot.docs.length} documents (debounced)`);
 
-  // Fetch every 10 seconds
-  const intervalId = setInterval(() => {
-    // Don't poll in final mode
-    if (isFinalMode) return;
+    let images = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-    console.log("Periodic update: fetching rankings...");
-    fetchRecentRankings();
-  }, 10000); // 10000ms = 10 seconds
+    // Filter out images without valid scores (scoring not completed)
+    images = images.filter(
+      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+    );
 
-  // Store interval ID for cleanup
-  window.rankingIntervalId = intervalId;
+    // Sort by total_score descending
+    images.sort((a, b) => b.total_score - a.total_score);
 
-  console.log("Periodic polling set up successfully");
+    // Limit same user to max 2 images in top rankings
+    const userCount = new Map();
+    images = images.filter((img) => {
+      const count = userCount.get(img.user_id) || 0;
+      if (count >= 2) return false;
+      userCount.set(img.user_id, count + 1);
+      return true;
+    });
+
+    await updateRankings(images);
+    pendingUpdate = null;
+  }, UPDATE_DEBOUNCE_MS);
+}
+
+/**
+ * Set up real-time Firestore listener with debouncing
+ * Replaces periodic polling for more efficient updates
+ */
+function setupRealtimeListener() {
+  console.log("Setting up real-time Firestore listener...");
+
+  const currentEventId = getCurrentEventId();
+
+  const imagesRef = collection(window.db, "images");
+  const q = query(
+    imagesRef,
+    where("event_id", "==", currentEventId),
+    orderBy("upload_timestamp", "desc"),
+    limit(30) // Fetch last 30 uploaded images
+  );
+
+  // Set up real-time listener
+  unsubscribeSnapshot = onSnapshot(
+    q,
+    (snapshot) => {
+      // Don't update in final mode
+      if (isFinalMode) return;
+
+      console.log(`Snapshot received: ${snapshot.docs.length} documents`);
+      processSnapshotData(snapshot);
+    },
+    (error) => {
+      console.error("Firestore listener error:", error);
+      loadingEl.innerHTML = `
+        <div class="spinner"></div>
+        <p style="color: #ff6b6b;">Error: ${error.message}</p>
+      `;
+    }
+  );
+
+  console.log("Real-time listener set up successfully");
+}
+
+/**
+ * Stop the real-time listener
+ */
+function stopRealtimeListener() {
+  if (unsubscribeSnapshot) {
+    unsubscribeSnapshot();
+    unsubscribeSnapshot = null;
+    console.log("Real-time listener stopped");
+  }
+  if (pendingUpdate) {
+    clearTimeout(pendingUpdate);
+    pendingUpdate = null;
+  }
 }
 
 /**
@@ -575,15 +652,13 @@ function init() {
   // Set up final presentation button
   setupFinalButton();
 
-  // Set up periodic polling (every 10 seconds)
-  setupPeriodicPolling();
+  // Set up real-time listener (replaces periodic polling)
+  setupRealtimeListener();
 }
 
 // Cleanup on page unload
 window.addEventListener("beforeunload", () => {
-  if (window.rankingIntervalId) {
-    clearInterval(window.rankingIntervalId);
-  }
+  stopRealtimeListener();
 });
 
 // Start the app
