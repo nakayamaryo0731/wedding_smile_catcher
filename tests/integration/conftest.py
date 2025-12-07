@@ -5,10 +5,10 @@ Integration tests use Firestore Emulator and mock external APIs (Vision, Vertex 
 """
 
 import os
-import pytest
-from google.cloud import firestore
 from unittest.mock import Mock, patch
 
+import pytest
+from google.cloud import firestore
 
 # Configure Firestore emulator
 os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
@@ -177,9 +177,7 @@ def mock_vertex_ai_integration():
     # Create mock instance that will be returned when GenerativeModel() is called
     mock_instance = Mock()
     mock_response = Mock()
-    mock_response.text = (
-        '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
-    )
+    mock_response.text = '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
     mock_instance.generate_content = Mock(return_value=mock_response)
 
     # Create mock class that returns the mock instance

@@ -3,11 +3,11 @@ Pytest configuration and shared fixtures for Wedding Smile Catcher tests.
 """
 
 import os
-import pytest
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 from unittest.mock import Mock
 
+import pytest
 
 # Set environment variables at module level (before any imports)
 os.environ["GCP_PROJECT_ID"] = "wedding-smile-catcher-test"
@@ -99,9 +99,7 @@ def mock_vertex_response_high_score() -> Mock:
     Mock Vertex AI response with high score.
     """
     mock_response = Mock()
-    mock_response.text = (
-        '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
-    )
+    mock_response.text = '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
 
     return mock_response
 
@@ -118,7 +116,7 @@ def mock_vertex_response_low_score() -> Mock:
 
 
 @pytest.fixture
-def sample_user_data() -> Dict[str, Any]:
+def sample_user_data() -> dict[str, Any]:
     """
     Sample user data for testing.
     """
@@ -132,7 +130,7 @@ def sample_user_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_image_data() -> Dict[str, Any]:
+def sample_image_data() -> dict[str, Any]:
     """
     Sample image data for testing.
     """
@@ -148,7 +146,7 @@ def sample_image_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_scored_image_data() -> Dict[str, Any]:
+def sample_scored_image_data() -> dict[str, Any]:
     """
     Sample image data with scores calculated.
     """
