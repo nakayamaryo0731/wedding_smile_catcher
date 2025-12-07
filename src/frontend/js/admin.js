@@ -24,6 +24,9 @@ let imagesCache = [];
 let currentPage = 1;
 let totalImages = 0;
 
+// User name cache
+let userNameCache = new Map();
+
 async function sha256(message) {
     const msgBuffer = new TextEncoder().encode(message);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -102,6 +105,10 @@ async function loadImages(page = 1) {
         const endIndex = startIndex + ITEMS_PER_PAGE;
         const pageImages = imagesCache.slice(startIndex, endIndex);
 
+        // Fetch user names for this page
+        const userIds = [...new Set(pageImages.map(d => d.data().user_id).filter(Boolean))];
+        await fetchUserNames(userIds);
+
         container.innerHTML = '';
         pageImages.forEach(docSnap => {
             const data = docSnap.data();
@@ -117,6 +124,26 @@ async function loadImages(page = 1) {
     } catch (error) {
         console.error('Error loading images:', error);
         container.innerHTML = '<p class="loading">Error loading images</p>';
+    }
+}
+
+async function fetchUserNames(userIds) {
+    const uncachedIds = userIds.filter(id => !userNameCache.has(id));
+    if (uncachedIds.length === 0) return;
+
+    for (const userId of uncachedIds) {
+        try {
+            const userRef = doc(db, 'users', userId);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                userNameCache.set(userId, userSnap.data().name || userId);
+            } else {
+                userNameCache.set(userId, userId);
+            }
+        } catch (error) {
+            console.error('Error fetching user:', userId, error);
+            userNameCache.set(userId, userId);
+        }
     }
 }
 
@@ -154,9 +181,12 @@ function createImageDataItem(id, data) {
     const content = document.createElement('div');
     content.className = 'data-item-content';
 
+    // Get user name from cache
+    const userName = data.user_id ? (userNameCache.get(data.user_id) || data.user_id) : 'N/A';
+
     const fields = {
         'ID': id.substring(0, 12) + '...',
-        'User': data.user_id || 'N/A',
+        'User': userName,
         'Score': data.total_score != null ? Math.round(data.total_score) : 'N/A',
         'Status': data.status || 'N/A',
         'Uploaded': data.upload_timestamp ? new Date(data.upload_timestamp.seconds * 1000).toLocaleString('ja-JP') : 'N/A'
@@ -178,6 +208,25 @@ function createImageDataItem(id, data) {
         field.appendChild(fieldValue);
         content.appendChild(field);
     });
+
+    // AI Comment (full width row)
+    const aiComment = data.ai_comment || data.comment || '';
+    if (aiComment) {
+        const commentField = document.createElement('div');
+        commentField.className = 'data-field data-field-full';
+
+        const commentLabel = document.createElement('div');
+        commentLabel.className = 'data-field-label';
+        commentLabel.textContent = 'AI Comment';
+
+        const commentValue = document.createElement('div');
+        commentValue.className = 'data-field-value data-field-comment';
+        commentValue.textContent = aiComment;
+
+        commentField.appendChild(commentLabel);
+        commentField.appendChild(commentValue);
+        content.appendChild(commentField);
+    }
 
     item.appendChild(checkbox);
     item.appendChild(thumbnail);

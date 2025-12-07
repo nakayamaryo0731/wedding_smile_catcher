@@ -711,3 +711,20 @@ main {
     color: #666;
     margin: 0 1rem;
 }
+
+/* =========================
+   AI Comment Field
+   ========================= */
+.data-field-full {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #eee;
+}
+
+.data-field-comment {
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.4;
+    font-style: italic;
+}
