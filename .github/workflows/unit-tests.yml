@@ -74,8 +74,8 @@ jobs:
       - name: Start Firestore Emulator
         run: |
           npx firebase-tools emulators:start --only firestore --project=wedding-smile-catcher-test &
-          # Wait for emulator to be ready
-          timeout 30 bash -c 'until curl -s http://localhost:8080 > /dev/null; do sleep 1; done'
+          # Wait for emulator to be ready (60s to allow npx download time)
+          timeout 60 bash -c 'until curl -s http://localhost:8080 > /dev/null; do sleep 1; done'
         env:
           FIRESTORE_EMULATOR_HOST: localhost:8080
 
