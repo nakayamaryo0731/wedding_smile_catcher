@@ -66,50 +66,96 @@ body {
     text-shadow: 1px 2px 4px var(--shadow-medium);
 }
 
-/* Tab Buttons */
-.tab-buttons {
+/* Header Layout */
+.header-top {
     display: flex;
-    gap: 0.5rem;
     justify-content: center;
-    margin-top: 0.3rem;
+    align-items: center;
+    position: relative;
 }
 
-.tab-btn {
-    padding: 0.4rem 1.6rem;
-    font-size: 1.3rem;
-    font-weight: 600;
+.header-title {
+    text-align: center;
+}
+
+/* Header Buttons */
+.final-btn,
+.back-btn {
+    position: absolute;
+    right: 0;
+    padding: 0.6rem 1.8rem;
+    font-size: 1.2rem;
+    font-weight: 700;
     font-family: 'Noto Sans JP', sans-serif;
-    color: rgba(255, 255, 255, 0.7);
-    background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 25px;
     cursor: pointer;
     transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    white-space: nowrap;
 }
 
-.tab-btn:hover {
+.final-btn {
+    color: var(--white);
+    background: linear-gradient(135deg, var(--primary-color), #a01830);
+    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
+}
+
+.final-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(196, 30, 58, 0.6);
+    background: linear-gradient(135deg, #d62445, var(--primary-color));
+}
+
+.final-btn.hidden {
+    display: none;
+}
+
+.back-btn {
     color: var(--white);
     background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.back-btn:hover {
     transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
-.tab-btn.active {
-    color: var(--white);
-    background: rgba(45, 90, 39, 0.8);
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-/* Tab Content */
-.tab-content {
+.back-btn.hidden {
     display: none;
+}
+
+/* Ranking Content */
+.ranking-content {
     animation: fadeIn 0.5s ease-out;
     margin-top: 0.3rem;
 }
 
-.tab-content.active {
-    display: block;
+/* Ranking Label */
+.ranking-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.4rem 1.2rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.ranking-label-icon {
+    font-size: 1.3rem;
+}
+
+#ranking-label-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--white);
 }
 
 /* Ranking Container */
@@ -486,6 +532,10 @@ body {
     padding: 0 1rem;
 }
 
+.ranking-list.hidden {
+    display: none;
+}
+
 .ranking-list-title {
     font-family: 'Playfair Display', serif;
     font-size: 1.3rem;
@@ -632,4 +682,50 @@ body {
     content: '📷';
     font-size: 4rem;
     opacity: 0.3;
+}
+
+/* =========================
+   Final Presentation Mode
+   ========================= */
+
+/* Full-Screen Final Overlay */
+.final-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 1000;
+}
+
+.final-overlay.hidden {
+    display: none;
+}
+
+/* Reveal Button */
+.reveal-button {
+    padding: 2.5rem 5rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--white);
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-gold));
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    animation: pulse 2s infinite;
+    box-shadow: 0 10px 50px rgba(196, 30, 58, 0.6);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.reveal-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 60px rgba(196, 30, 58, 0.8);
+}
+
+/* Final Mode Label Style */
+.ranking-label.final-mode {
+    background: linear-gradient(135deg, rgba(196, 30, 58, 0.3), rgba(212, 175, 55, 0.3));
+    border: 2px solid var(--accent-gold);
 }
