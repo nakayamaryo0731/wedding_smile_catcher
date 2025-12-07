@@ -241,6 +241,22 @@ main {
     background: #c8e6c9;
 }
 
+.event-filter {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    cursor: pointer;
+    min-width: 180px;
+}
+
+.event-filter:focus {
+    outline: none;
+    border-color: #2d5a27;
+}
+
 .btn-danger {
     color: white;
     background: #ff4444;

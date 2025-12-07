@@ -46,6 +46,12 @@ let imagesDataCache = null;
 // User name cache
 let userNameCache = new Map();
 
+// Event name cache
+let eventNameCache = new Map();
+
+// Current event filter
+let currentEventFilter = "";
+
 async function sha256(message) {
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
@@ -119,6 +125,12 @@ async function loadImages(forceRefresh = false) {
     ];
     await fetchUserNames(userIds);
 
+    // Fetch all event names
+    const eventIds = [
+      ...new Set(snapshot.docs.map((d) => d.data().event_id).filter(Boolean)),
+    ];
+    await fetchEventNames(eventIds);
+
     // Transform data for Tabulator
     const data = snapshot.docs.map((docSnap) => {
       const d = docSnap.data();
@@ -129,6 +141,10 @@ async function loadImages(forceRefresh = false) {
           : "",
         user_name: d.user_id
           ? userNameCache.get(d.user_id) || d.user_id
+          : "N/A",
+        event_id: d.event_id || "",
+        event_name: d.event_id
+          ? eventNameCache.get(d.event_id) || d.event_id
           : "N/A",
         total_score: d.total_score ?? null,
         status: d.status || "N/A",
@@ -142,12 +158,17 @@ async function loadImages(forceRefresh = false) {
     // Cache the data for pagination stability
     imagesDataCache = data;
 
+    // Populate event filter dropdown
+    const eventNames = data.map((d) => d.event_name).filter((n) => n !== "N/A");
+    populateEventFilterDropdown(eventNames);
+
     if (imagesTable) {
       imagesTable.setData(data);
+      updateEventFilter();
     } else {
       imagesTable = new Tabulator("#imagesTable", {
         data: data,
-        layout: "fitDataFill",
+        layout: "fitData",
         pagination: true,
         paginationSize: 30,
         paginationSizeSelector: [10, 30, 50, 100],
@@ -169,6 +190,7 @@ async function loadImages(forceRefresh = false) {
             width: 70,
           },
           { title: "User", field: "user_name", sorter: "string", width: 120 },
+          { title: "Event", field: "event_name", sorter: "string", width: 180 },
           {
             title: "Score",
             field: "total_score",
@@ -192,7 +214,22 @@ async function loadImages(forceRefresh = false) {
               return val ? val.toLocaleString("ja-JP") : "N/A";
             },
           },
-          { title: "AI Comment", field: "ai_comment", widthGrow: 2 },
+          {
+            title: "AI Comment",
+            field: "ai_comment",
+            width: 320,
+            formatter: (cell) => {
+              const val = cell.getValue();
+              if (!val) return "";
+              const div = document.createElement("div");
+              div.style.whiteSpace = "pre-wrap";
+              div.style.wordBreak = "break-word";
+              div.style.maxHeight = "80px";
+              div.style.overflow = "auto";
+              div.textContent = val;
+              return div;
+            },
+          },
         ],
       });
 
@@ -200,6 +237,9 @@ async function loadImages(forceRefresh = false) {
         selectedItems.images = new Set(data.map((d) => d.id));
         updateSelectionCount("images");
       });
+
+      // Apply filter if already set
+      updateEventFilter();
     }
   } catch (error) {
     console.error("Error loading images:", error);
@@ -225,6 +265,53 @@ async function fetchUserNames(userIds) {
       userNameCache.set(userId, userId);
     }
   }
+}
+
+async function fetchEventNames(eventIds) {
+  const uncachedIds = eventIds.filter((id) => id && !eventNameCache.has(id));
+  if (uncachedIds.length === 0) return;
+
+  for (const eventId of uncachedIds) {
+    try {
+      const eventRef = doc(db, "events", eventId);
+      const eventSnap = await getDoc(eventRef);
+      if (eventSnap.exists()) {
+        eventNameCache.set(eventId, eventSnap.data().event_name || eventId);
+      } else {
+        eventNameCache.set(eventId, eventId);
+      }
+    } catch (error) {
+      console.error("Error fetching event:", eventId, error);
+      eventNameCache.set(eventId, eventId);
+    }
+  }
+}
+
+function updateEventFilter() {
+  if (!imagesTable) return;
+
+  if (currentEventFilter) {
+    imagesTable.setFilter("event_name", "=", currentEventFilter);
+  } else {
+    imagesTable.clearFilter();
+  }
+}
+
+function populateEventFilterDropdown(events) {
+  const select = document.getElementById("eventFilter");
+  if (!select) return;
+
+  // Clear existing options except the first "All Events"
+  select.innerHTML = '<option value="">All Events</option>';
+
+  // Add unique events
+  const uniqueEvents = [...new Set(events)].filter(Boolean).sort();
+  uniqueEvents.forEach((eventName) => {
+    const option = document.createElement("option");
+    option.value = eventName;
+    option.textContent = eventName;
+    select.appendChild(option);
+  });
 }
 
 // Users data cache - maintains pagination stability
@@ -1038,6 +1125,11 @@ document
 document
   .getElementById("refreshStats")
   .addEventListener("click", () => loadStatistics());
+
+document.getElementById("eventFilter").addEventListener("change", (e) => {
+  currentEventFilter = e.target.value;
+  updateEventFilter();
+});
 
 document.getElementById("confirmDelete").addEventListener("click", () => {
   if (pendingDeleteAction) {
