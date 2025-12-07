@@ -750,46 +750,83 @@ function renderRankings(images) {
 
   // Overall Top 10
   const tbody = document.querySelector("#overallTop10Table tbody");
+  tbody.innerHTML = "";
+
   if (rankings.overallTop10.length === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="6" style="text-align:center;color:#888;">No data</td></tr>';
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 6;
+    emptyCell.style.textAlign = "center";
+    emptyCell.style.color = "#888";
+    emptyCell.textContent = "No data";
+    emptyRow.appendChild(emptyCell);
+    tbody.appendChild(emptyRow);
   } else {
-    tbody.innerHTML = rankings.overallTop10
-      .map(
-        (img, i) => `
-            <tr>
-                <td class="rank-cell">${i + 1}</td>
-                <td><img src="${getImageUrl(
-                  img
-                )}" class="thumbnail" alt="" loading="lazy"></td>
-                <td>${img.user_name || img.user_id || "Unknown"}</td>
-                <td>${img.total_score.toFixed(1)}</td>
-                <td>${(img.smile_score || 0).toFixed(0)}</td>
-                <td>${img.ai_score || 0}</td>
-            </tr>
-        `
-      )
-      .join("");
+    rankings.overallTop10.forEach((img, i) => {
+      const row = document.createElement("tr");
+
+      const rankCell = document.createElement("td");
+      rankCell.className = "rank-cell";
+      rankCell.textContent = i + 1;
+
+      const imgCell = document.createElement("td");
+      const imgEl = document.createElement("img");
+      imgEl.src = getImageUrl(img);
+      imgEl.className = "thumbnail";
+      imgEl.alt = "";
+      imgEl.loading = "lazy";
+      imgCell.appendChild(imgEl);
+
+      const nameCell = document.createElement("td");
+      nameCell.textContent = img.user_name || img.user_id || "Unknown";
+
+      const scoreCell = document.createElement("td");
+      scoreCell.textContent = img.total_score.toFixed(1);
+
+      const smileCell = document.createElement("td");
+      smileCell.textContent = (img.smile_score || 0).toFixed(0);
+
+      const aiCell = document.createElement("td");
+      aiCell.textContent = img.ai_score || 0;
+
+      row.append(rankCell, imgCell, nameCell, scoreCell, smileCell, aiCell);
+      tbody.appendChild(row);
+    });
   }
 
   // Most Active Users
   const activeBody = document.querySelector("#mostActiveTable tbody");
+  activeBody.innerHTML = "";
+
   if (rankings.mostActiveUsers.length === 0) {
-    activeBody.innerHTML =
-      '<tr><td colspan="4" style="text-align:center;color:#888;">No data</td></tr>';
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 4;
+    emptyCell.style.textAlign = "center";
+    emptyCell.style.color = "#888";
+    emptyCell.textContent = "No data";
+    emptyRow.appendChild(emptyCell);
+    activeBody.appendChild(emptyRow);
   } else {
-    activeBody.innerHTML = rankings.mostActiveUsers
-      .map(
-        (user, i) => `
-            <tr>
-                <td class="rank-cell">${i + 1}</td>
-                <td>${user.name || user.userId}</td>
-                <td>${user.count}</td>
-                <td>${user.bestScore.toFixed(1)}</td>
-            </tr>
-        `
-      )
-      .join("");
+    rankings.mostActiveUsers.forEach((user, i) => {
+      const row = document.createElement("tr");
+
+      const rankCell = document.createElement("td");
+      rankCell.className = "rank-cell";
+      rankCell.textContent = i + 1;
+
+      const nameCell = document.createElement("td");
+      nameCell.textContent = user.name || user.userId;
+
+      const countCell = document.createElement("td");
+      countCell.textContent = user.count;
+
+      const scoreCell = document.createElement("td");
+      scoreCell.textContent = user.bestScore.toFixed(1);
+
+      row.append(rankCell, nameCell, countCell, scoreCell);
+      activeBody.appendChild(row);
+    });
   }
 
   // Special Awards
