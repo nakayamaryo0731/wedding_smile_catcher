@@ -362,10 +362,11 @@ def calculate_smile_score(image_bytes: bytes) -> Dict[str, Any]:
             time.sleep(sleep_time)
 
     # Should not reach here, but return fallback just in case
+    # Return zero score to ensure fairness - API failures should not give any points
     return {
-        "smile_score": 300.0,
-        "face_count": 3,
-        "smiling_faces": 3,
+        "smile_score": 0.0,
+        "face_count": 0,
+        "smiling_faces": 0,
         "error": "vision_api_failed",
     }
 
