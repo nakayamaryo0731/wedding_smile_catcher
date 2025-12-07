@@ -57,6 +57,9 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 # Initialize Vertex AI
 vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
 
+# Initialize Gemini model once at module level to avoid re-initialization overhead
+gemini_model = GenerativeModel("gemini-2.5-flash")
+
 
 @functions_framework.http
 def scoring(request: Request):
@@ -434,11 +437,10 @@ def is_similar_image(new_hash: str, existing_hashes: list[str], threshold: int =
     try:
         new_hash_obj = imagehash.hex_to_hash(new_hash)
 
-        for existing_hash in existing_hashes:
-            # Skip error hashes
-            if existing_hash.startswith("error_"):
-                continue
+        # Filter out error hashes once before the loop
+        valid_hashes = [h for h in existing_hashes if not h.startswith("error_")]
 
+        for existing_hash in valid_hashes:
             try:
                 existing_hash_obj = imagehash.hex_to_hash(existing_hash)
                 hamming_distance = new_hash_obj - existing_hash_obj
@@ -453,7 +455,7 @@ def is_similar_image(new_hash: str, existing_hashes: list[str], threshold: int =
                 logger.error(f"Error comparing hash {existing_hash}: {str(e)}")
                 continue
 
-        logger.info(f"No similar images found (checked {len(existing_hashes)} hashes)")
+        logger.info(f"No similar images found (checked {len(valid_hashes)} valid hashes)")
         return False
 
     except Exception as e:
@@ -560,14 +562,11 @@ commentは100文字以内で簡潔に記述すること。
 
     for attempt in range(max_retries):
         try:
-            # Initialize Gemini model (using latest Flash model)
-            model = GenerativeModel("gemini-2.5-flash")
-
             # Create image part from bytes
             image_part = Part.from_data(image_bytes, mime_type="image/jpeg")
 
-            # Generate content
-            response = model.generate_content([image_part, prompt])
+            # Generate content using module-level model instance
+            response = gemini_model.generate_content([image_part, prompt])
 
             logger.info(f"Gemini response: {response.text}")
 
@@ -682,6 +681,14 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
 
     log_context["user_id"] = user_id
 
+    # Get user document to retrieve LINE user ID (cached for later use)
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+    line_user_id = None
+    if user_doc.exists:
+        user_data = user_doc.to_dict()
+        line_user_id = user_data.get("line_user_id")
+
     # Download image from Cloud Storage
     download_start = time.time()
     image_bytes = download_image_from_storage(storage_path)
@@ -785,6 +792,7 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
         "face_count": face_count,
         "is_similar": is_similar,
         "average_hash": average_hash,
+        "line_user_id": line_user_id,  # Cache LINE user ID to avoid duplicate Firestore read
     }
 
     # Add error flags if any occurred
@@ -987,21 +995,13 @@ def send_result_to_line(user_id: str, scores: dict[str, Any]):
 
     Args:
         user_id: User ID (Firestore document ID, not LINE user ID)
-        scores: Scoring results
+        scores: Scoring results (includes cached line_user_id)
     """
-    # Get user's LINE user ID
-    user_ref = db.collection("users").document(user_id)
-    user_doc = user_ref.get()
-
-    if not user_doc.exists:
-        logger.error(f"User not found: {user_id}")
-        return
-
-    user_data = user_doc.to_dict()
-    line_user_id = user_data.get("line_user_id")
+    # Use cached LINE user ID from scores to avoid duplicate Firestore read
+    line_user_id = scores.get("line_user_id")
 
     if not line_user_id:
-        logger.error(f"LINE user ID not found for user: {user_id}")
+        logger.error(f"LINE user ID not found in scores for user: {user_id}")
         return
 
     # Build message with face count display (show "大勢" for 10+ people)
