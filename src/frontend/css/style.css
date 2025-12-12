@@ -427,6 +427,14 @@ body {
     font-size: 3.5rem;
 }
 
+.rank-1 .ai-comment-title {
+    font-size: 1.5rem;
+}
+
+.rank-1 .ai-comment {
+    font-size: 1.6rem;
+}
+
 /* AI Comment */
 .ai-comment-title {
     font-size: 1.6rem;

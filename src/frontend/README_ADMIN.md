@@ -8,7 +8,7 @@
 
 ```bash
 cd src/frontend
-python3 -m http.server 8001
+python3 -m http.server 8001 --bind 0.0.0.0
 ```
 
 ブラウザで `http://localhost:8001/admin` にアクセス
