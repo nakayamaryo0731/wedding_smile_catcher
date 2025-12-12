@@ -54,8 +54,8 @@ window.FIREBASE_CONFIG = {
 シンプルなHTTPサーバーで起動：
 
 ```bash
-# Pythonの場合
-python3 -m http.server 8001
+# Pythonの場合（--bind 0.0.0.0 でIPv4接続を有効化）
+python3 -m http.server 8001 --bind 0.0.0.0
 
 # Node.jsの場合
 npx http-server -p 8001
