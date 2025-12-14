@@ -1223,7 +1223,11 @@ async function switchToSlideshow() {
 
   // Initialize and start slideshow
   initializeSlideshowDisplay();
-  startImageRotation();
+
+  // Only start rotation if we have more images than display slots
+  if (slideshowState.imageQueue.length > SLIDESHOW_CONFIG.DISPLAY_COUNT) {
+    startImageRotation();
+  }
 
   console.log("Switched to slideshow mode");
 }
