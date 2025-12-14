@@ -18,6 +18,31 @@ let pendingUpdate = null; // For debouncing updates
 const UPDATE_DEBOUNCE_MS = 2000; // Debounce updates by 2 seconds
 const userNameCache = new Map(); // Cache user names to avoid repeated queries
 
+// =========================
+// Slideshow Mode State & Config
+// =========================
+const SLIDESHOW_CONFIG = {
+  MODE_SWITCH_INTERVAL: 60 * 1000, // 1 minute between mode switches
+  IMAGE_SWITCH_INTERVAL: 2500, // 2.5 seconds between image changes
+  DISPLAY_COUNT: 6, // Number of images to display simultaneously
+  FADE_DURATION: 2000, // Fade animation duration (ms)
+  IMAGE_LIMIT: 30, // Number of images to fetch for slideshow
+  ROTATION_RANGE: { min: -12, max: 12 }, // Rotation angle range (degrees)
+  MARGIN: { top: 0.12, bottom: 0.08, left: 0.05, right: 0.05 }, // Screen margins
+};
+
+let slideshowState = {
+  currentMode: "ranking", // 'ranking' | 'slideshow' | 'final'
+  modeTimerId: null, // Mode switch timer
+  imageTimerId: null, // Image rotation timer
+  imageQueue: [], // Images for slideshow (up to 30)
+  displayedImages: [], // Currently displayed images (up to 6)
+  displayedPositions: [], // Positions of displayed images
+  nextReplaceIndex: 0, // Index of next image to replace
+  nextImageIndex: 0, // Index in imageQueue for next image
+  autoModeSwitch: true, // Whether auto mode switching is enabled
+};
+
 /**
  * Get current event ID from URL parameters
  * Supports: ?event_id=wedding_20250315_tanaka
@@ -67,7 +92,9 @@ async function fetchUserName(userId) {
     const userRef = doc(window.db, "users", userId);
     const userSnap = await getDoc(userRef);
 
-    const userName = userSnap.exists() ? userSnap.data().name || userId : userId;
+    const userName = userSnap.exists()
+      ? userSnap.data().name || userId
+      : userId;
 
     // Cache the result
     userNameCache.set(userId, userName);
@@ -430,6 +457,12 @@ function showFinalOverlay() {
   // Stop real-time listener
   stopRealtimeListener();
 
+  // Stop slideshow mode if active
+  stopAutoModeSwitch();
+  if (slideshowState.currentMode === "slideshow") {
+    switchToRanking();
+  }
+
   // Show overlay
   const overlay = document.getElementById("final-overlay");
   overlay.classList.remove("hidden");
@@ -468,6 +501,9 @@ function backToRecent() {
 
   // Restart real-time listener
   setupRealtimeListener();
+
+  // Restart automatic mode switching (ranking <-> slideshow)
+  startAutoModeSwitch();
 }
 
 /**
@@ -617,7 +653,9 @@ function startParticlesAnimation() {
       targetY: centerY + (Math.random() - 0.5) * 50,
       size: Math.random() * 5 + 2,
       speed: Math.random() * 0.025 + 0.015,
-      color: `hsl(${35 + Math.random() * 25}, 100%, ${55 + Math.random() * 25}%)`,
+      color: `hsl(${35 + Math.random() * 25}, 100%, ${
+        55 + Math.random() * 25
+      }%)`,
       trail: [],
     });
   }
@@ -642,8 +680,16 @@ function startParticlesAnimation() {
       p.trail.forEach((point, idx) => {
         const alpha = (idx / p.trail.length) * 0.5;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, p.size * (idx / p.trail.length), 0, Math.PI * 2);
-        ctx.fillStyle = p.color.replace(")", `, ${alpha})`).replace("hsl", "hsla");
+        ctx.arc(
+          point.x,
+          point.y,
+          p.size * (idx / p.trail.length),
+          0,
+          Math.PI * 2
+        );
+        ctx.fillStyle = p.color
+          .replace(")", `, ${alpha})`)
+          .replace("hsl", "hsla");
         ctx.fill();
       });
 
@@ -656,8 +702,18 @@ function startParticlesAnimation() {
       // Add glow
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
-      const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2);
-      gradient.addColorStop(0, p.color.replace(")", ", 0.3)").replace("hsl", "hsla"));
+      const gradient = ctx.createRadialGradient(
+        p.x,
+        p.y,
+        0,
+        p.x,
+        p.y,
+        p.size * 2
+      );
+      gradient.addColorStop(
+        0,
+        p.color.replace(")", ", 0.3)").replace("hsl", "hsla")
+      );
       gradient.addColorStop(1, "transparent");
       ctx.fillStyle = gradient;
       ctx.fill();
@@ -668,7 +724,8 @@ function startParticlesAnimation() {
     // Update center glow based on particle proximity
     const glow = document.querySelector(".particles-center-glow");
     if (glow) {
-      const maxDist = particles.length * Math.max(canvas.width, canvas.height) * 0.8;
+      const maxDist =
+        particles.length * Math.max(canvas.width, canvas.height) * 0.8;
       const progress = 1 - totalDist / maxDist;
       const scale = 0.3 + progress * 3;
       const opacity = Math.min(progress * 1.5, 1);
@@ -703,6 +760,21 @@ function stopParticlesAnimation() {
   if (glow) {
     glow.style.transform = "translate(-50%, -50%) scale(0.3)";
     glow.style.opacity = "0";
+  }
+}
+
+/**
+ * Set up slideshow back button listener
+ */
+function setupSlideshowBackButton() {
+  const slideshowBackBtn = document.getElementById("slideshow-back-btn");
+  if (slideshowBackBtn) {
+    slideshowBackBtn.addEventListener("click", () => {
+      switchToRanking();
+      // Reset the auto mode switch timer so ranking mode stays for full interval
+      startAutoModeSwitch();
+    });
+    console.log("Slideshow back button listener set up");
   }
 }
 
@@ -823,6 +895,440 @@ function stopRealtimeListener() {
   }
 }
 
+// =========================
+// Slideshow Mode Functions
+// =========================
+
+/**
+ * Shuffle array in place using Fisher-Yates algorithm
+ */
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+/**
+ * Fetch images for slideshow (recent 30 images by upload time)
+ */
+async function fetchSlideshowImages() {
+  try {
+    const currentEventId = getCurrentEventId();
+    console.log(`Fetching slideshow images for event: ${currentEventId}`);
+
+    const imagesRef = collection(window.db, "images");
+    const q = query(
+      imagesRef,
+      where("event_id", "==", currentEventId),
+      orderBy("upload_timestamp", "desc"),
+      limit(SLIDESHOW_CONFIG.IMAGE_LIMIT)
+    );
+
+    const snapshot = await getDocs(q);
+    console.log(`Fetched ${snapshot.docs.length} images for slideshow`);
+
+    let images = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Filter to completed images only (has valid score)
+    images = images.filter(
+      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+    );
+
+    // Fetch user names
+    const userNamesPromises = images.map((img) => fetchUserName(img.user_id));
+    const userNames = await Promise.all(userNamesPromises);
+    images.forEach((img, index) => {
+      img.user_name = userNames[index];
+    });
+
+    // Shuffle for random display order
+    shuffleArray(images);
+
+    return images;
+  } catch (error) {
+    console.error("Error fetching slideshow images:", error);
+    return [];
+  }
+}
+
+/**
+ * Calculate position for a photo item using grid-based placement
+ * Divides screen into zones (3 columns x 2 rows) to ensure even distribution
+ */
+function calculateRandomPosition(index, _existingPositions) {
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+
+  // Photo dimensions (approximate based on CSS)
+  const photoWidth = Math.min(screenWidth * 0.28, 480);
+  const photoHeight = photoWidth * 0.9; // Aspect ratio + name label
+
+  // Grid layout: 3 columns x 2 rows = 6 zones
+  const cols = 3;
+  const rows = 2;
+
+  // Available area with margins
+  const margin = SLIDESHOW_CONFIG.MARGIN;
+  const availableWidth = screenWidth * (1 - margin.left - margin.right);
+  const availableHeight = screenHeight * (1 - margin.top - margin.bottom);
+
+  // Zone dimensions
+  const zoneWidth = availableWidth / cols;
+  const zoneHeight = availableHeight / rows;
+
+  // Determine which zone this image goes into (0-5)
+  const zoneIndex = index % (cols * rows);
+  const col = zoneIndex % cols;
+  const row = Math.floor(zoneIndex / cols);
+
+  // Calculate zone boundaries
+  const zoneLeft = screenWidth * margin.left + col * zoneWidth;
+  const zoneTop = screenHeight * margin.top + row * zoneHeight;
+
+  // Add small random offset within zone (keep photo inside zone)
+  const maxOffsetX = Math.max(0, zoneWidth - photoWidth - 20);
+  const maxOffsetY = Math.max(0, zoneHeight - photoHeight - 20);
+
+  const x = zoneLeft + Math.random() * maxOffsetX + 10;
+  const y = zoneTop + Math.random() * maxOffsetY + 10;
+
+  // Random rotation
+  const rotation =
+    SLIDESHOW_CONFIG.ROTATION_RANGE.min +
+    Math.random() *
+      (SLIDESHOW_CONFIG.ROTATION_RANGE.max -
+        SLIDESHOW_CONFIG.ROTATION_RANGE.min);
+
+  return { x, y, rotation, width: photoWidth, height: photoHeight };
+}
+
+/**
+ * Create a photo item DOM element
+ */
+function createPhotoElement(imageData, position, zIndex) {
+  const bucketName =
+    window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
+  const imageUrl =
+    imageData.storage_url ||
+    `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
+
+  const photoItem = document.createElement("div");
+  photoItem.className = "photo-item";
+  photoItem.dataset.imageId = imageData.id;
+  photoItem.style.cssText = `
+    left: ${position.x}px;
+    top: ${position.y}px;
+    transform: rotate(${position.rotation}deg);
+    z-index: ${zIndex};
+  `;
+
+  const img = document.createElement("img");
+  img.src = imageUrl;
+  img.alt = `Photo by ${imageData.user_name || "Guest"}`;
+  img.onload = () => {
+    if (img.naturalHeight > img.naturalWidth) {
+      img.classList.add("portrait");
+    }
+  };
+  img.onerror = () => {
+    console.warn(`Failed to load image: ${imageUrl}`);
+    // Remove the photo item if image fails to load
+    photoItem.remove();
+  };
+
+  photoItem.appendChild(img);
+
+  return photoItem;
+}
+
+/**
+ * Initialize slideshow display with initial images
+ */
+function initializeSlideshowDisplay() {
+  const photoWall = document.getElementById("photo-wall");
+  const emptyState = document.getElementById("slideshow-empty");
+
+  if (!photoWall) return;
+
+  // Clear existing photos
+  photoWall.innerHTML = "";
+  slideshowState.displayedImages = [];
+  slideshowState.displayedPositions = [];
+
+  // Check if we have images
+  if (slideshowState.imageQueue.length === 0) {
+    if (emptyState) emptyState.classList.remove("hidden");
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add("hidden");
+
+  // Display initial images (up to DISPLAY_COUNT)
+  const displayCount = Math.min(
+    SLIDESHOW_CONFIG.DISPLAY_COUNT,
+    slideshowState.imageQueue.length
+  );
+
+  for (let i = 0; i < displayCount; i++) {
+    const imageData = slideshowState.imageQueue[i];
+    const position = calculateRandomPosition(
+      i,
+      slideshowState.displayedPositions
+    );
+    const photoElement = createPhotoElement(imageData, position, i + 1);
+
+    photoWall.appendChild(photoElement);
+    slideshowState.displayedImages.push({ element: photoElement, imageData });
+    slideshowState.displayedPositions.push(position);
+
+    // Stagger fade-in animation
+    setTimeout(() => {
+      photoElement.classList.add("visible");
+    }, i * 150);
+  }
+
+  slideshowState.nextImageIndex =
+    displayCount % slideshowState.imageQueue.length;
+  slideshowState.nextReplaceIndex = 0;
+
+  console.log(`Initialized slideshow with ${displayCount} images`);
+}
+
+/**
+ * Replace one image in the slideshow
+ */
+function replaceNextImage() {
+  if (
+    slideshowState.imageQueue.length === 0 ||
+    slideshowState.displayedImages.length === 0
+  ) {
+    return;
+  }
+
+  const photoWall = document.getElementById("photo-wall");
+  if (!photoWall) return;
+
+  // Get the image to replace
+  const replaceIndex = slideshowState.nextReplaceIndex;
+  const oldDisplay = slideshowState.displayedImages[replaceIndex];
+
+  if (!oldDisplay) return;
+
+  // Fade out the old image
+  oldDisplay.element.classList.add("exiting");
+  oldDisplay.element.classList.remove("visible");
+
+  // Get next image from queue
+  const nextImageData =
+    slideshowState.imageQueue[slideshowState.nextImageIndex];
+
+  // Calculate new position (excluding the position being replaced)
+  const otherPositions = slideshowState.displayedPositions.filter(
+    (_, idx) => idx !== replaceIndex
+  );
+  const newPosition = calculateRandomPosition(replaceIndex, otherPositions);
+
+  // Create new photo element
+  const newPhotoElement = createPhotoElement(
+    nextImageData,
+    newPosition,
+    slideshowState.displayedImages.length + 1
+  );
+
+  // Remove old element after fade out, add new one
+  setTimeout(() => {
+    oldDisplay.element.remove();
+
+    photoWall.appendChild(newPhotoElement);
+    slideshowState.displayedImages[replaceIndex] = {
+      element: newPhotoElement,
+      imageData: nextImageData,
+    };
+    slideshowState.displayedPositions[replaceIndex] = newPosition;
+
+    // Fade in new image
+    setTimeout(() => {
+      newPhotoElement.classList.add("visible");
+    }, 50);
+  }, SLIDESHOW_CONFIG.FADE_DURATION);
+
+  // Update indices for next replacement
+  slideshowState.nextReplaceIndex =
+    (replaceIndex + 1) % slideshowState.displayedImages.length;
+  slideshowState.nextImageIndex =
+    (slideshowState.nextImageIndex + 1) % slideshowState.imageQueue.length;
+}
+
+/**
+ * Start the image rotation timer
+ */
+function startImageRotation() {
+  if (slideshowState.imageTimerId) {
+    clearInterval(slideshowState.imageTimerId);
+  }
+
+  slideshowState.imageTimerId = setInterval(() => {
+    replaceNextImage();
+  }, SLIDESHOW_CONFIG.IMAGE_SWITCH_INTERVAL);
+
+  console.log("Image rotation started");
+}
+
+/**
+ * Stop the image rotation timer
+ */
+function stopImageRotation() {
+  if (slideshowState.imageTimerId) {
+    clearInterval(slideshowState.imageTimerId);
+    slideshowState.imageTimerId = null;
+    console.log("Image rotation stopped");
+  }
+}
+
+/**
+ * Switch to slideshow mode
+ */
+async function switchToSlideshow() {
+  console.log("Switching to slideshow mode...");
+
+  slideshowState.currentMode = "slideshow";
+
+  // Fetch fresh images for slideshow
+  slideshowState.imageQueue = await fetchSlideshowImages();
+
+  const rankingContent = document.getElementById("ranking-content");
+  const slideshowContent = document.getElementById("slideshow-content");
+  const header = document.querySelector(".header");
+
+  // Fade out ranking content
+  if (rankingContent) rankingContent.classList.add("fading-out");
+  if (header) header.classList.add("fading-out");
+
+  // Show slideshow (it will fade in via CSS transition)
+  if (slideshowContent) {
+    slideshowContent.classList.remove("hidden");
+    slideshowContent.classList.remove("fully-hidden");
+  }
+
+  // After fade out completes, hide ranking completely
+  setTimeout(() => {
+    if (rankingContent) rankingContent.style.visibility = "hidden";
+    if (header) header.style.visibility = "hidden";
+  }, 3000);
+
+  // Initialize and start slideshow
+  initializeSlideshowDisplay();
+  startImageRotation();
+
+  console.log("Switched to slideshow mode");
+}
+
+/**
+ * Switch to ranking mode
+ */
+function switchToRanking() {
+  console.log("Switching to ranking mode...");
+
+  slideshowState.currentMode = "ranking";
+
+  // Stop slideshow
+  stopImageRotation();
+
+  const photoWall = document.getElementById("photo-wall");
+  const rankingContent = document.getElementById("ranking-content");
+  const slideshowContent = document.getElementById("slideshow-content");
+  const header = document.querySelector(".header");
+
+  // Fade out slideshow (keep z-index during fade)
+  if (slideshowContent) {
+    slideshowContent.classList.remove("fully-hidden");
+    slideshowContent.classList.add("hidden");
+    // After fade completes, lower z-index and clear photos
+    setTimeout(() => {
+      slideshowContent.classList.add("fully-hidden");
+      if (photoWall) photoWall.innerHTML = "";
+      slideshowState.displayedImages = [];
+      slideshowState.displayedPositions = [];
+    }, 3000);
+  }
+
+  // Show ranking content and fade in
+  if (rankingContent) {
+    rankingContent.style.visibility = "";
+    rankingContent.classList.remove("fading-out");
+  }
+  if (header) {
+    header.style.visibility = "";
+    header.classList.remove("fading-out");
+  }
+
+  // Refresh ranking data
+  fetchRecentRankings();
+
+  console.log("Switched to ranking mode");
+}
+
+/**
+ * Toggle between ranking and slideshow modes
+ */
+function toggleMode() {
+  if (isFinalMode) return; // Don't toggle in final mode
+
+  if (slideshowState.currentMode === "ranking") {
+    switchToSlideshow();
+  } else if (slideshowState.currentMode === "slideshow") {
+    switchToRanking();
+  }
+}
+
+/**
+ * Start automatic mode switching
+ */
+function startAutoModeSwitch() {
+  if (slideshowState.modeTimerId) {
+    clearInterval(slideshowState.modeTimerId);
+  }
+
+  slideshowState.autoModeSwitch = true;
+
+  slideshowState.modeTimerId = setInterval(() => {
+    if (slideshowState.autoModeSwitch && !isFinalMode) {
+      toggleMode();
+    }
+  }, SLIDESHOW_CONFIG.MODE_SWITCH_INTERVAL);
+
+  console.log(
+    `Auto mode switch started (interval: ${
+      SLIDESHOW_CONFIG.MODE_SWITCH_INTERVAL / 1000
+    }s)`
+  );
+}
+
+/**
+ * Stop automatic mode switching
+ */
+function stopAutoModeSwitch() {
+  if (slideshowState.modeTimerId) {
+    clearInterval(slideshowState.modeTimerId);
+    slideshowState.modeTimerId = null;
+  }
+  slideshowState.autoModeSwitch = false;
+  console.log("Auto mode switch stopped");
+}
+
+/**
+ * Cleanup slideshow resources
+ */
+function cleanupSlideshow() {
+  stopImageRotation();
+  stopAutoModeSwitch();
+}
+
 /**
  * Initialize the app
  */
@@ -847,13 +1353,20 @@ function init() {
   // Set up final presentation button
   setupFinalButton();
 
+  // Set up slideshow back button
+  setupSlideshowBackButton();
+
   // Set up real-time listener (replaces periodic polling)
   setupRealtimeListener();
+
+  // Start automatic mode switching (ranking <-> slideshow)
+  startAutoModeSwitch();
 }
 
 // Cleanup on page unload
 window.addEventListener("beforeunload", () => {
   stopRealtimeListener();
+  cleanupSlideshow();
 });
 
 // Start the app
