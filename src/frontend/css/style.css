@@ -51,6 +51,8 @@ body {
 
 /* Header */
 .header {
+    position: relative;
+    z-index: 100;
     text-align: center;
     margin-bottom: 0.2rem;
     animation: fadeInDown 1s ease-out;
@@ -92,10 +94,14 @@ body {
 }
 
 /* Header Buttons */
-.final-btn,
-.back-btn {
+.header-buttons {
     position: absolute;
     right: 0;
+    display: flex;
+    gap: 0.8rem;
+}
+
+.header-btn {
     padding: 0.6rem 1.8rem;
     font-size: 1.2rem;
     font-weight: 700;
@@ -105,6 +111,10 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
+}
+
+.header-btn.hidden {
+    display: none;
 }
 
 .final-btn {
@@ -119,24 +129,18 @@ body {
     background: linear-gradient(135deg, #d62445, var(--primary-color));
 }
 
-.final-btn.hidden {
-    display: none;
-}
-
-.back-btn {
+.slideshow-btn,
+.ranking-btn {
     color: var(--white);
     background: rgba(255, 255, 255, 0.2);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.back-btn:hover {
+.slideshow-btn:hover,
+.ranking-btn:hover {
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.3);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-.back-btn.hidden {
-    display: none;
 }
 
 /* Ranking Content */
@@ -716,9 +720,12 @@ body {
         font-size: 1rem;
     }
 
-    .final-btn,
-    .back-btn {
+    .header-buttons {
         position: static;
+        gap: 0.5rem;
+    }
+
+    .header-btn {
         padding: 0.4rem 1rem;
         font-size: 0.9rem;
     }
@@ -1278,59 +1285,6 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Mode Indicator */
-.slideshow-indicator {
-    position: absolute;
-    top: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(255, 255, 255, 0.95);
-    padding: 10px 28px;
-    border-radius: 25px;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    animation: fadeInDown 0.6s ease-out;
-}
-
-.indicator-icon {
-    font-size: 1.4rem;
-}
-
-.indicator-text {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-family: 'Noto Sans JP', sans-serif;
-}
-
-/* Back to Ranking Button */
-.slideshow-back-btn {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    padding: 10px 24px;
-    font-size: 1rem;
-    font-weight: 600;
-    font-family: 'Noto Sans JP', sans-serif;
-    color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.95);
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-    z-index: 100;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
-}
-
-.slideshow-back-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-    background: var(--white);
-}
-
 /* Empty State */
 .slideshow-empty {
     position: absolute;
@@ -1376,19 +1330,5 @@ body {
     .photo-name {
         font-size: 0.85rem;
         padding: 6px 2px 2px;
-    }
-
-    .slideshow-indicator {
-        top: 16px;
-        padding: 8px 20px;
-        gap: 8px;
-    }
-
-    .indicator-icon {
-        font-size: 1.2rem;
-    }
-
-    .indicator-text {
-        font-size: 0.95rem;
     }
 }

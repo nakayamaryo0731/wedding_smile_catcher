@@ -493,11 +493,13 @@ function backToRecent() {
     rankingListSection.classList.add("hidden");
   }
 
-  // Toggle buttons
+  // Toggle buttons - show final and slideshow, hide ranking
   const finalBtn = document.getElementById("final-btn");
-  const backBtn = document.getElementById("back-btn");
+  const slideshowBtn = document.getElementById("slideshow-btn");
+  const rankingBtn = document.getElementById("ranking-btn");
   if (finalBtn) finalBtn.classList.remove("hidden");
-  if (backBtn) backBtn.classList.add("hidden");
+  if (slideshowBtn) slideshowBtn.classList.remove("hidden");
+  if (rankingBtn) rankingBtn.classList.add("hidden");
 
   // Restart real-time listener
   setupRealtimeListener();
@@ -534,11 +536,13 @@ async function startFinalPresentation() {
   // Set final mode flag
   isFinalMode = true;
 
-  // Toggle buttons (show back, hide final)
+  // Hide all mode buttons, keep only final hidden
   const finalBtn = document.getElementById("final-btn");
-  const backBtn = document.getElementById("back-btn");
+  const slideshowBtn = document.getElementById("slideshow-btn");
+  const rankingBtn = document.getElementById("ranking-btn");
   if (finalBtn) finalBtn.classList.add("hidden");
-  if (backBtn) backBtn.classList.remove("hidden");
+  if (slideshowBtn) slideshowBtn.classList.add("hidden");
+  if (rankingBtn) rankingBtn.classList.add("hidden");
 
   // Brief pause before showing results, then fetch and show with confetti
   await new Promise((r) => setTimeout(r, 1000));
@@ -764,17 +768,27 @@ function stopParticlesAnimation() {
 }
 
 /**
- * Set up slideshow back button listener
+ * Set up header mode buttons (slideshow and ranking)
  */
-function setupSlideshowBackButton() {
-  const slideshowBackBtn = document.getElementById("slideshow-back-btn");
-  if (slideshowBackBtn) {
-    slideshowBackBtn.addEventListener("click", () => {
+function setupModeButtons() {
+  const slideshowBtn = document.getElementById("slideshow-btn");
+  if (slideshowBtn) {
+    slideshowBtn.addEventListener("click", () => {
+      switchToSlideshow();
+      // Reset the auto mode switch timer
+      startAutoModeSwitch();
+    });
+    console.log("Slideshow button listener set up");
+  }
+
+  const rankingBtn = document.getElementById("ranking-btn");
+  if (rankingBtn) {
+    rankingBtn.addEventListener("click", () => {
       switchToRanking();
       // Reset the auto mode switch timer so ranking mode stays for full interval
       startAutoModeSwitch();
     });
-    console.log("Slideshow back button listener set up");
+    console.log("Ranking button listener set up");
   }
 }
 
@@ -792,12 +806,6 @@ function setupFinalButton() {
   if (revealBtn) {
     revealBtn.addEventListener("click", startFinalPresentation);
     console.log("Reveal button listener set up");
-  }
-
-  const backBtn = document.getElementById("back-btn");
-  if (backBtn) {
-    backBtn.addEventListener("click", backToRecent);
-    console.log("Back button listener set up");
   }
 }
 
@@ -1203,11 +1211,9 @@ async function switchToSlideshow() {
 
   const rankingContent = document.getElementById("ranking-content");
   const slideshowContent = document.getElementById("slideshow-content");
-  const header = document.querySelector(".header");
 
-  // Fade out ranking content
+  // Fade out ranking content (header stays visible)
   if (rankingContent) rankingContent.classList.add("fading-out");
-  if (header) header.classList.add("fading-out");
 
   // Show slideshow (it will fade in via CSS transition)
   if (slideshowContent) {
@@ -1218,8 +1224,13 @@ async function switchToSlideshow() {
   // After fade out completes, hide ranking completely
   setTimeout(() => {
     if (rankingContent) rankingContent.style.visibility = "hidden";
-    if (header) header.style.visibility = "hidden";
   }, 3000);
+
+  // Toggle header buttons: hide slideshow, show ranking
+  const slideshowBtn = document.getElementById("slideshow-btn");
+  const rankingBtn = document.getElementById("ranking-btn");
+  if (slideshowBtn) slideshowBtn.classList.add("hidden");
+  if (rankingBtn) rankingBtn.classList.remove("hidden");
 
   // Initialize and start slideshow
   initializeSlideshowDisplay();
@@ -1246,7 +1257,6 @@ function switchToRanking() {
   const photoWall = document.getElementById("photo-wall");
   const rankingContent = document.getElementById("ranking-content");
   const slideshowContent = document.getElementById("slideshow-content");
-  const header = document.querySelector(".header");
 
   // Fade out slideshow (keep z-index during fade)
   if (slideshowContent) {
@@ -1266,10 +1276,12 @@ function switchToRanking() {
     rankingContent.style.visibility = "";
     rankingContent.classList.remove("fading-out");
   }
-  if (header) {
-    header.style.visibility = "";
-    header.classList.remove("fading-out");
-  }
+
+  // Toggle header buttons: show slideshow, hide ranking
+  const slideshowBtn = document.getElementById("slideshow-btn");
+  const rankingBtn = document.getElementById("ranking-btn");
+  if (slideshowBtn) slideshowBtn.classList.remove("hidden");
+  if (rankingBtn) rankingBtn.classList.add("hidden");
 
   // Refresh ranking data
   fetchRecentRankings();
@@ -1357,8 +1369,8 @@ function init() {
   // Set up final presentation button
   setupFinalButton();
 
-  // Set up slideshow back button
-  setupSlideshowBackButton();
+  // Set up header mode buttons (slideshow/ranking)
+  setupModeButtons();
 
   // Set up real-time listener (replaces periodic polling)
   setupRealtimeListener();

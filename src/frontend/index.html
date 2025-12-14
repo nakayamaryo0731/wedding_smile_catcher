@@ -34,8 +34,11 @@
                     <h1 class="title">笑顔写真コンテスト</h1>
                     <p class="subtitle">最高の笑顔をありがとう</p>
                 </div>
-                <button id="back-btn" class="back-btn hidden">直近15枚に戻る</button>
-                <button id="final-btn" class="final-btn">最終発表</button>
+                <div class="header-buttons">
+                    <button id="slideshow-btn" class="header-btn slideshow-btn">スライドショー</button>
+                    <button id="ranking-btn" class="header-btn ranking-btn hidden">ランキング</button>
+                    <button id="final-btn" class="header-btn final-btn">最終結果</button>
+                </div>
             </div>
         </header>
 
@@ -122,15 +125,6 @@
 
         <!-- Slideshow Content (Photo Wall) -->
         <div id="slideshow-content" class="slideshow-content hidden">
-            <!-- Mode Indicator -->
-            <div class="slideshow-indicator">
-                <span class="indicator-icon">📷</span>
-                <span class="indicator-text">みんなの写真</span>
-            </div>
-
-            <!-- Back to Ranking Button -->
-            <button id="slideshow-back-btn" class="slideshow-back-btn">ランキングに戻る</button>
-
             <!-- Photo Wall Container -->
             <div id="photo-wall" class="photo-wall">
                 <!-- Photo items will be dynamically inserted here -->
