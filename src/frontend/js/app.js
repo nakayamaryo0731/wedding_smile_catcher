@@ -265,13 +265,13 @@ async function updateRankings(images, useDecimal = false) {
 }
 
 /**
- * Fetch recent rankings (last 30 images) from Firestore
+ * Fetch recent rankings (last 15 images) from Firestore
  */
 async function fetchRecentRankings() {
   try {
     const currentEventId = getCurrentEventId();
     console.log(
-      `Fetching recent rankings (last 30 images) for event: ${currentEventId}`
+      `Fetching recent rankings (last 15 images) for event: ${currentEventId}`
     );
 
     const imagesRef = collection(window.db, "images");
@@ -279,7 +279,7 @@ async function fetchRecentRankings() {
       imagesRef,
       where("event_id", "==", currentEventId),
       orderBy("upload_timestamp", "desc"),
-      limit(30) // Fetch last 30 uploaded images
+      limit(15) // Fetch last 15 uploaded images
     );
 
     const snapshot = await getDocs(q);
@@ -481,7 +481,7 @@ function backToRecent() {
   const labelEl = document.getElementById("ranking-label-text");
   const labelContainer = document.querySelector(".ranking-label");
   if (labelEl) {
-    labelEl.textContent = "直近30枚のランキング";
+    labelEl.textContent = "直近15枚のランキング";
   }
   if (labelContainer) {
     labelContainer.classList.remove("final-mode");
@@ -855,7 +855,7 @@ function setupRealtimeListener() {
     imagesRef,
     where("event_id", "==", currentEventId),
     orderBy("upload_timestamp", "desc"),
-    limit(30) // Fetch last 30 uploaded images
+    limit(15) // Fetch last 15 uploaded images
   );
 
   // Set up real-time listener
