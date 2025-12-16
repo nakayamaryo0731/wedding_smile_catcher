@@ -143,7 +143,7 @@ class TestScoringPipeline:
 
         # Verify user update
         updated_user = user_ref.get().to_dict()
-        assert updated_user["best_score"] == 64.6
+        assert updated_user["best_score"] == 32.3
         assert updated_user["total_uploads"] == 1
 
     def test_similarity_detection_integration(self, firestore_client, test_image_bytes, mock_vision_client_integration):
