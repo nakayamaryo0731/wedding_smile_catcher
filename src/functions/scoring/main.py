@@ -216,9 +216,9 @@ def get_face_size_multiplier(face, image_width: int, image_height: int) -> float
     """
     Calculate a multiplier based on face size relative to image size.
 
-    Larger faces get higher multipliers (up to 1.5).
-    Smaller faces get lower multipliers (down to 0.2).
-    Goal: 5-person close-up should score ~20% higher than 10-person group photo.
+    Larger faces get higher multipliers (up to 1.3).
+    Smaller faces get lower multipliers (down to 0.3).
+    Goal: Balance between close-up and group photos with moderate differentiation.
 
     Args:
         face: Vision API FaceAnnotation object
@@ -226,7 +226,7 @@ def get_face_size_multiplier(face, image_width: int, image_height: int) -> float
         image_height: Image height in pixels
 
     Returns:
-        Multiplier between 0.2 and 1.5
+        Multiplier between 0.3 and 1.3
     """
     bbox = face.bounding_poly
     vertices = [(v.x, v.y) for v in bbox.vertices]
@@ -239,22 +239,22 @@ def get_face_size_multiplier(face, image_width: int, image_height: int) -> float
     image_area = image_width * image_height
     relative_size = face_area / image_area if image_area > 0 else 0
 
-    # Thresholds and multipliers (expanded range 0.2-1.5 for better differentiation):
-    # - 8%+ (close-up, 1-2 people): 1.5
-    # - 5-8% (small group, 3-4 people): 1.0-1.5 (linear interpolation)
-    # - 2-5% (medium group, 5-8 people): 0.5-1.0 (linear interpolation)
-    # - 1-2% (large group, 10+ people): 0.2-0.5 (linear interpolation)
-    # - <1% (crowd, distant): 0.2
+    # Thresholds and multipliers (range 0.3-1.3, ratio 4.3x):
+    # - 8%+ (close-up, 1-2 people): 1.3
+    # - 5-8% (small group, 3-4 people): 0.9-1.3 (linear interpolation)
+    # - 2-5% (medium group, 5-8 people): 0.5-0.9 (linear interpolation)
+    # - 1-2% (large group, 10+ people): 0.3-0.5 (linear interpolation)
+    # - <1% (crowd, distant): 0.3
     if relative_size >= 0.08:
-        return 1.5
+        return 1.3
     elif relative_size >= 0.05:
-        return 1.0 + (relative_size - 0.05) / (0.08 - 0.05) * 0.5
+        return 0.9 + (relative_size - 0.05) / (0.08 - 0.05) * 0.4
     elif relative_size >= 0.02:
-        return 0.5 + (relative_size - 0.02) / (0.05 - 0.02) * 0.5
+        return 0.5 + (relative_size - 0.02) / (0.05 - 0.02) * 0.4
     elif relative_size >= 0.01:
-        return 0.2 + (relative_size - 0.01) / (0.02 - 0.01) * 0.3
+        return 0.3 + (relative_size - 0.01) / (0.02 - 0.01) * 0.2
     else:
-        return 0.2
+        return 0.3
 
 
 def format_face_count(smiling_faces: int, face_count: int) -> str:
