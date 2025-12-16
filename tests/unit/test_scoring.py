@@ -432,6 +432,7 @@ class TestGenerateScoresWithVisionAPI:
         mock_image_doc.to_dict.return_value = {
             "storage_path": "test/path.jpg",
             "user_id": "test_user_001",
+            "event_id": "test_event_001",
         }
         mock_image_ref = Mock()
         mock_image_ref.get.return_value = mock_image_doc
@@ -447,6 +448,8 @@ class TestGenerateScoresWithVisionAPI:
         assert "has_errors" not in result
         assert result["average_hash"] == "0123456789abcdef"
         assert result["is_similar"] is False
+        # Verify get_existing_hashes_for_user was called with event_id
+        mock_get_hashes.assert_called_once_with("test_user_001", "test_event_001")
 
     @patch("scoring.main.download_image_from_storage")
     @patch("scoring.main.get_existing_hashes_for_user")
@@ -477,8 +480,16 @@ class TestGenerateScoresWithVisionAPI:
 
         # Mock is_similar_image to return True
         with patch("scoring.main.is_similar_image", return_value=True):
-            # Mock Firestore
+            # Mock Firestore - need to mock get() to return image data
+            mock_image_doc = Mock()
+            mock_image_doc.exists = True
+            mock_image_doc.to_dict.return_value = {
+                "storage_path": "test/path.jpg",
+                "user_id": "test_user_001",
+                "event_id": "test_event_001",
+            }
             mock_image_ref = Mock()
+            mock_image_ref.get.return_value = mock_image_doc
             mock_db.collection.return_value.document.return_value = mock_image_ref
 
             # Test
@@ -516,8 +527,16 @@ class TestGenerateScoresWithVisionAPI:
         mock_calc_hash.return_value = "abc123"
         mock_get_hashes.return_value = []
 
-        # Mock Firestore
+        # Mock Firestore - need to mock get() to return image data
+        mock_image_doc = Mock()
+        mock_image_doc.exists = True
+        mock_image_doc.to_dict.return_value = {
+            "storage_path": "test/path.jpg",
+            "user_id": "test_user_001",
+            "event_id": "test_event_001",
+        }
         mock_image_ref = Mock()
+        mock_image_ref.get.return_value = mock_image_doc
         mock_db.collection.return_value.document.return_value = mock_image_ref
 
         # Test
