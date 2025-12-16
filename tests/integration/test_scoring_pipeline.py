@@ -130,9 +130,9 @@ class TestScoringPipeline:
         assert updated_doc.exists
         doc_data = updated_doc.to_dict()
         assert doc_data["status"] == "completed"
-        assert doc_data["smile_score"] == 76.0  # 2 faces × 95.0 × 0.4 (1% face size)
+        assert doc_data["smile_score"] == 38.0  # 2 faces × 95.0 × 0.2 (1% face size)
         assert doc_data["ai_score"] == 85
-        assert doc_data["total_score"] == 64.6  # 76.0 × 85 / 100
+        assert doc_data["total_score"] == 32.3  # 38.0 × 85 / 100
         assert doc_data["average_hash"] == avg_hash
         assert doc_data["similarity_penalty"] == 1.0
 
