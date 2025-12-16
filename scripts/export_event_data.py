@@ -7,10 +7,11 @@ Usage:
     python scripts/export_event_data.py wedding_20250315_tanaka
 """
 
-import sys
 import json
-from google.cloud import firestore
+import sys
 from datetime import datetime
+
+from google.cloud import firestore
 
 
 def export_event_data(event_id: str):
@@ -26,6 +27,9 @@ def export_event_data(event_id: str):
         return
 
     event_data = event_doc.to_dict()
+    if event_data is None:
+        print(f"❌ Event data is empty: {event_id}")
+        return
 
     print(f"📦 データエクスポート中: {event_id}")
     print(f"  名前: {event_data['event_name']}")
@@ -38,6 +42,8 @@ def export_event_data(event_id: str):
     users = []
     for doc in users_ref.stream():
         user_data = doc.to_dict()
+        if user_data is None:
+            continue
         # Convert Timestamp to string
         if "created_at" in user_data and user_data["created_at"]:
             user_data["created_at"] = user_data["created_at"].isoformat()
@@ -51,6 +57,8 @@ def export_event_data(event_id: str):
     images = []
     for doc in images_ref.stream():
         image_data = doc.to_dict()
+        if image_data is None:
+            continue
         image_data["image_id"] = doc.id
         # Convert Timestamp to string
         if "upload_timestamp" in image_data and image_data["upload_timestamp"]:
@@ -63,6 +71,10 @@ def export_event_data(event_id: str):
     images.sort(key=lambda x: x.get("total_score", 0), reverse=True)
 
     print(f"  ✅ {len(images)}枚の画像メタデータを取得")
+
+    # Convert event timestamps
+    if "created_at" in event_data and event_data["created_at"]:
+        event_data["created_at"] = event_data["created_at"].isoformat()
 
     # Create export data
     export_data = {

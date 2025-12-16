@@ -30,7 +30,7 @@ mkdir -p "$OUTPUT_DIR"
 
 # Download images from Cloud Storage
 echo "☁️  Cloud Storageからダウンロード中..."
-gsutil -m cp -r "gs://wedding-smile-images/$EVENT_ID" "$OUTPUT_DIR/"
+gsutil -m cp -r "gs://wedding-smile-images-wedding-smile-catcher/$EVENT_ID" "$OUTPUT_DIR/"
 
 # Check download
 if [ -d "$OUTPUT_DIR/$EVENT_ID" ]; then
