@@ -82,10 +82,11 @@ class TestScoringPipeline:
             patch("scoring.main.vision_client", mock_vision_client_integration),
             patch("scoring.main.PILImage.open", return_value=mock_pil_image),
         ):
-            # Each face: 95.0 base score × 0.4 size multiplier (1% relative size)
-            # Total: 2 faces × 95.0 × 0.4 = 76.0
+            # Each face: 95.0 base score × 0.2 size multiplier (1% relative size)
+            # detection_confidence = 0.5 (neutral, no bonus)
+            # Total: 2 faces × 95.0 × 0.2 = 38.0
             smile_result = calculate_smile_score(test_image_bytes)
-            assert smile_result["smile_score"] == 76.0  # 2 faces × 95.0 × 0.4
+            assert smile_result["smile_score"] == 38.0  # 2 faces × 95.0 × 0.2
             assert smile_result["face_count"] == 2
             assert smile_result["smiling_faces"] == 2
 

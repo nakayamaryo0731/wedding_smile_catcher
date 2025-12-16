@@ -148,11 +148,13 @@ def mock_vision_client_integration():
 
     # Default: 2 happy faces with VERY_LIKELY enum
     face1 = Mock()
-    face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 points
+    face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 base points
+    face1.detection_confidence = 0.5  # No bonus (0.5 is neutral)
     face1.bounding_poly = mock_bounding_poly
 
     face2 = Mock()
-    face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 points
+    face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 base points
+    face2.detection_confidence = 0.5  # No bonus (0.5 is neutral)
     face2.bounding_poly = mock_bounding_poly
 
     mock_response.face_annotations = [face1, face2]
