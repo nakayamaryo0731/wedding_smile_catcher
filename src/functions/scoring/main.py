@@ -181,15 +181,19 @@ def scoring(request: Request):
         )
 
 
-def get_joy_likelihood_score(joy_likelihood) -> float:
+def get_joy_likelihood_score(joy_likelihood, detection_confidence: float) -> float:
     """
-    Convert joy likelihood enum to numeric score.
+    Convert joy likelihood enum to numeric score with detection_confidence adjustment.
+
+    The base score from joy_likelihood (5 discrete levels) is adjusted by
+    detection_confidence to create a more continuous score distribution.
 
     Args:
         joy_likelihood: Vision API joy likelihood enum
+        detection_confidence: Face detection confidence (0.0-1.0)
 
     Returns:
-        Numeric score (0-95)
+        Numeric score (0-105), adjusted by confidence bonus (±10 points)
     """
     likelihood_map = {
         vision.Likelihood.VERY_LIKELY: 95.0,
@@ -199,15 +203,22 @@ def get_joy_likelihood_score(joy_likelihood) -> float:
         vision.Likelihood.VERY_UNLIKELY: 5.0,
         vision.Likelihood.UNKNOWN: 0.0,
     }
-    return likelihood_map.get(joy_likelihood, 0.0)
+    base = likelihood_map.get(joy_likelihood, 0.0)
+
+    # detection_confidence (0~1) を -10 〜 +10 のボーナスに変換
+    # 0.5 を基準とし、高いほどプラス、低いほどマイナス
+    confidence_bonus = (detection_confidence - 0.5) * 20
+
+    return max(0.0, base + confidence_bonus)
 
 
 def get_face_size_multiplier(face, image_width: int, image_height: int) -> float:
     """
     Calculate a multiplier based on face size relative to image size.
 
-    Larger faces get higher multipliers (up to 1.0).
-    Smaller faces get lower multipliers (down to 0.4).
+    Larger faces get higher multipliers (up to 1.5).
+    Smaller faces get lower multipliers (down to 0.2).
+    Goal: 5-person close-up should score ~20% higher than 10-person group photo.
 
     Args:
         face: Vision API FaceAnnotation object
@@ -215,7 +226,7 @@ def get_face_size_multiplier(face, image_width: int, image_height: int) -> float
         image_height: Image height in pixels
 
     Returns:
-        Multiplier between 0.4 and 1.0
+        Multiplier between 0.2 and 1.5
     """
     bbox = face.bounding_poly
     vertices = [(v.x, v.y) for v in bbox.vertices]
@@ -228,19 +239,22 @@ def get_face_size_multiplier(face, image_width: int, image_height: int) -> float
     image_area = image_width * image_height
     relative_size = face_area / image_area if image_area > 0 else 0
 
-    # Thresholds and multipliers:
-    # - 5%+ (close-up, 2-3 people): 1.0
-    # - 2-5% (4-8 people group): 0.7-1.0 (linear interpolation)
-    # - 1-2% (10+ people group): 0.4-0.7 (linear interpolation)
-    # - <1% (large crowd, distant): 0.4
-    if relative_size >= 0.05:
-        return 1.0
+    # Thresholds and multipliers (expanded range 0.2-1.5 for better differentiation):
+    # - 8%+ (close-up, 1-2 people): 1.5
+    # - 5-8% (small group, 3-4 people): 1.0-1.5 (linear interpolation)
+    # - 2-5% (medium group, 5-8 people): 0.5-1.0 (linear interpolation)
+    # - 1-2% (large group, 10+ people): 0.2-0.5 (linear interpolation)
+    # - <1% (crowd, distant): 0.2
+    if relative_size >= 0.08:
+        return 1.5
+    elif relative_size >= 0.05:
+        return 1.0 + (relative_size - 0.05) / (0.08 - 0.05) * 0.5
     elif relative_size >= 0.02:
-        return 0.7 + (relative_size - 0.02) / (0.05 - 0.02) * 0.3
+        return 0.5 + (relative_size - 0.02) / (0.05 - 0.02) * 0.5
     elif relative_size >= 0.01:
-        return 0.4 + (relative_size - 0.01) / (0.02 - 0.01) * 0.3
+        return 0.2 + (relative_size - 0.01) / (0.02 - 0.01) * 0.3
     else:
-        return 0.4
+        return 0.2
 
 
 def format_face_count(smiling_faces: int, face_count: int) -> str:
@@ -303,14 +317,15 @@ def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
             for face in response.face_annotations:
                 # Only count faces with LIKELY or VERY_LIKELY joy
                 if face.joy_likelihood >= vision.Likelihood.LIKELY:
-                    base_score = get_joy_likelihood_score(face.joy_likelihood)
+                    base_score = get_joy_likelihood_score(face.joy_likelihood, face.detection_confidence)
                     size_multiplier = get_face_size_multiplier(face, image_width, image_height)
                     adjusted_score = base_score * size_multiplier
                     total_smile_score += adjusted_score
                     smiling_faces += 1
                     logger.info(
                         f"Face detected: joy={face.joy_likelihood.name}, "
-                        f"base_score={base_score}, size_multiplier={size_multiplier:.2f}, "
+                        f"confidence={face.detection_confidence:.2f}, "
+                        f"base_score={base_score:.2f}, size_multiplier={size_multiplier:.2f}, "
                         f"adjusted_score={adjusted_score:.2f}"
                     )
 
