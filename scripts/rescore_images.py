@@ -17,9 +17,14 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+# Set dummy LINE token before importing main.py (not used in rescoring)
+if not os.environ.get("LINE_CHANNEL_ACCESS_TOKEN"):
+    os.environ["LINE_CHANNEL_ACCESS_TOKEN"] = "dummy_token_for_rescore_script"
 
 # Add src directory to path for imports
 src_path = Path(__file__).parent.parent / "src" / "functions" / "scoring"
