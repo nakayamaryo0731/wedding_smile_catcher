@@ -49,7 +49,6 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 GCP_REGION = os.environ.get("GCP_REGION", "asia-northeast1")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
-CURRENT_EVENT_ID = os.environ.get("CURRENT_EVENT_ID", "test")
 
 # Initialize LINE Bot API
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -466,21 +465,22 @@ def is_similar_image(new_hash: str, existing_hashes: list[str], threshold: int =
         return False
 
 
-def get_existing_hashes_for_user(user_id: str) -> list[str]:
+def get_existing_hashes_for_user(user_id: str, event_id: str) -> list[str]:
     """
-    Get all existing average hashes for a user's uploaded images in the current event.
+    Get all existing average hashes for a user's uploaded images in the specified event.
 
     Args:
         user_id: User ID
+        event_id: Event ID
 
     Returns:
         List of average hash strings
     """
     try:
-        # Query images collection for this user in current event with status 'completed'
+        # Query images collection for this user in the event with status 'completed'
         images_query = (
             db.collection("images")
-            .where("event_id", "==", CURRENT_EVENT_ID)
+            .where("event_id", "==", event_id)
             .where("user_id", "==", user_id)
             .where("status", "==", "completed")
             .get()
@@ -676,12 +676,16 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
     image_data = image_doc.to_dict()
     storage_path = image_data.get("storage_path")
     user_id = image_data.get("user_id")
+    event_id = image_data.get("event_id")
 
     if not storage_path:
         raise Exception(f"Storage path not found in image document: {image_id}")
 
     if not user_id:
         raise Exception(f"User ID not found in image document: {image_id}")
+
+    if not event_id:
+        raise Exception(f"Event ID not found in image document: {image_id}")
 
     log_context["user_id"] = user_id
 
@@ -747,8 +751,8 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
         },
     )
 
-    # Get existing hashes for this user
-    existing_hashes = get_existing_hashes_for_user(user_id)
+    # Get existing hashes for this user in the same event
+    existing_hashes = get_existing_hashes_for_user(user_id, event_id)
 
     # Check if similar image exists
     is_similar = is_similar_image(average_hash, existing_hashes, threshold=8)
