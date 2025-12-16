@@ -82,10 +82,11 @@ class TestScoringPipeline:
             patch("scoring.main.vision_client", mock_vision_client_integration),
             patch("scoring.main.PILImage.open", return_value=mock_pil_image),
         ):
-            # Each face: 95.0 base score × 0.4 size multiplier (1% relative size)
-            # Total: 2 faces × 95.0 × 0.4 = 76.0
+            # Each face: 95.0 base score × 0.2 size multiplier (1% relative size)
+            # detection_confidence = 0.5 (neutral, no bonus)
+            # Total: 2 faces × 95.0 × 0.2 = 38.0
             smile_result = calculate_smile_score(test_image_bytes)
-            assert smile_result["smile_score"] == 76.0  # 2 faces × 95.0 × 0.4
+            assert smile_result["smile_score"] == 38.0  # 2 faces × 95.0 × 0.2
             assert smile_result["face_count"] == 2
             assert smile_result["smiling_faces"] == 2
 
@@ -129,9 +130,9 @@ class TestScoringPipeline:
         assert updated_doc.exists
         doc_data = updated_doc.to_dict()
         assert doc_data["status"] == "completed"
-        assert doc_data["smile_score"] == 76.0  # 2 faces × 95.0 × 0.4 (1% face size)
+        assert doc_data["smile_score"] == 38.0  # 2 faces × 95.0 × 0.2 (1% face size)
         assert doc_data["ai_score"] == 85
-        assert doc_data["total_score"] == 64.6  # 76.0 × 85 / 100
+        assert doc_data["total_score"] == 32.3  # 38.0 × 85 / 100
         assert doc_data["average_hash"] == avg_hash
         assert doc_data["similarity_penalty"] == 1.0
 
@@ -142,7 +143,7 @@ class TestScoringPipeline:
 
         # Verify user update
         updated_user = user_ref.get().to_dict()
-        assert updated_user["best_score"] == 64.6
+        assert updated_user["best_score"] == 32.3
         assert updated_user["total_uploads"] == 1
 
     def test_similarity_detection_integration(self, firestore_client, test_image_bytes, mock_vision_client_integration):

@@ -38,24 +38,26 @@ class TestCalculateSmileScore:
         # Setup mock
         mock_response = Mock()
 
-        # Create faces with bounding boxes (5% of image = full multiplier)
+        # Create faces with bounding boxes (8%+ of image = max multiplier 1.5)
         face1 = Mock()
-        face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 points
+        face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 base points
+        face1.detection_confidence = 0.9  # +8 bonus = 103.0 points
         face1.bounding_poly.vertices = [
             Mock(x=0, y=0),
-            Mock(x=224, y=0),
-            Mock(x=224, y=224),
-            Mock(x=0, y=224),
-        ]  # ~5% of 1000x1000
+            Mock(x=283, y=0),
+            Mock(x=283, y=283),
+            Mock(x=0, y=283),
+        ]  # 8% of 1000x1000
 
         face2 = Mock()
-        face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 points
+        face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 base points
+        face2.detection_confidence = 0.9  # +8 bonus = 103.0 points
         face2.bounding_poly.vertices = [
             Mock(x=300, y=0),
-            Mock(x=524, y=0),
-            Mock(x=524, y=224),
-            Mock(x=300, y=224),
-        ]  # ~5% of 1000x1000
+            Mock(x=583, y=0),
+            Mock(x=583, y=283),
+            Mock(x=300, y=283),
+        ]  # 8% of 1000x1000
 
         mock_response.face_annotations = [face1, face2]
         mock_response.error.message = ""
@@ -68,8 +70,9 @@ class TestCalculateSmileScore:
         # Assert
         assert result["face_count"] == 2
         assert result["smiling_faces"] == 2
-        # With 5%+ face size, multiplier = 1.0, so score = 95.0 × 2 = 190.0
-        assert result["smile_score"] == 190.0
+        # With 8%+ face size, multiplier = 1.5
+        # Score = (95 + (0.9-0.5)*20) * 1.5 * 2 = 103 * 1.5 * 2 = 309.0
+        assert result["smile_score"] == 309.0
         assert "error" not in result
 
     @patch("scoring.main.PILImage")
@@ -150,10 +153,31 @@ class TestCalculateSmileScore:
 
 
 class TestGetFaceSizeMultiplier:
-    """Tests for get_face_size_multiplier function."""
+    """Tests for get_face_size_multiplier function.
 
-    def test_large_face_full_multiplier(self):
-        """Test that large face (5%+) gets full multiplier of 1.0."""
+    Updated ranges (0.2-1.5) for better score differentiation:
+    - 8%+ (close-up): 1.5
+    - 5-8%: 1.0-1.5
+    - 2-5%: 0.5-1.0
+    - 1-2%: 0.2-0.5
+    - <1%: 0.2
+    """
+
+    def test_closeup_face_max_multiplier(self):
+        """Test that close-up face (8%+) gets max multiplier of 1.5."""
+        face = Mock()
+        # 283x283 face on 1000x1000 image = 8%
+        face.bounding_poly.vertices = [
+            Mock(x=0, y=0),
+            Mock(x=283, y=0),
+            Mock(x=283, y=283),
+            Mock(x=0, y=283),
+        ]
+        result = get_face_size_multiplier(face, 1000, 1000)
+        assert result == 1.5
+
+    def test_large_face_high_multiplier(self):
+        """Test that large face (5-8%) gets multiplier between 1.0 and 1.5."""
         face = Mock()
         # 224x224 face on 1000x1000 image = ~5%
         face.bounding_poly.vertices = [
@@ -163,10 +187,10 @@ class TestGetFaceSizeMultiplier:
             Mock(x=0, y=224),
         ]
         result = get_face_size_multiplier(face, 1000, 1000)
-        assert result == 1.0
+        assert 1.0 <= result <= 1.5
 
     def test_medium_face_partial_multiplier(self):
-        """Test that medium face (2-5%) gets partial multiplier."""
+        """Test that medium face (2-5%) gets partial multiplier between 0.5 and 1.0."""
         face = Mock()
         # 150x150 face on 1000x1000 image = 2.25%
         face.bounding_poly.vertices = [
@@ -176,10 +200,10 @@ class TestGetFaceSizeMultiplier:
             Mock(x=0, y=150),
         ]
         result = get_face_size_multiplier(face, 1000, 1000)
-        assert 0.7 <= result <= 1.0
+        assert 0.5 <= result <= 1.0
 
     def test_small_face_low_multiplier(self):
-        """Test that small face (1-2%) gets low multiplier."""
+        """Test that small face (1-2%) gets low multiplier between 0.2 and 0.5."""
         face = Mock()
         # 100x100 face on 1000x1000 image = 1%
         face.bounding_poly.vertices = [
@@ -189,10 +213,10 @@ class TestGetFaceSizeMultiplier:
             Mock(x=0, y=100),
         ]
         result = get_face_size_multiplier(face, 1000, 1000)
-        assert 0.4 <= result <= 0.7
+        assert 0.2 <= result <= 0.5
 
     def test_tiny_face_minimum_multiplier(self):
-        """Test that tiny face (<1%) gets minimum multiplier of 0.4."""
+        """Test that tiny face (<1%) gets minimum multiplier of 0.2."""
         face = Mock()
         # 50x50 face on 1000x1000 image = 0.25%
         face.bounding_poly.vertices = [
@@ -202,7 +226,7 @@ class TestGetFaceSizeMultiplier:
             Mock(x=0, y=50),
         ]
         result = get_face_size_multiplier(face, 1000, 1000)
-        assert result == 0.4
+        assert result == 0.2
 
 
 class TestFormatFaceCount:
