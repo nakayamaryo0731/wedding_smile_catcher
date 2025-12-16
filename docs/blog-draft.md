@@ -65,10 +65,25 @@ LINE Bot → Cloud Functions → Cloud Vision API（笑顔検出）
 そこで**顔サイズ係数**を導入した。
 
 ```python
-# 顔サイズに応じた係数（0.4〜1.0）
-# 大きい顔（ドアップ）: 1.0
-# 中くらい: 0.7〜1.0
-# 小さい顔（遠い人）: 0.4〜0.7
+# 顔サイズに応じた係数（0.5〜1.2）
+# - 8%以上（ドアップ、1-2人）: 1.2
+# - 5-8%（小グループ、3-4人）: 0.9〜1.2
+# - 2-5%（中グループ、5-8人）: 0.6〜0.9
+# - 1-2%（大グループ、10人以上）: 0.5〜0.6
+# - 1%未満（遠景）: 0.5
+```
+
+係数の最大値を 1.2 にしたのは、ドアップ写真にもボーナスを与えるため。
+顔がしっかり写っている方が表情もはっきり分かるので、その分を評価している。
+
+さらに、Vision API の `detection_confidence`（顔検出の信頼度）も活用した。
+同じ「VERY_LIKELY」でも、信頼度が高いほど確実な笑顔なので、
+±10 点のボーナスを加算している。
+
+```python
+# detection_confidence (0〜1) を -10〜+10 のボーナスに変換
+# 0.5 を基準とし、高いほどプラス、低いほどマイナス
+confidence_bonus = (detection_confidence - 0.5) * 20
 ```
 
 これでドアップと集合写真のバランスが取れた。
@@ -134,14 +149,26 @@ Vision API が落ちたときに適当な点数をつけると不公平になる
 
 リトライ戦略も入れた。**Exponential Backoff + Jitter**で、一時的な障害なら自動復旧する。
 
+```python
+# リトライ設定
+max_retries = 5
+base_delay = 2.0  # seconds
+max_delay = 30.0  # seconds
+
+# Exponential Backoff + Jitter
+delay = min(base_delay * (2 ** attempt), max_delay)
+jitter = random.uniform(0, delay * 0.1)  # 10% のランダム性
+sleep_time = delay + jitter
+```
+
 あと、**並列処理**も重要だった。
 
 ```python
 # Vision API、Gemini、ハッシュ計算を並列実行
-with ThreadPoolExecutor() as executor:
-    vision_future = executor.submit(detect_faces, image)
-    gemini_future = executor.submit(evaluate_theme, image)
-    hash_future = executor.submit(calculate_hash, image)
+with ThreadPoolExecutor(max_workers=3) as executor:
+    vision_future = executor.submit(calculate_smile_score, image_bytes)
+    theme_future = executor.submit(evaluate_theme, image_bytes)
+    hash_future = executor.submit(calculate_average_hash, image_bytes)
 ```
 
 結婚式の最中に「処理中...」で何秒も待たせたくない。並列処理でレイテンシを削減した。
@@ -155,6 +182,8 @@ with ThreadPoolExecutor() as executor:
 Firestore のリアルタイムリスナーで、新しい高得点写真が入ると即座に画面が更新される。
 
 1 位が変わると**紙吹雪エフェクト**が出る仕様にした。会場が「おお！」ってなる。
+
+さらに、**スライドショーモード**も追加した。ランキング表示と自動的に切り替わって、投稿された写真をランダムに表示する機能。ランキングだけだと単調になりがちなので、雰囲気を変えるのに効果的だった。
 
 何より嬉しかったのは、ゲスト同士が「一緒に撮ろう！」と声をかけ合うようになったこと。
 
