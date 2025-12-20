@@ -41,39 +41,27 @@ fi
 echo ""
 echo "☁️  Cloud Functions の環境変数を更新中..."
 
-gcloud functions deploy webhook \
-  --gen2 \
+gcloud run services update webhook \
+  --region=asia-northeast1 \
   --update-env-vars="CURRENT_EVENT_ID=$EVENT_ID" \
   --quiet
 
-gcloud functions deploy scoring \
-  --gen2 \
+gcloud run services update scoring \
+  --region=asia-northeast1 \
   --update-env-vars="CURRENT_EVENT_ID=$EVENT_ID" \
   --quiet
 
 echo "✅ Cloud Functions 更新完了"
 
-# Update Frontend
-echo ""
-echo "🎨 Frontend を再デプロイ中..."
-
-cd src/frontend
-export NEXT_PUBLIC_CURRENT_EVENT_ID=$EVENT_ID
-npm run build
-firebase deploy --only hosting --quiet
-cd ../..
-
-echo "✅ Frontend 更新完了"
-
 # Show confirmation
 echo ""
-echo "=" * 80
+echo "========================================"
 echo "✅ イベント切り替え完了: $EVENT_ID"
-echo "=" * 80
+echo "========================================"
 echo ""
 echo "📊 現在のイベント統計:"
 python scripts/event_stats.py "$EVENT_ID"
 echo ""
 echo "🔗 確認用URL:"
-echo "  Frontend: https://wedding-smile-catcher.web.app"
+echo "  Frontend: https://wedding-smile-catcher.web.app/?event_id=$EVENT_ID"
 echo "  LINE Bot: LINEアプリで写真を送信してテスト"
