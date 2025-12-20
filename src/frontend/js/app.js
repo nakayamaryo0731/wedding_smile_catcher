@@ -29,12 +29,14 @@ const SLIDESHOW_CONFIG = {
   IMAGE_LIMIT: 30, // Number of images to fetch for slideshow
   ROTATION_RANGE: { min: -12, max: 12 }, // Rotation angle range (degrees)
   MARGIN: { top: 0.12, bottom: 0.08, left: 0.05, right: 0.05 }, // Screen margins
+  REFRESH_INTERVAL: 10 * 1000, // 10 seconds between image refreshes
 };
 
 let slideshowState = {
   currentMode: "ranking", // 'ranking' | 'slideshow' | 'final'
   modeTimerId: null, // Mode switch timer
   imageTimerId: null, // Image rotation timer
+  refreshTimerId: null, // Image refresh timer
   imageQueue: [], // Images for slideshow (up to 30)
   displayedImages: [], // Currently displayed images (up to 6)
   displayedPositions: [], // Positions of displayed images
@@ -297,15 +299,6 @@ async function fetchRecentRankings() {
 
     // Sort by total_score descending
     images.sort((a, b) => b.total_score - a.total_score);
-
-    // Limit same user to max 2 images in top rankings
-    const userCount = new Map();
-    images = images.filter((img) => {
-      const count = userCount.get(img.user_id) || 0;
-      if (count >= 2) return false;
-      userCount.set(img.user_id, count + 1);
-      return true;
-    });
 
     await updateRankings(images);
   } catch (error) {
@@ -835,15 +828,6 @@ function processSnapshotData(snapshot) {
     // Sort by total_score descending
     images.sort((a, b) => b.total_score - a.total_score);
 
-    // Limit same user to max 2 images in top rankings
-    const userCount = new Map();
-    images = images.filter((img) => {
-      const count = userCount.get(img.user_id) || 0;
-      if (count >= 2) return false;
-      userCount.set(img.user_id, count + 1);
-      return true;
-    });
-
     await updateRankings(images);
     pendingUpdate = null;
   }, UPDATE_DEBOUNCE_MS);
@@ -961,6 +945,103 @@ async function fetchSlideshowImages() {
   } catch (error) {
     console.error("Error fetching slideshow images:", error);
     return [];
+  }
+}
+
+/**
+ * Refresh slideshow images by fetching new images from server
+ * Adds new images to the queue without duplicates
+ */
+async function refreshSlideshowImages() {
+  try {
+    const currentEventId = getCurrentEventId();
+    console.log(`Refreshing slideshow images for event: ${currentEventId}`);
+
+    const imagesRef = collection(window.db, "images");
+    const q = query(
+      imagesRef,
+      where("event_id", "==", currentEventId),
+      orderBy("upload_timestamp", "desc"),
+      limit(SLIDESHOW_CONFIG.IMAGE_LIMIT)
+    );
+
+    const snapshot = await getDocs(q);
+    let newImages = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Filter to completed images only
+    newImages = newImages.filter(
+      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+    );
+
+    // Find images not already in the queue
+    const existingIds = new Set(slideshowState.imageQueue.map((img) => img.id));
+    const addedImages = newImages.filter((img) => !existingIds.has(img.id));
+
+    if (addedImages.length > 0) {
+      // Fetch user names for new images
+      const userNamesPromises = addedImages.map((img) =>
+        fetchUserName(img.user_id)
+      );
+      const userNames = await Promise.all(userNamesPromises);
+      addedImages.forEach((img, index) => {
+        img.user_name = userNames[index];
+      });
+
+      // Add new images to the queue
+      slideshowState.imageQueue.push(...addedImages);
+      console.log(
+        `Added ${addedImages.length} new images to slideshow queue (total: ${slideshowState.imageQueue.length})`
+      );
+
+      // If display has room, add new images directly
+      const photoWall = document.getElementById("photo-wall");
+      if (
+        photoWall &&
+        slideshowState.displayedImages.length < SLIDESHOW_CONFIG.DISPLAY_COUNT
+      ) {
+        const slotsAvailable =
+          SLIDESHOW_CONFIG.DISPLAY_COUNT - slideshowState.displayedImages.length;
+        const imagesToAdd = addedImages.slice(0, slotsAvailable);
+
+        for (let i = 0; i < imagesToAdd.length; i++) {
+          const imageData = imagesToAdd[i];
+          const position = calculateRandomPosition(
+            slideshowState.displayedImages.length,
+            slideshowState.displayedPositions
+          );
+          const photoElement = createPhotoElement(
+            imageData,
+            position,
+            slideshowState.displayedImages.length + 1
+          );
+          photoWall.appendChild(photoElement);
+          slideshowState.displayedImages.push({ element: photoElement, imageData });
+          slideshowState.displayedPositions.push(position);
+
+          // Fade in with stagger
+          setTimeout(() => {
+            photoElement.classList.add("visible");
+          }, i * 150);
+        }
+        console.log(`Added ${imagesToAdd.length} images to display directly`);
+      }
+
+      // Start rotation if not already running and we have enough images
+      if (
+        !slideshowState.imageTimerId &&
+        slideshowState.imageQueue.length > SLIDESHOW_CONFIG.DISPLAY_COUNT
+      ) {
+        // Set nextImageIndex to the first newly added image
+        slideshowState.nextImageIndex =
+          slideshowState.imageQueue.length - addedImages.length;
+        startImageRotation();
+      }
+    }
+  } catch (error) {
+    console.error("Error refreshing slideshow images:", error);
   }
 }
 
@@ -1240,6 +1321,14 @@ async function switchToSlideshow() {
     startImageRotation();
   }
 
+  // Start periodic image refresh
+  if (slideshowState.refreshTimerId) {
+    clearInterval(slideshowState.refreshTimerId);
+  }
+  slideshowState.refreshTimerId = setInterval(() => {
+    refreshSlideshowImages();
+  }, SLIDESHOW_CONFIG.REFRESH_INTERVAL);
+
   console.log("Switched to slideshow mode");
 }
 
@@ -1253,6 +1342,12 @@ function switchToRanking() {
 
   // Stop slideshow
   stopImageRotation();
+
+  // Stop image refresh
+  if (slideshowState.refreshTimerId) {
+    clearInterval(slideshowState.refreshTimerId);
+    slideshowState.refreshTimerId = null;
+  }
 
   const photoWall = document.getElementById("photo-wall");
   const rankingContent = document.getElementById("ranking-content");
