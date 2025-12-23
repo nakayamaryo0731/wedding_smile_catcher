@@ -618,8 +618,9 @@ function switchTab(tabName) {
 // Statistics functions
 let cumulativeChartInstance = null;
 
-function getEventId() {
-  return window.CURRENT_EVENT_ID || "test";
+function getStatsEventId() {
+  const select = document.getElementById("statsEventFilter");
+  return select ? select.value : "";
 }
 
 function getImageUrl(imageData) {
@@ -785,15 +786,56 @@ function calculateTimelineStats(images) {
   return { hourlyData, peakHour, cumulativeData };
 }
 
-async function loadStatistics() {
-  const eventId = getEventId();
+async function populateStatsEventDropdown() {
+  const select = document.getElementById("statsEventFilter");
+  if (!select) return;
+
+  const currentValue = select.value;
 
   try {
-    const q = query(
-      collection(db, "images"),
-      where("event_id", "==", eventId),
-      orderBy("upload_timestamp", "asc")
-    );
+    const eventsSnapshot = await getDocs(collection(db, "events"));
+    select.innerHTML = '<option value="">All Events</option>';
+
+    eventsSnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const option = document.createElement("option");
+      option.value = docSnap.id;
+      option.textContent = data.event_name || docSnap.id;
+      select.appendChild(option);
+    });
+
+    // Restore selection if it still exists
+    if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
+      select.value = currentValue;
+    }
+  } catch (error) {
+    console.error("Error loading events for dropdown:", error);
+  }
+}
+
+async function loadStatistics() {
+  const eventId = getStatsEventId();
+
+  try {
+    // Populate events dropdown
+    await populateStatsEventDropdown();
+
+    let q;
+    if (eventId) {
+      // Filter by specific event
+      q = query(
+        collection(db, "images"),
+        where("event_id", "==", eventId),
+        orderBy("upload_timestamp", "asc")
+      );
+    } else {
+      // All events
+      q = query(
+        collection(db, "images"),
+        orderBy("upload_timestamp", "asc"),
+        limit(1000)
+      );
+    }
     const snapshot = await getDocs(q);
 
     let images = snapshot.docs.map((docSnap) => ({
@@ -804,8 +846,9 @@ async function loadStatistics() {
     // Enrich with user names from users collection
     images = await enrichImagesWithUserNames(images);
 
+    const filterLabel = eventId || "all events";
     console.log(
-      `Loaded ${images.length} images for statistics (event_id: ${eventId})`
+      `Loaded ${images.length} images for statistics (event_id: ${filterLabel})`
     );
 
     renderBasicStats(images);
@@ -1125,6 +1168,10 @@ document
 document
   .getElementById("refreshStats")
   .addEventListener("click", () => loadStatistics());
+
+document.getElementById("statsEventFilter").addEventListener("change", () => {
+  loadStatistics();
+});
 
 document.getElementById("eventFilter").addEventListener("change", (e) => {
   currentEventFilter = e.target.value;
