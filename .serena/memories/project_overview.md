@@ -17,7 +17,7 @@ A LINE Bot system for wedding receptions that collects smile photos from guests 
 
 ### GCP Services Used
 | Service | Purpose |
-|---------|---------|
+| --------- | --------- |
 | Cloud Functions | Webhook handling, Scoring logic |
 | Cloud Vision API | Smile detection |
 | Vertex AI (Gemini 1.5) | Theme evaluation |
