@@ -111,5 +111,8 @@
     "**/.next": true,
     "**/venv": true,
     "**/.venv": true
-  }
+  },
+  "pasteImage.basePath": "${currentFileDir}/..",
+  "pasteImage.insertPattern": "${imageSyntaxPrefix}/${imageFilePath}${imageSyntaxSuffix}",
+  "pasteImage.path": "${currentFileDir}/../images/${currentFileNameWithoutExt}"
 }

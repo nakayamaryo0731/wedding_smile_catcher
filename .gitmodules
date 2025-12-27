@@ -1,0 +1,3 @@
+[submodule "zenn"]
+	path = zenn
+	url = https://github.com/nakayamaryo0731/my-zenn-articles.git
