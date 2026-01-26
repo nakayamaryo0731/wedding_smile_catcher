@@ -35,3 +35,8 @@ variable "line_channel_access_token_name" {
   type        = string
   default     = "line-channel-access-token"
 }
+
+variable "current_event_id" {
+  description = "Current event ID (temporary, will be removed with multi-tenant support)"
+  type        = string
+}
