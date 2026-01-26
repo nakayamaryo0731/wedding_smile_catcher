@@ -86,7 +86,7 @@ Total Score = (Smile Score × AI Score ÷ 100) × Similarity Penalty
    - Example: 5 people with big smiles = ~450-500 points
 
 2. **AI Evaluation** (Vertex AI)
-   - Gemini 1.5 evaluates image against wedding theme
+   - Gemini 2.5 Flash evaluates image against wedding theme
    - Returns 0-100 score + comment
    - Acts as multiplier (0 = no score, 100 = full score)
    - **Critical**: Use Gemini or Amazon Nova; GPT-4o tends to give inflated scores
@@ -97,13 +97,11 @@ Total Score = (Smile Score × AI Score ÷ 100) × Similarity Penalty
    - Similar image detected → score × 1/3
    - Prevents consecutive shots from dominating
 
-## Implementation Language (TBD)
+## Implementation Language
 
-Original AWS system used Rust. This GCP version will likely use:
-- **Python**: For Cloud Functions (better library support for image processing, Pillow, imagehash)
-- **TypeScript**: For Next.js frontend
-
-No code has been written yet - language choice is still flexible.
+Original AWS system used Rust. This GCP version uses:
+- **Python**: Cloud Functions (webhook, scoring)
+- **HTML/CSS/JavaScript**: Frontend (ranking display, admin panel) — vanilla JS with Firebase SDK, deployed on Cloud Run
 
 ## Development Workflow (When Implementation Starts)
 
@@ -184,7 +182,7 @@ git commit -m "message"      # Commit with descriptive message
 git log --oneline            # View history
 ```
 
-No CI/CD pipeline configured yet.
+CI/CD is configured via GitHub Actions.
 
 ## Common Pitfalls to Avoid
 
@@ -207,7 +205,7 @@ When implementation starts, these will be needed:
 - `LINE_CHANNEL_ACCESS_TOKEN` - LINE Messaging API
 - `GCP_PROJECT_ID` - Google Cloud project
 - `STORAGE_BUCKET` - Cloud Storage bucket name
-- `GEMINI_MODEL_NAME` - Vertex AI model (e.g., "gemini-1.5-pro")
+- `GEMINI_MODEL_NAME` - Vertex AI model (e.g., "gemini-2.5-flash")
 
 ## Cost Considerations
 
