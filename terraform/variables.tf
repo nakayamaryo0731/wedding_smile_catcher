@@ -42,6 +42,13 @@ variable "line_channel_access_token" {
   default     = "placeholder-managed-externally"
 }
 
+# Event Configuration (temporary, will be removed with multi-tenant support)
+variable "current_event_id" {
+  description = "Current event ID for single-tenant mode"
+  type        = string
+  default     = "fde25512-7df4-4b24-87fb-59cc8405cc17"
+}
+
 # Labels (for resource organization)
 variable "labels" {
   description = "Common labels for all resources"

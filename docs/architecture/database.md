@@ -1,4 +1,7 @@
+<!-- markdownlint-disable MD024 -->
 # データベース設計
+
+> **注意**: 本ドキュメントは初期設計時のものです。マルチテナント対応に伴うスキーマ変更（`accounts` コレクション追加、`events` / `users` フィールド追加、Firestore Security Rules変更等）は `docs/planning/multi-tenant-design.md` を参照してください。
 
 ## 概要
 
@@ -18,7 +21,7 @@
 ```mermaid
 graph LR
     Users[users/] --> UserDoc["{user_id}"]
-    UserDoc --> Fields["name: string<br/>line_user_id: string<br/>created_at: timestamp<br/>total_uploads: number<br/>best_score: number"]
+    UserDoc --> Fields["name: string<br/>line_user_id: string<br/>event_id: string<br/>created_at: timestamp<br/>total_uploads: number<br/>best_score: number"]
 ```
 
 #### フィールド定義
@@ -92,6 +95,8 @@ graph LR
 ```
 
 ### 3. ranking コレクション
+
+> **注意**: 本コレクションは設計のみで、現時点では未実装です。フロントエンドは `images` コレクションを直接クエリしてランキングを表示しています。パフォーマンス最適化が必要になった段階で実装を検討します。
 
 リアルタイム表示用のランキング情報を管理
 
@@ -206,12 +211,12 @@ from google.cloud import firestore
 import os
 
 db = firestore.Client()
-CURRENT_EVENT_ID = os.environ.get('CURRENT_EVENT_ID', 'test')
+event_id = "your_event_id"  # ユーザーの event_id から動的に取得
 
 # Step 1: 特定イベントのトップ100画像を取得
 top_images = (
     db.collection('images')
-    .where('event_id', '==', CURRENT_EVENT_ID)
+    .where('event_id', '==', event_id)
     .where('status', '==', 'completed')
     .order_by('total_score', direction=firestore.Query.DESCENDING)
     .limit(100)
@@ -365,9 +370,9 @@ graph TD
 
 ### 3. データ保持期間
 
-- **images**: 結婚式後1年間保持（Cloud Storageと連動）
-- **users**: 永続保持（プライバシーポリシーに基づく）
-- **ranking**: イベント期間中のみ
+- **images**: イベント終了後30日間保持（Cloud Storageと連動）
+- **users**: イベント終了後30日間保持
+- **ranking**: イベント期間中のみ（未実装）
 
 ## パフォーマンス最適化
 
