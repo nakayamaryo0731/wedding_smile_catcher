@@ -111,7 +111,6 @@ module "functions" {
 
   line_channel_secret_name       = "line-channel-secret"
   line_channel_access_token_name = "line-channel-access-token"
-  current_event_id               = var.current_event_id
 
   depends_on = [
     google_project_service.required_apis,

@@ -5,8 +5,6 @@ import {
   orderBy,
   limit,
   getDocs,
-  doc,
-  getDoc,
   onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -82,29 +80,18 @@ const rankCards = {
 };
 
 /**
- * Fetch user name from users collection with caching
+ * Get user name, preferring denormalized user_name from image data.
+ * Falls back to cache or userId if not available.
  */
-async function fetchUserName(userId) {
-  // Check cache first
-  if (userNameCache.has(userId)) {
-    return userNameCache.get(userId);
+function getUserName(imageData) {
+  if (imageData.user_name) {
+    userNameCache.set(imageData.user_id, imageData.user_name);
+    return imageData.user_name;
   }
-
-  try {
-    const userRef = doc(window.db, "users", userId);
-    const userSnap = await getDoc(userRef);
-
-    const userName = userSnap.exists()
-      ? userSnap.data().name || userId
-      : userId;
-
-    // Cache the result
-    userNameCache.set(userId, userName);
-    return userName;
-  } catch (error) {
-    console.error("Error fetching user name:", error);
-    return userId;
+  if (userNameCache.has(imageData.user_id)) {
+    return userNameCache.get(imageData.user_id);
   }
+  return imageData.user_id || "ゲスト";
 }
 
 /**
@@ -245,13 +232,9 @@ async function updateRankings(images, useDecimal = false) {
   const topImages = getTopImages(images, 3);
   console.log(`Top 3 images:`, topImages);
 
-  // Fetch user names for all images
-  const userNamesPromises = topImages.map((img) => fetchUserName(img.user_id));
-  const userNames = await Promise.all(userNamesPromises);
-
-  // Add user_name to each image data
-  topImages.forEach((img, index) => {
-    img.user_name = userNames[index];
+  // Resolve user names (prefer denormalized user_name from image doc)
+  topImages.forEach((img) => {
+    img.user_name = getUserName(img);
   });
 
   // Update state
@@ -364,11 +347,9 @@ async function fetchAllTimeRankings() {
     // Take top 10
     images = images.slice(0, 10);
 
-    // Fetch user names for all images
-    const userNamesPromises = images.map((img) => fetchUserName(img.user_id));
-    const userNames = await Promise.all(userNamesPromises);
-    images.forEach((img, index) => {
-      img.user_name = userNames[index];
+    // Resolve user names (prefer denormalized user_name from image doc)
+    images.forEach((img) => {
+      img.user_name = getUserName(img);
     });
 
     // Update top 3 cards
@@ -931,11 +912,9 @@ async function fetchSlideshowImages() {
       (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
     );
 
-    // Fetch user names
-    const userNamesPromises = images.map((img) => fetchUserName(img.user_id));
-    const userNames = await Promise.all(userNamesPromises);
-    images.forEach((img, index) => {
-      img.user_name = userNames[index];
+    // Resolve user names (prefer denormalized user_name from image doc)
+    images.forEach((img) => {
+      img.user_name = getUserName(img);
     });
 
     // Shuffle for random display order
@@ -981,13 +960,9 @@ async function refreshSlideshowImages() {
     const addedImages = newImages.filter((img) => !existingIds.has(img.id));
 
     if (addedImages.length > 0) {
-      // Fetch user names for new images
-      const userNamesPromises = addedImages.map((img) =>
-        fetchUserName(img.user_id)
-      );
-      const userNames = await Promise.all(userNamesPromises);
-      addedImages.forEach((img, index) => {
-        img.user_name = userNames[index];
+      // Resolve user names (prefer denormalized user_name from image doc)
+      addedImages.forEach((img) => {
+        img.user_name = getUserName(img);
       });
 
       // Add new images to the queue

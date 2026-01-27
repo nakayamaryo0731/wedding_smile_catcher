@@ -3,7 +3,7 @@
 各ドキュメントから集約したリリースまでに必要なタスク。
 優先度・フェーズごとに整理する。
 
-最終更新: 2026-01-26
+最終更新: 2026-01-27
 
 ---
 
@@ -20,15 +20,15 @@ ref: `docs/planning/multi-tenant-design.md`
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 1.1 | `accounts` コレクション追加 | 🔲 | Firebase Auth UID をドキュメントID |
-| 1.2 | `events` コレクションに `account_id`, `event_code`, `test_completed` フィールド追加 | 🔲 | |
-| 1.3 | `users` コレクションに `join_status` フィールド追加 | 🔲 | `pending_name` / `registered`（ドキュメントはJOIN時に作成） |
-| 1.4 | webhook: JOIN コマンドハンドラ実装 | 🔲 | `handle_join_event` 関数 |
-| 1.5 | webhook: `handle_text_message` をJOINフローに対応 | 🔲 | |
-| 1.6 | webhook: `handle_image_message` からCURRENT_EVENT_ID依存を除去 | 🔲 | ユーザーの `event_id` を参照 |
-| 1.7 | webhook: `handle_follow` をシンプルな歓迎メッセージに変更 | 🔲 | ディープリンクがJOINを自動送信するため |
-| 1.8 | `CURRENT_EVENT_ID` 環境変数を完全に廃止 | 🔲 | 1.4〜1.7 完了後 |
-| 1.9 | イベントコード自動生成ロジック実装 | 🔲 | UUID v4、一意性保証 |
+| 1.1 | `accounts` コレクション追加 | ✅ | Firebase Auth自体がアカウント管理。`events.account_id == auth.uid` で認可 |
+| 1.2 | `events` コレクションに `account_id`, `event_code`, `test_completed` フィールド追加 | ✅ | `account_id`, `event_code` 実装済。`test_completed` はPhase 1-b |
+| 1.3 | `users` コレクションに `join_status` フィールド追加 | ✅ | `pending_name` / `registered` フロー動作確認済 |
+| 1.4 | webhook: JOIN コマンドハンドラ実装 | ✅ | `handle_join_event` 関数。E2Eテスト済 |
+| 1.5 | webhook: `handle_text_message` をJOINフローに対応 | ✅ | 4分岐ルーティング実装済 |
+| 1.6 | webhook: `handle_image_message` からCURRENT_EVENT_ID依存を除去 | ✅ | ユーザーの `event_id` を参照 |
+| 1.7 | webhook: `handle_follow` をシンプルな歓迎メッセージに変更 | ✅ | ディープリンクがJOINを自動送信するため |
+| 1.8 | `CURRENT_EVENT_ID` 環境変数を完全に廃止 | ✅ | webhook・terraform から完全削除 |
+| 1.9 | イベントコード自動生成ロジック実装 | ✅ | UUID v4 `create_event.py` に実装済 |
 | 1.10 | ディープリンクQRコード生成機能 | 🔲 | `https://line.me/R/oaMessage/@xxx/?text=JOIN%20{code}` |
 | 1.11 | 1ゲストが複数イベントに参加するケースの対応 | ✅ | 複合キー `{line_user_id}_{event_id}` で設計済み |
 
@@ -40,11 +40,11 @@ ref: `docs/planning/security-requirements.md`
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 2.1 | Firebase Authentication 導入 | 🔲 | メール + パスワード |
-| 2.2 | 管理画面: SHA-256パスワード認証をFirebase Authに置換 | 🔲 | |
-| 2.3 | 管理画面: ログイン/ログアウトUI実装 | 🔲 | |
-| 2.4 | 管理画面: 自分のイベントのみ表示するフィルタ | 🔲 | `account_id == currentUser.uid` |
-| 2.5 | Firestore Security Rules 更新 | 🔲 | マルチテナント対応のルール |
+| 2.1 | Firebase Authentication 導入 | ✅ | メール + パスワード |
+| 2.2 | 管理画面: SHA-256パスワード認証をFirebase Authに置換 | ✅ | `signInWithEmailAndPassword` に置換済 |
+| 2.3 | 管理画面: ログイン/ログアウトUI実装 | ✅ | `admin.html` 更新済 |
+| 2.4 | 管理画面: 自分のイベントのみ表示するフィルタ | ✅ | `account_id == currentUser.uid` フィルタ実装済 |
+| 2.5 | Firestore Security Rules 更新 | ✅ | マルチテナント対応ルール実装済 |
 | 2.6 | Firestore Security Rules のテスト | 🔲 | |
 
 ---
@@ -187,13 +187,14 @@ Phase 0: 設計・ドキュメント ✅
   ├── 11.9 全ドキュメント整合性レビュー ✅
   └── 1.11 複数イベント参加の設計課題を解決 ✅
 
-Phase 1-a: 基盤（認証・マルチテナント）
-  ├── 2.1〜2.6 Firebase Auth + Security Rules
-  ├── 1.1〜1.3 Firestoreスキーマ変更
-  └── 1.4〜1.8 webhook フロー変更
+Phase 1-a: 基盤（認証・マルチテナント） ✅
+  ├── 2.1〜2.5 Firebase Auth + Security Rules ✅
+  ├── 1.1〜1.3 Firestoreスキーマ変更 ✅
+  ├── 1.4〜1.9 webhook フロー変更 + イベントコード生成 ✅
+  └── 2.6 Security Rules テスト 🔲
 
 Phase 1-b: セルフサービス
-  ├── 1.9〜1.10 イベントコード・QRコード
+  ├── 1.10 QRコード生成
   ├── 3.1〜3.4 顧客向けUI
   └── 4.1〜4.3 事前テストフロー
 

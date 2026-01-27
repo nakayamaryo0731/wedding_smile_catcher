@@ -15,11 +15,11 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import {
   getAuth,
-  signInAnonymously,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-const ADMIN_PASSWORD_HASH =
-  "89172bc8b8d32e96df22b913262238f45155909b6262d452d5c16e073e27edeb";
 const GCS_BUCKET_NAME =
   window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
 
@@ -52,29 +52,30 @@ let eventNameCache = new Map();
 // Current event filter
 let currentEventFilter = "";
 
-async function sha256(message) {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+// Owned event IDs cache (filtered by account_id)
+let ownedEventIds = [];
+let ownedEventsLoaded = false;
 
-function checkAuth() {
-  return sessionStorage.getItem("adminAuth") === "true";
-}
-
-function setAuth(isAuthenticated) {
-  if (isAuthenticated) {
-    sessionStorage.setItem("adminAuth", "true");
-  } else {
-    sessionStorage.removeItem("adminAuth");
+async function loadOwnedEventIds() {
+  if (!currentUser || ownedEventsLoaded) return ownedEventIds;
+  try {
+    const q = query(
+      collection(db, "events"),
+      where("account_id", "==", currentUser.uid)
+    );
+    const snapshot = await getDocs(q);
+    ownedEventIds = snapshot.docs.map((d) => d.id);
+    ownedEventsLoaded = true;
+    console.log(`Loaded ${ownedEventIds.length} owned events`);
+    return ownedEventIds;
+  } catch (error) {
+    console.error("Error loading owned events:", error);
+    return [];
   }
 }
 
-async function login(password) {
-  const hash = await sha256(password);
-  return hash === ADMIN_PASSWORD_HASH;
-}
+// Current authenticated user (set by onAuthStateChanged)
+let currentUser = null;
 
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((screen) => {
@@ -90,13 +91,30 @@ function showError(message) {
 
 async function loadStats() {
   try {
-    const imagesSnapshot = await getDocs(collection(db, "images"));
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const eventsSnapshot = await getDocs(collection(db, "events"));
+    const eventIds = await loadOwnedEventIds();
 
-    document.getElementById("totalImages").textContent = imagesSnapshot.size;
-    document.getElementById("totalUsers").textContent = usersSnapshot.size;
-    document.getElementById("totalEvents").textContent = eventsSnapshot.size;
+    let imagesQuery, usersQuery, eventsQuery;
+    if (eventIds.length > 0) {
+      imagesQuery = query(collection(db, "images"), where("event_id", "in", eventIds));
+      usersQuery = query(collection(db, "users"), where("event_id", "in", eventIds));
+      eventsQuery = currentUser
+        ? query(collection(db, "events"), where("account_id", "==", currentUser.uid))
+        : query(collection(db, "events"));
+    } else {
+      imagesQuery = query(collection(db, "images"));
+      usersQuery = query(collection(db, "users"));
+      eventsQuery = query(collection(db, "events"));
+    }
+
+    const [imagesSnapshot, usersSnapshot, eventsSnapshot] = await Promise.all([
+      getCountFromServer(imagesQuery),
+      getCountFromServer(usersQuery),
+      getCountFromServer(eventsQuery),
+    ]);
+
+    document.getElementById("totalImages").textContent = imagesSnapshot.data().count;
+    document.getElementById("totalUsers").textContent = usersSnapshot.data().count;
+    document.getElementById("totalEvents").textContent = eventsSnapshot.data().count;
   } catch (error) {
     console.error("Error loading stats:", error);
   }
@@ -112,18 +130,26 @@ async function loadImages(forceRefresh = false) {
   }
 
   try {
-    const q = query(
-      collection(db, "images"),
-      orderBy("upload_timestamp", "desc"),
-      limit(1000)
-    );
+    const eventIds = await loadOwnedEventIds();
+    let q;
+    if (eventIds.length > 0) {
+      q = query(
+        collection(db, "images"),
+        where("event_id", "in", eventIds),
+        orderBy("upload_timestamp", "desc"),
+        limit(1000)
+      );
+    } else {
+      q = query(
+        collection(db, "images"),
+        orderBy("upload_timestamp", "desc"),
+        limit(1000)
+      );
+    }
     const snapshot = await getDocs(q);
 
-    // Fetch all user names
-    const userIds = [
-      ...new Set(snapshot.docs.map((d) => d.data().user_id).filter(Boolean)),
-    ];
-    await fetchUserNames(userIds);
+    // Cache user names from image documents (denormalized user_name field)
+    cacheUserNamesFromImages(snapshot.docs);
 
     // Fetch all event names
     const eventIds = [
@@ -139,9 +165,7 @@ async function loadImages(forceRefresh = false) {
         thumbnail: d.storage_path
           ? `https://storage.googleapis.com/${GCS_BUCKET_NAME}/${d.storage_path}`
           : "",
-        user_name: d.user_id
-          ? userNameCache.get(d.user_id) || d.user_id
-          : "N/A",
+        user_name: d.user_name || userNameCache.get(d.user_id) || d.user_id || "N/A",
         event_id: d.event_id || "",
         event_name: d.event_id
           ? eventNameCache.get(d.event_id) || d.event_id
@@ -247,22 +271,11 @@ async function loadImages(forceRefresh = false) {
   }
 }
 
-async function fetchUserNames(userIds) {
-  const uncachedIds = userIds.filter((id) => !userNameCache.has(id));
-  if (uncachedIds.length === 0) return;
-
-  for (const userId of uncachedIds) {
-    try {
-      const userRef = doc(db, "users", userId);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        userNameCache.set(userId, userSnap.data().name || userId);
-      } else {
-        userNameCache.set(userId, userId);
-      }
-    } catch (error) {
-      console.error("Error fetching user:", userId, error);
-      userNameCache.set(userId, userId);
+function cacheUserNamesFromImages(docs) {
+  for (const docSnap of docs) {
+    const d = docSnap.data();
+    if (d.user_id && d.user_name && !userNameCache.has(d.user_id)) {
+      userNameCache.set(d.user_id, d.user_name);
     }
   }
 }
@@ -326,11 +339,22 @@ async function loadUsers(forceRefresh = false) {
   }
 
   try {
-    const q = query(
-      collection(db, "users"),
-      orderBy("best_score", "desc"),
-      limit(500)
-    );
+    const eventIds = await loadOwnedEventIds();
+    let q;
+    if (eventIds.length > 0) {
+      q = query(
+        collection(db, "users"),
+        where("event_id", "in", eventIds),
+        orderBy("best_score", "desc"),
+        limit(500)
+      );
+    } else {
+      q = query(
+        collection(db, "users"),
+        orderBy("best_score", "desc"),
+        limit(500)
+      );
+    }
     const snapshot = await getDocs(q);
 
     // Transform data for Tabulator
@@ -416,11 +440,21 @@ async function loadEvents() {
   container.innerHTML = '<p class="loading">Loading events...</p>';
 
   try {
-    const q = query(
-      collection(db, "events"),
-      orderBy("created_at", "desc"),
-      limit(500)
-    );
+    let q;
+    if (currentUser) {
+      q = query(
+        collection(db, "events"),
+        where("account_id", "==", currentUser.uid),
+        orderBy("created_at", "desc"),
+        limit(500)
+      );
+    } else {
+      q = query(
+        collection(db, "events"),
+        orderBy("created_at", "desc"),
+        limit(500)
+      );
+    }
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
@@ -632,37 +666,17 @@ function getImageUrl(imageData) {
   );
 }
 
-async function fetchUserName(userId) {
-  try {
-    const userRef = doc(db, "users", userId);
-    const userSnap = await getDoc(userRef);
-    if (userSnap.exists()) {
-      return userSnap.data().name || userId;
-    }
-    return userId;
-  } catch (error) {
-    console.error("Error fetching user name:", error);
-    return userId;
-  }
+function getUserNameFromCache(userId) {
+  return userNameCache.get(userId) || userId;
 }
 
-async function enrichImagesWithUserNames(images) {
-  const userCache = new Map();
-
+function enrichImagesWithUserNames(images) {
   for (const img of images) {
-    if (!img.user_id) continue;
-
-    if (img.user_name) continue; // Already has user_name
-
-    if (userCache.has(img.user_id)) {
-      img.user_name = userCache.get(img.user_id);
-    } else {
-      const name = await fetchUserName(img.user_id);
-      userCache.set(img.user_id, name);
-      img.user_name = name;
+    if (img.user_name) continue; // Already has denormalized user_name
+    if (img.user_id) {
+      img.user_name = getUserNameFromCache(img.user_id);
     }
   }
-
   return images;
 }
 
@@ -793,7 +807,16 @@ async function populateStatsEventDropdown() {
   const currentValue = select.value;
 
   try {
-    const eventsSnapshot = await getDocs(collection(db, "events"));
+    let eventsQuery;
+    if (currentUser) {
+      eventsQuery = query(
+        collection(db, "events"),
+        where("account_id", "==", currentUser.uid)
+      );
+    } else {
+      eventsQuery = query(collection(db, "events"));
+    }
+    const eventsSnapshot = await getDocs(eventsQuery);
     select.innerHTML = '<option value="">All Events</option>';
 
     eventsSnapshot.forEach((docSnap) => {
@@ -843,8 +866,8 @@ async function loadStatistics() {
       ...docSnap.data(),
     }));
 
-    // Enrich with user names from users collection
-    images = await enrichImagesWithUserNames(images);
+    // Enrich with user names (from denormalized user_name field or cache)
+    images = enrichImagesWithUserNames(images);
 
     const filterLabel = eventId || "all events";
     console.log(
@@ -1090,30 +1113,29 @@ function renderCumulativeChart(data) {
 
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const email = document.getElementById("emailInput").value;
   const password = document.getElementById("passwordInput").value;
-  const success = await login(password);
 
-  if (success) {
-    try {
-      await signInAnonymously(auth);
-      setAuth(true);
-      showScreen("adminScreen");
-      await loadStats();
-      await loadImages();
-    } catch (error) {
-      console.error("Error signing in anonymously:", error);
-      showError("Authentication error: " + error.message);
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged will handle the rest
+  } catch (error) {
+    console.error("Login failed:", error);
+    if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
+      showError("Invalid email or password");
+    } else {
+      showError("Login failed: " + error.message);
     }
-  } else {
-    showError("Invalid password");
   }
 });
 
-document.getElementById("logoutBtn").addEventListener("click", () => {
-  setAuth(false);
-  showScreen("loginScreen");
-  document.getElementById("passwordInput").value = "";
-  showError("");
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    // onAuthStateChanged will handle the rest
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
 });
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -1192,18 +1214,24 @@ document.getElementById("cancelDelete").addEventListener("click", () => {
   }
 });
 
-if (checkAuth()) {
-  signInAnonymously(auth)
-    .then(() => {
-      showScreen("adminScreen");
-      loadStats();
-      loadImages();
-    })
-    .catch((error) => {
-      console.error("Error signing in anonymously:", error);
-      setAuth(false);
-      showScreen("loginScreen");
-    });
-} else {
-  showScreen("loginScreen");
-}
+// Firebase Auth state listener - handles login/logout state
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    // Reset owned events cache for fresh load
+    ownedEventIds = [];
+    ownedEventsLoaded = false;
+    console.log("Authenticated as:", user.email);
+    showScreen("adminScreen");
+    loadStats();
+    loadImages();
+  } else {
+    currentUser = null;
+    ownedEventIds = [];
+    ownedEventsLoaded = false;
+    showScreen("loginScreen");
+    document.getElementById("emailInput").value = "";
+    document.getElementById("passwordInput").value = "";
+    showError("");
+  }
+});

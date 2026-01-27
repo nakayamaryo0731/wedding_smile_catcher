@@ -118,11 +118,14 @@ def mock_vertex_response_low_score() -> Mock:
 @pytest.fixture
 def sample_user_data() -> dict[str, Any]:
     """
-    Sample user data for testing.
+    Sample user data for testing (multi-tenant format).
+    Document ID: {line_user_id}_{event_id}
     """
     return {
         "line_user_id": "test_user_001",
+        "event_id": "test_event_001",
         "name": "テスト太郎",
+        "join_status": "registered",
         "created_at": "2025-01-22T10:00:00Z",
         "total_uploads": 0,
         "best_score": 0,
@@ -136,7 +139,9 @@ def sample_image_data() -> dict[str, Any]:
     """
     return {
         "user_id": "test_user_001",
-        "storage_path": "original/test_user_001/20250122_100000_test.jpg",
+        "user_name": "テスト太郎",
+        "event_id": "test_event_001",
+        "storage_path": "test_event_001/original/test_user_001/20250122_100000_test.jpg",
         "upload_timestamp": "2025-01-22T10:00:00Z",
         "status": "pending",
         "smile_score": 0,
@@ -152,7 +157,9 @@ def sample_scored_image_data() -> dict[str, Any]:
     """
     return {
         "user_id": "test_user_001",
-        "storage_path": "original/test_user_001/20250122_100000_test.jpg",
+        "user_name": "テスト太郎",
+        "event_id": "test_event_001",
+        "storage_path": "test_event_001/original/test_user_001/20250122_100000_test.jpg",
         "upload_timestamp": "2025-01-22T10:00:00Z",
         "status": "completed",
         "smile_score": 190.0,  # 2 faces × 95.0

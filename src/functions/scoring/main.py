@@ -25,9 +25,14 @@ import vertexai
 from flask import Request, jsonify
 from google.cloud import firestore, storage, vision
 from google.cloud import logging as cloud_logging
-from linebot import LineBotApi
-from linebot.exceptions import LineBotApiError
-from linebot.models import TextSendMessage
+from linebot.v3.messaging import (
+    ApiClient,
+    Configuration,
+    MessagingApi,
+    PushMessageRequest,
+    TextMessage,
+)
+from linebot.v3.messaging.exceptions import ApiException
 from PIL import Image as PILImage
 from vertexai.generative_models import GenerativeModel, Part
 
@@ -50,8 +55,10 @@ GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 GCP_REGION = os.environ.get("GCP_REGION", "asia-northeast1")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 
-# Initialize LINE Bot API
-line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+# Initialize LINE Bot API (v3)
+configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
+api_client = ApiClient(configuration)
+messaging_api = MessagingApi(api_client)
 
 # Initialize Vertex AI
 vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
@@ -705,7 +712,8 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
     log_context["user_id"] = user_id
 
     # Get user document to retrieve LINE user ID (cached for later use)
-    user_ref = db.collection("users").document(user_id)
+    # User doc ID is composite key: {line_user_id}_{event_id}
+    user_ref = db.collection("users").document(f"{user_id}_{event_id}")
     user_doc = user_ref.get()
     line_user_id = None
     if user_doc.exists:
@@ -816,6 +824,7 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
         "is_similar": is_similar,
         "average_hash": average_hash,
         "line_user_id": line_user_id,  # Cache LINE user ID to avoid duplicate Firestore read
+        "event_id": event_id,  # Cache event_id for composite key construction
     }
 
     # Add error flags if any occurred
@@ -887,14 +896,21 @@ def update_firestore(image_id: str, user_id: str, scores: dict[str, Any]):
 
     Args:
         image_id: Image document ID
-        user_id: User ID
-        scores: Scoring results
+        user_id: User ID (LINE user ID)
+        scores: Scoring results (includes event_id for composite key construction)
 
     Raises:
         Exception: If Firestore update fails
     """
     image_ref = db.collection("images").document(image_id)
-    user_ref = db.collection("users").document(user_id)
+
+    # Construct composite key for user document: {line_user_id}_{event_id}
+    event_id = scores.get("event_id")
+    if event_id:
+        user_ref = db.collection("users").document(f"{user_id}_{event_id}")
+    else:
+        logger.warning(f"No event_id in scores for image {image_id}, falling back to user_id as doc key")
+        user_ref = db.collection("users").document(user_id)
 
     try:
         transaction = db.transaction()
@@ -984,31 +1000,31 @@ def _send_line_message_with_retry(line_user_id: str, message, max_retries: int =
     """
     for attempt in range(max_retries):
         try:
-            line_bot_api.push_message(line_user_id, message)
+            messaging_api.push_message(PushMessageRequest(to=line_user_id, messages=[message]))
             logger.info(f"Successfully sent message to LINE user: {line_user_id}")
             return
 
-        except LineBotApiError as e:
+        except ApiException as e:
             is_last_attempt = attempt == max_retries - 1
 
             # Check if error is retryable (5xx server errors or rate limit)
             is_retryable = (
-                500 <= e.status_code < 600  # Server errors
-                or e.status_code == 429  # Rate limit
+                500 <= e.status < 600  # Server errors
+                or e.status == 429  # Rate limit
             )
 
             if is_retryable and not is_last_attempt:
                 wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                 logger.warning(
-                    f"LINE API error {e.status_code}, retrying in {wait_time}s "
-                    f"(attempt {attempt + 1}/{max_retries}): {e.message}"
+                    f"LINE API error {e.status}, retrying in {wait_time}s "
+                    f"(attempt {attempt + 1}/{max_retries}): {e.reason}"
                 )
                 time.sleep(wait_time)
                 continue
 
             # Non-retryable error or final attempt
             logger.error(
-                f"LINE API error (final, status={e.status_code}): {e.message}",
+                f"LINE API error (final, status={e.status}): {e.reason}",
                 exc_info=True,
             )
             return
@@ -1072,7 +1088,7 @@ def send_result_to_line(user_id: str, scores: dict[str, Any]):
         )
 
     # Send message with retry logic
-    message = TextSendMessage(text=message_text)
+    message = TextMessage(text=message_text)
     _send_line_message_with_retry(line_user_id, message)
 
 
@@ -1081,20 +1097,7 @@ def send_error_to_line(user_id: str):
     Send error message to LINE user.
 
     Args:
-        user_id: User ID
+        user_id: LINE user ID (stored directly in image documents)
     """
-    # Get user's LINE user ID
-    user_ref = db.collection("users").document(user_id)
-    user_doc = user_ref.get()
-
-    if not user_doc.exists:
-        return
-
-    user_data = user_doc.to_dict()
-    line_user_id = user_data.get("line_user_id")
-
-    if not line_user_id:
-        return
-
-    message = TextSendMessage(text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。")
-    _send_line_message_with_retry(line_user_id, message)
+    message = TextMessage(text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。")
+    _send_line_message_with_retry(user_id, message)
