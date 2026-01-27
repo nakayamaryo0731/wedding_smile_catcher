@@ -78,6 +78,19 @@ def firestore_client():
     Create Firestore client connected to emulator.
     Requires Firestore emulator to be running: `firebase emulators:start --only firestore`
     """
+    import socket
+
+    # Check if the emulator is actually running
+    host, port = "localhost", 8080
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.settimeout(1)
+        sock.connect((host, port))
+    except (ConnectionRefusedError, OSError):
+        pytest.skip(f"Firestore emulator not running on {host}:{port}")
+    finally:
+        sock.close()
+
     client = firestore.Client(project="wedding-smile-catcher-test")
     yield client
     # Cleanup: delete all collections after tests
