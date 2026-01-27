@@ -65,7 +65,6 @@ resource "google_cloudfunctions2_function" "webhook" {
       GCP_PROJECT_ID       = var.project_id
       STORAGE_BUCKET       = var.storage_bucket_name
       SCORING_FUNCTION_URL = "https://${var.region}-${var.project_id}.cloudfunctions.net/scoring"
-      CURRENT_EVENT_ID     = var.current_event_id
     }
 
     secret_environment_variables {

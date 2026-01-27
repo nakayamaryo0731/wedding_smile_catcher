@@ -6,45 +6,33 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Events collection
+    // Authenticated users can read events
+    // Only the event owner (account_id) can write
+    match /events/{eventId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.account_id == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && resource.data.account_id == request.auth.uid;
+    }
+
     // Users collection
-    // Frontend can read user names for display
-    // Admin can delete users (authenticated via anonymous auth)
+    // Public read for ranking display
+    // Write restricted to Cloud Functions (server-side only)
     match /users/{userId} {
       allow read: if true;
-      allow delete: if request.auth != null;
       allow create, update: if false;
+      allow delete: if request.auth != null;
     }
 
     // Images collection
-    // Frontend can read images and scores for ranking display
-    // Admin can delete images (authenticated via anonymous auth)
+    // Public read for ranking display
+    // Write restricted to Cloud Functions (server-side only)
     match /images/{imageId} {
       allow read: if true;
-      allow delete: if request.auth != null;
       allow create, update: if false;
-    }
-
-    // Events collection (for multi-event support)
-    // Frontend can read event metadata
-    // Admin can delete events (authenticated via anonymous auth)
-    match /events/{eventId} {
-      allow read: if true;
       allow delete: if request.auth != null;
-      allow create, update: if false;
-
-      // Event-specific users subcollection
-      match /users/{userId} {
-        allow read: if true;
-        allow delete: if request.auth != null;
-        allow create, update: if false;
-      }
-
-      // Event-specific images subcollection
-      match /images/{imageId} {
-        allow read: if true;
-        allow delete: if request.auth != null;
-        allow create, update: if false;
-      }
     }
   }
 }
