@@ -366,7 +366,7 @@ def handle_image_message(event: MessageEvent):
 
     if not user_doc:
         message = TextMessage(
-            text="イベントに参加してからお写真を送ってください。\n\n" "「JOIN 参加コード」でイベントに参加できます。"
+            text="イベントに参加してからお写真を送ってください。\n\n「JOIN 参加コード」でイベントに参加できます。"
         )
         messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
         return
