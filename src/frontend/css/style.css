@@ -151,6 +151,10 @@ body {
     transition: opacity 3s ease-in-out;
 }
 
+.ranking-content.hidden {
+    display: none;
+}
+
 .ranking-content.fading-out {
     opacity: 0;
 }
@@ -179,6 +183,31 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--white);
+}
+
+/* Event Ended Banner */
+.event-ended-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    width: fit-content;
+    margin: 0 auto 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.event-ended-banner p {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--white);
+    margin: 0;
+}
+
+.event-ended-banner.hidden {
+    display: none;
 }
 
 /* Ranking Container */

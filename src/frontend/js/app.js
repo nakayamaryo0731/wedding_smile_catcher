@@ -1,5 +1,7 @@
 import {
   collection,
+  doc,
+  getDoc,
   query,
   where,
   orderBy,
@@ -1418,7 +1420,7 @@ function cleanupSlideshow() {
 /**
  * Initialize the app
  */
-function init() {
+async function init() {
   console.log("Initializing Wedding Smile Ranking app...");
 
   // Get event ID from URL or config
@@ -1434,6 +1436,28 @@ function init() {
       <p style="font-size: 0.9rem; margin-top: 1rem;">Please update config.js with your Firebase credentials</p>
     `;
     return;
+  }
+
+  // Check event status for archived events
+  try {
+    const eventDocRef = doc(window.db, "events", currentEventId);
+    const eventDoc = await getDoc(eventDocRef);
+    if (eventDoc.exists()) {
+      const status = eventDoc.data().status;
+      if (status === "archived") {
+        console.log(`Event ${currentEventId} is archived, showing ended banner`);
+        document.getElementById("event-ended-banner").classList.remove("hidden");
+        // Hide everything except header and banner
+        document.getElementById("slideshow-btn")?.classList.add("hidden");
+        document.getElementById("final-btn")?.classList.add("hidden");
+        document.getElementById("ranking-content")?.classList.add("hidden");
+        loadingEl.classList.add("hidden");
+        return;
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to check event status:", error);
+    // Continue with normal init on error
   }
 
   // Set up final presentation button
