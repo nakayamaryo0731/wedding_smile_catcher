@@ -13,6 +13,22 @@
         "destination": "/admin.html"
       },
       {
+        "source": "/terms",
+        "destination": "/legal.html"
+      },
+      {
+        "source": "/privacy",
+        "destination": "/legal.html"
+      },
+      {
+        "source": "/commerce",
+        "destination": "/legal.html"
+      },
+      {
+        "source": "/legal",
+        "destination": "/legal.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
