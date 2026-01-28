@@ -12,24 +12,72 @@
         <div class="login-container">
             <h1>Admin Panel</h1>
             <p class="subtitle">Wedding Smile Catcher</p>
-            <form id="loginForm">
-                <input
-                    type="email"
-                    id="emailInput"
-                    placeholder="Email"
-                    required
-                    autocomplete="username"
-                >
-                <input
-                    type="password"
-                    id="passwordInput"
-                    placeholder="Password"
-                    required
-                    autocomplete="current-password"
-                >
-                <button type="submit">Login</button>
-            </form>
-            <div id="loginError" class="error"></div>
+            <div class="auth-box">
+                <div class="auth-tabs">
+                    <button class="auth-tab-btn active" data-auth-tab="login">Login</button>
+                    <button class="auth-tab-btn" data-auth-tab="register">Sign Up</button>
+                </div>
+                <form id="loginForm" class="auth-form active">
+                    <input
+                        type="email"
+                        id="emailInput"
+                        placeholder="Email"
+                        required
+                        autocomplete="username"
+                    >
+                    <input
+                        type="password"
+                        id="passwordInput"
+                        placeholder="Password"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <button type="submit">Login</button>
+                </form>
+                <form id="registerForm" class="auth-form">
+                    <input
+                        type="email"
+                        id="regEmailInput"
+                        placeholder="Email"
+                        required
+                        autocomplete="username"
+                    >
+                    <input
+                        type="password"
+                        id="regPasswordInput"
+                        placeholder="Password (8+ characters)"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                    >
+                    <input
+                        type="text"
+                        id="regDisplayNameInput"
+                        placeholder="Display Name (e.g. Taro & Hanako)"
+                        required
+                        maxlength="50"
+                    >
+                    <label class="terms-label">
+                        <input type="checkbox" id="regTermsCheckbox" required>
+                        <span><a href="#" id="termsLink">Terms of Service</a> に同意する</span>
+                    </label>
+                    <button type="submit">Create Account</button>
+                </form>
+                <div id="loginError" class="error"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Service Modal -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content terms-modal-content">
+            <div class="terms-modal-header">
+                <h2>Terms of Service</h2>
+                <button class="terms-close-btn" id="closeTermsModal">&times;</button>
+            </div>
+            <div class="terms-body" id="termsBody">
+                <p>Loading...</p>
+            </div>
         </div>
     </div>
 
@@ -93,9 +141,26 @@
                 <div class="tab-header">
                     <h2>Events Management</h2>
                     <div class="actions">
+                        <button id="refreshEvents" class="btn-secondary">Refresh</button>
                         <button id="selectAllEvents" class="btn-secondary">Select All</button>
                         <button id="deleteSelectedEvents" class="btn-danger" disabled>Delete Selected (<span id="selectedEventsCount">0</span>)</button>
                     </div>
+                </div>
+                <div class="event-create-section">
+                    <button class="event-create-toggle" id="eventCreateToggle">+ Create New Event</button>
+                    <form id="eventCreateForm" class="event-create-form" style="display: none;">
+                        <div class="event-create-fields">
+                            <div class="form-group">
+                                <label for="newEventName">Event Name</label>
+                                <input type="text" id="newEventName" placeholder="e.g. Taro & Hanako Wedding" required maxlength="100">
+                            </div>
+                            <div class="form-group">
+                                <label for="newEventDate">Event Date</label>
+                                <input type="date" id="newEventDate" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" id="eventCreateBtn">Create</button>
+                    </form>
                 </div>
                 <div id="eventsList" class="data-list">
                     <p class="loading">Loading events...</p>
@@ -229,6 +294,38 @@
         </main>
     </div>
 
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="modal">
+        <div class="modal-content qr-modal-content">
+            <div class="qr-modal-header">
+                <h2 id="qrModalTitle">QR Code</h2>
+                <button class="terms-close-btn" id="closeQRModal">&times;</button>
+            </div>
+            <div class="qr-code-wrapper">
+                <div id="qrCodeContainer"></div>
+            </div>
+            <div class="qr-url-section">
+                <div class="qr-url-group">
+                    <label>Deep Link URL:</label>
+                    <div class="qr-url-row">
+                        <code id="qrDeepLinkUrl" class="qr-url-text"></code>
+                        <button class="btn-secondary btn-sm" id="copyDeepLinkBtn">Copy</button>
+                    </div>
+                </div>
+                <div class="qr-url-group">
+                    <label>Ranking Page URL:</label>
+                    <div class="qr-url-row">
+                        <code id="qrRankingUrl" class="qr-url-text"></code>
+                        <button class="btn-secondary btn-sm" id="copyRankingBtn">Copy</button>
+                    </div>
+                </div>
+            </div>
+            <div class="qr-modal-actions">
+                <button class="btn-primary" id="downloadQRBtn">Download QR Code Image</button>
+            </div>
+        </div>
+    </div>
+
     <div id="confirmModal" class="modal">
         <div class="modal-content">
             <h2>Confirm Deletion</h2>
@@ -240,6 +337,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
     <script src="js/config.js"></script>

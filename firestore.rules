@@ -6,11 +6,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Accounts collection
+    // Owner-only read/create/update; no client-side delete
+    match /accounts/{accountId} {
+      allow read: if request.auth != null && request.auth.uid == accountId;
+      allow create: if request.auth != null && request.auth.uid == accountId;
+      allow update: if request.auth != null && request.auth.uid == accountId;
+      allow delete: if false;
+    }
+
     // Events collection
-    // Authenticated users can read events
+    // Public get (single doc) for ranking UI status check
+    // List (query) restricted to authenticated users
     // Only the event owner (account_id) can write
     match /events/{eventId} {
-      allow read: if request.auth != null;
+      allow get: if true;
+      allow list: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.account_id == request.auth.uid;
       allow update, delete: if request.auth != null

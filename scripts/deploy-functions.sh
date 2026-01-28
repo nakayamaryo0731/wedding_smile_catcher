@@ -28,6 +28,20 @@ function print_info() {
 function deploy_webhook() {
     print_info "Deploying Webhook Function..."
 
+    # Get scoring URL if scoring function exists
+    SCORING_URL=$(gcloud functions describe scoring \
+        --gen2 \
+        --region=$REGION \
+        --format="value(serviceConfig.uri)" 2>/dev/null || echo "")
+
+    local ENV_VARS="GCP_PROJECT_ID=${PROJECT_ID},STORAGE_BUCKET=wedding-smile-images-wedding-smile-catcher"
+    if [ -n "$SCORING_URL" ]; then
+        ENV_VARS="${ENV_VARS},SCORING_FUNCTION_URL=${SCORING_URL}"
+        print_info "Scoring URL: $SCORING_URL"
+    else
+        print_info "Scoring function not found, skipping SCORING_FUNCTION_URL"
+    fi
+
     cd src/functions/webhook
 
     gcloud functions deploy webhook \
@@ -40,7 +54,7 @@ function deploy_webhook() {
         --allow-unauthenticated \
         --service-account=webhook-function-sa@${PROJECT_ID}.iam.gserviceaccount.com \
         --set-secrets="LINE_CHANNEL_SECRET=line-channel-secret:latest,LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest" \
-        --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},STORAGE_BUCKET=wedding-smile-images" \
+        --set-env-vars="${ENV_VARS}" \
         --timeout=60s \
         --memory=512MB
 
@@ -109,7 +123,7 @@ function update_webhook_scoring_url() {
         --allow-unauthenticated \
         --service-account=webhook-function-sa@${PROJECT_ID}.iam.gserviceaccount.com \
         --set-secrets="LINE_CHANNEL_SECRET=line-channel-secret:latest,LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest" \
-        --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},STORAGE_BUCKET=wedding-smile-images,SCORING_FUNCTION_URL=${SCORING_URL}" \
+        --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},STORAGE_BUCKET=wedding-smile-images-wedding-smile-catcher,SCORING_FUNCTION_URL=${SCORING_URL}" \
         --timeout=60s \
         --memory=512MB
 

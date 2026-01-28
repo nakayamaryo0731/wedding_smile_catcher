@@ -12,10 +12,15 @@ import {
   doc,
   where,
   getDoc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -152,10 +157,10 @@ async function loadImages(forceRefresh = false) {
     cacheUserNamesFromImages(snapshot.docs);
 
     // Fetch all event names
-    const eventIds = [
+    const imageEventIds = [
       ...new Set(snapshot.docs.map((d) => d.data().event_id).filter(Boolean)),
     ];
-    await fetchEventNames(eventIds);
+    await fetchEventNames(imageEventIds);
 
     // Transform data for Tabulator
     const data = snapshot.docs.map((docSnap) => {
@@ -435,6 +440,119 @@ async function loadUsers(forceRefresh = false) {
   }
 }
 
+const STATUS_BADGE = {
+  draft: { label: "Draft", cssClass: "status-draft" },
+  test: { label: "Testing", cssClass: "status-test" },
+  active: { label: "Active", cssClass: "status-active" },
+  archived: { label: "Archived", cssClass: "status-archived" },
+};
+
+function createEventCard(docId, data) {
+  const status = data.status || "draft";
+  const badge = STATUS_BADGE[status] || STATUS_BADGE.draft;
+  const eventCode = data.event_code || "";
+  const eventName = data.event_name || "N/A";
+  const eventDate = data.event_date || "N/A";
+
+  const card = document.createElement("div");
+  card.className = "event-card";
+  card.dataset.id = docId;
+  card.dataset.type = "events";
+
+  // Checkbox for bulk selection
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "event-card-checkbox";
+  checkbox.checked = selectedItems.events.has(docId);
+  checkbox.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      selectedItems.events.add(docId);
+    } else {
+      selectedItems.events.delete(docId);
+    }
+    updateSelectionCount("events");
+  });
+
+  // Info section
+  const info = document.createElement("div");
+  info.className = "event-card-info";
+
+  const header = document.createElement("div");
+  header.className = "event-card-header";
+
+  const badgeEl = document.createElement("span");
+  badgeEl.className = `status-badge ${badge.cssClass}`;
+  badgeEl.textContent = badge.label;
+
+  const title = document.createElement("span");
+  title.className = "event-card-title";
+  title.textContent = eventName;
+
+  header.appendChild(badgeEl);
+  header.appendChild(title);
+
+  const meta = document.createElement("div");
+  meta.className = "event-card-meta";
+  meta.innerHTML =
+    `<span>Date: ${eventDate}</span>` +
+    `<span>Code: <code>${eventCode.substring(0, 8)}...</code></span>`;
+
+  info.appendChild(header);
+  info.appendChild(meta);
+
+  // Actions section
+  const actions = document.createElement("div");
+  actions.className = "event-card-actions";
+
+  // QR Code button (always visible)
+  const qrBtn = document.createElement("button");
+  qrBtn.className = "btn-secondary btn-sm";
+  qrBtn.textContent = "QR Code";
+  qrBtn.addEventListener("click", () =>
+    showQRModal(docId, eventName, eventCode)
+  );
+  actions.appendChild(qrBtn);
+
+  // Ranking URL button (always visible)
+  const rankBtn = document.createElement("button");
+  rankBtn.className = "btn-secondary btn-sm";
+  rankBtn.textContent = "Ranking URL";
+  rankBtn.addEventListener("click", () =>
+    copyToClipboard(getRankingUrl(docId))
+  );
+  actions.appendChild(rankBtn);
+
+  // Status-specific action buttons
+  if (status === "draft") {
+    const testBtn = document.createElement("button");
+    testBtn.className = "btn-primary btn-sm";
+    testBtn.textContent = "Start Testing";
+    testBtn.addEventListener("click", () =>
+      updateEventStatus(docId, "test")
+    );
+    actions.appendChild(testBtn);
+  } else if (status === "test") {
+    const notice = document.createElement("span");
+    notice.className = "event-card-notice";
+    notice.textContent = "Contact us to activate";
+    actions.appendChild(notice);
+  } else if (status === "active") {
+    const archiveBtn = document.createElement("button");
+    archiveBtn.className = "btn-danger btn-sm";
+    archiveBtn.textContent = "Archive";
+    archiveBtn.addEventListener("click", () =>
+      updateEventStatus(docId, "archived")
+    );
+    actions.appendChild(archiveBtn);
+  }
+
+  card.appendChild(checkbox);
+  card.appendChild(info);
+  card.appendChild(actions);
+
+  return card;
+}
+
 async function loadEvents() {
   const container = document.getElementById("eventsList");
   container.innerHTML = '<p class="loading">Loading events...</p>';
@@ -458,26 +576,16 @@ async function loadEvents() {
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      container.innerHTML = '<p class="loading">No events found</p>';
+      container.innerHTML =
+        '<p class="loading">No events found. Create your first event above!</p>';
       return;
     }
 
     container.innerHTML = "";
     snapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      const item = createDataItem(
-        docSnap.id,
-        {
-          ID: docSnap.id,
-          Name: data.event_name || "N/A",
-          Status: data.status || "N/A",
-          Created: data.created_at
-            ? new Date(data.created_at.seconds * 1000).toLocaleString("ja-JP")
-            : "N/A",
-        },
-        "events"
-      );
-      container.appendChild(item);
+      const card = createEventCard(docSnap.id, data);
+      container.appendChild(card);
     });
 
     updateSelectionCount("events");
@@ -1111,6 +1219,142 @@ function renderCumulativeChart(data) {
   });
 }
 
+// QR Code generation and modal functions
+function getDeepLinkUrl(eventCode) {
+  const botId = window.LINE_BOT_ID || "@581qtuij";
+  return `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
+}
+
+function getRankingUrl(eventId) {
+  const baseUrl =
+    window.FIREBASE_CONFIG?.authDomain?.replace(
+      ".firebaseapp.com",
+      ".web.app"
+    ) || "wedding-smile-catcher.web.app";
+  return `https://${baseUrl}?event_id=${eventId}`;
+}
+
+function showQRModal(eventId, eventName, eventCode) {
+  const modal = document.getElementById("qrModal");
+  const container = document.getElementById("qrCodeContainer");
+  const deepLinkEl = document.getElementById("qrDeepLinkUrl");
+  const rankingEl = document.getElementById("qrRankingUrl");
+  const titleEl = document.getElementById("qrModalTitle");
+
+  const deepLinkUrl = getDeepLinkUrl(eventCode);
+  const rankingUrl = getRankingUrl(eventId);
+
+  titleEl.textContent = eventName || "QR Code";
+  deepLinkEl.textContent = deepLinkUrl;
+  rankingEl.textContent = rankingUrl;
+
+  // Clear previous QR code
+  container.innerHTML = "";
+
+  // Generate new QR code
+  new QRCode(container, {
+    text: deepLinkUrl,
+    width: 256,
+    height: 256,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+
+  // Store eventCode for download
+  modal.dataset.eventCode = eventCode;
+
+  modal.classList.add("show");
+}
+
+function downloadQRCode() {
+  const container = document.getElementById("qrCodeContainer");
+  const canvas = container.querySelector("canvas");
+  if (!canvas) return;
+
+  const modal = document.getElementById("qrModal");
+  const eventCode = modal.dataset.eventCode || "event";
+
+  const link = document.createElement("a");
+  link.download = `qrcode_${eventCode}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(
+    () => alert("Copied to clipboard!"),
+    () => alert("Failed to copy.")
+  );
+}
+
+// Event status management
+async function updateEventStatus(eventId, newStatus) {
+  const confirmMsg = {
+    test: "Switch to test mode? Guests can join via QR code for testing.",
+    archived:
+      "Archive this event? Guests will no longer be able to join.",
+  };
+  if (!confirm(confirmMsg[newStatus])) return;
+
+  try {
+    await updateDoc(doc(db, "events", eventId), { status: newStatus });
+    await loadEvents();
+    await loadStats();
+  } catch (error) {
+    console.error("Error updating event status:", error);
+    alert("Failed to update status: " + error.message);
+  }
+}
+
+// Auth tab switching
+document.querySelectorAll(".auth-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document
+      .querySelectorAll(".auth-tab-btn")
+      .forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    document
+      .querySelectorAll(".auth-form")
+      .forEach((f) => f.classList.remove("active"));
+    const tabName = btn.dataset.authTab;
+    const form = document.getElementById(
+      tabName === "login" ? "loginForm" : "registerForm"
+    );
+    form.classList.add("active");
+    showError("");
+  });
+});
+
+// Terms of Service modal
+document.getElementById("termsLink").addEventListener("click", (e) => {
+  e.preventDefault();
+  const modal = document.getElementById("termsModal");
+  const body = document.getElementById("termsBody");
+  body.innerHTML =
+    "<p>Wedding Smile Catcher をご利用いただきありがとうございます。</p>" +
+    "<p>本サービスは結婚式での写真イベント運営を支援するツールです。</p>" +
+    "<ul>" +
+    "<li>本サービスで収集した写真・データはイベント目的のみに使用されます。</li>" +
+    "<li>ゲストの個人情報（LINE ID、名前）はイベント終了後、顧客の操作により削除可能です。</li>" +
+    "<li>サービスの可用性について最善を尽くしますが、一時的な障害が発生する可能性があります。</li>" +
+    "<li>利用規約の詳細は正式版リリース時に公開されます。</li>" +
+    "</ul>";
+  modal.classList.add("show");
+});
+
+document.getElementById("closeTermsModal").addEventListener("click", () => {
+  document.getElementById("termsModal").classList.remove("show");
+});
+
+document.getElementById("termsModal").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove("show");
+  }
+});
+
+// Login form handler
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("emailInput").value;
@@ -1128,6 +1372,146 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     }
   }
 });
+
+// Registration form handler
+document
+  .getElementById("registerForm")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("regEmailInput").value;
+    const password = document.getElementById("regPasswordInput").value;
+    const displayName = document.getElementById("regDisplayNameInput").value.trim();
+    const termsChecked = document.getElementById("regTermsCheckbox").checked;
+
+    if (!termsChecked) {
+      showError("Please agree to the Terms of Service.");
+      return;
+    }
+
+    if (!displayName || displayName.length > 50) {
+      showError("Display name must be 1-50 characters.");
+      return;
+    }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    showError("");
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      await setDoc(doc(db, "accounts", user.uid), {
+        email: email,
+        display_name: displayName,
+        created_at: serverTimestamp(),
+        status: "active",
+      });
+
+      console.log("Account created:", user.uid);
+      // onAuthStateChanged will handle navigation
+    } catch (error) {
+      console.error("Registration failed:", error);
+      if (error.code === "auth/email-already-in-use") {
+        showError("This email is already registered.");
+      } else if (error.code === "auth/weak-password") {
+        showError("Password must be at least 8 characters.");
+      } else if (error.code === "auth/invalid-email") {
+        showError("Invalid email address.");
+      } else {
+        showError("Registration failed: " + error.message);
+      }
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+// Event creation toggle
+document.getElementById("eventCreateToggle").addEventListener("click", () => {
+  const form = document.getElementById("eventCreateForm");
+  const toggle = document.getElementById("eventCreateToggle");
+  const isHidden = form.style.display === "none";
+  form.style.display = isHidden ? "block" : "none";
+  toggle.classList.toggle("open", isHidden);
+});
+
+// Event creation form handler
+document
+  .getElementById("eventCreateForm")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const eventName = document.getElementById("newEventName").value.trim();
+    const eventDate = document.getElementById("newEventDate").value;
+    const submitBtn = document.getElementById("eventCreateBtn");
+
+    if (!eventName || eventName.length > 100) {
+      alert("Event name must be 1-100 characters.");
+      return;
+    }
+
+    if (!eventDate) {
+      alert("Event date is required.");
+      return;
+    }
+
+    if (!currentUser) {
+      alert("Please log in first.");
+      return;
+    }
+
+    submitBtn.disabled = true;
+
+    try {
+      const eventCode = crypto.randomUUID();
+      const eventData = {
+        event_name: eventName,
+        event_date: eventDate,
+        event_code: eventCode,
+        account_id: currentUser.uid,
+        status: "draft",
+        created_at: serverTimestamp(),
+        settings: {
+          theme: "笑顔（Smile For You）",
+          max_uploads_per_user: 10,
+          similarity_threshold: 8,
+          similarity_penalty: 0.33,
+        },
+      };
+
+      const docRef = await addDoc(collection(db, "events"), eventData);
+      console.log("Event created:", docRef.id);
+
+      // Clear form and collapse
+      document.getElementById("newEventName").value = "";
+      document.getElementById("newEventDate").value = "";
+      document.getElementById("eventCreateForm").style.display = "none";
+      document.getElementById("eventCreateToggle").classList.remove("open");
+
+      // Reset owned events cache so new event appears
+      ownedEventsLoaded = false;
+
+      // Reload events list
+      await loadEvents();
+      await loadStats();
+
+      // Show QR modal for the newly created event
+      showQRModal(docRef.id, eventName, eventCode);
+    } catch (error) {
+      console.error("Error creating event:", error);
+      alert("Failed to create event: " + error.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+// Refresh events button
+document
+  .getElementById("refreshEvents")
+  .addEventListener("click", () => loadEvents());
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   try {
@@ -1198,6 +1582,31 @@ document.getElementById("statsEventFilter").addEventListener("change", () => {
 document.getElementById("eventFilter").addEventListener("change", (e) => {
   currentEventFilter = e.target.value;
   updateEventFilter();
+});
+
+// QR Modal event listeners
+document.getElementById("closeQRModal").addEventListener("click", () => {
+  document.getElementById("qrModal").classList.remove("show");
+});
+
+document.getElementById("qrModal").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove("show");
+  }
+});
+
+document.getElementById("downloadQRBtn").addEventListener("click", () => {
+  downloadQRCode();
+});
+
+document.getElementById("copyDeepLinkBtn").addEventListener("click", () => {
+  const url = document.getElementById("qrDeepLinkUrl").textContent;
+  copyToClipboard(url);
+});
+
+document.getElementById("copyRankingBtn").addEventListener("click", () => {
+  const url = document.getElementById("qrRankingUrl").textContent;
+  copyToClipboard(url);
 });
 
 document.getElementById("confirmDelete").addEventListener("click", () => {

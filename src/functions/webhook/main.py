@@ -162,8 +162,8 @@ def _find_user_by_status(line_user_id: str, join_status: str):
     """
     users_ref = db.collection("users")
     q = (
-        users_ref.where("line_user_id", "==", line_user_id)
-        .where("join_status", "==", join_status)
+        users_ref.where(filter=firestore.FieldFilter("line_user_id", "==", line_user_id))
+        .where(filter=firestore.FieldFilter("join_status", "==", join_status))
         .order_by("created_at", direction=firestore.Query.DESCENDING)
         .limit(1)
     )
@@ -174,10 +174,79 @@ def _find_user_by_status(line_user_id: str, join_status: str):
     return None, None
 
 
+def _deactivate_other_registrations(line_user_id: str, new_event_id: str):
+    """
+    Deactivate user registrations in other events when joining a new one.
+    Sets join_status to "left" for any active registrations in different events.
+    """
+    users_ref = db.collection("users")
+    q = users_ref.where(filter=firestore.FieldFilter("line_user_id", "==", line_user_id)).where(
+        filter=firestore.FieldFilter("join_status", "in", ["registered", "pending_name"])
+    )
+    for doc in q.stream():
+        if doc.to_dict().get("event_id") != new_event_id:
+            users_ref.document(doc.id).update({"join_status": "left"})
+            logger.info(f"Deactivated registration {doc.id} for user {line_user_id}")
+
+
+@firestore.transactional
+def _join_event_transaction(transaction, user_ref, user_id: str, event_id: str, event_name: str) -> TextMessage:
+    """
+    Transactional check-and-set for a user document during JOIN.
+    Returns a TextMessage to be sent outside the transaction.
+    """
+    doc = user_ref.get(transaction=transaction)
+
+    if doc.exists:
+        data = doc.to_dict()
+        status = data.get("join_status")
+        if status == "pending_name":
+            return TextMessage(
+                text=f"「{event_name}」に参加登録中です。\n\nお名前（フルネーム）をテキストで送信してください。\n例: 山田太郎"
+            )
+        if status == "left":
+            name = data.get("name")
+            if name:
+                transaction.update(user_ref, {"join_status": "registered"})
+                logger.info(f"User {user_id} reactivated in event {event_id} (registered)")
+                return TextMessage(
+                    text=f"{name}さん、おかえりなさい！「{event_name}」に再参加しました。\n\n笑顔の写真をアップロードしよう！"
+                )
+            transaction.update(user_ref, {"join_status": "pending_name"})
+            logger.info(f"User {user_id} reactivated in event {event_id} (pending name)")
+            return TextMessage(
+                text=f"「{event_name}」に再参加しました！\n\n"
+                "お名前（フルネーム）をテキストで送信してください。\n"
+                "例: 山田太郎"
+            )
+        # "registered" or any other status
+        name = data.get("name", "ゲスト")
+        return TextMessage(text=f"{name}さん、「{event_name}」に既に参加済みです！\n\n笑顔の写真をアップロードしよう！")
+
+    # New user
+    transaction.set(
+        user_ref,
+        {
+            "line_user_id": user_id,
+            "event_id": event_id,
+            "join_status": "pending_name",
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "total_uploads": 0,
+            "best_score": 0,
+        },
+    )
+    logger.info(f"User {user_id} joined event {event_id} (pending name)")
+    return TextMessage(
+        text=f"「{event_name}」への参加を受け付けました！\n\n"
+        "お名前（フルネーム）をテキストで送信してください。\n"
+        "例: 山田太郎"
+    )
+
+
 def handle_join_event(event_code: str, user_id: str, reply_token: str):
     """
     Handle JOIN {event_code} command.
-    Looks up event by event_code, creates user document with composite key.
+    Looks up event by event_code, creates or reactivates user document with composite key.
 
     Args:
         event_code: Event code from JOIN command
@@ -187,9 +256,13 @@ def handle_join_event(event_code: str, user_id: str, reply_token: str):
     event_code = event_code.strip()
     logger.info(f"JOIN request from {user_id} with code: {event_code}")
 
-    # Look up event by event_code
+    # 1. Look up event by event_code (outside transaction — events don't change during JOIN)
     events_ref = db.collection("events")
-    q = events_ref.where("event_code", "==", event_code).where("status", "==", "active").limit(1)
+    q = (
+        events_ref.where(filter=firestore.FieldFilter("event_code", "==", event_code))
+        .where(filter=firestore.FieldFilter("status", "in", ["active", "test"]))
+        .limit(1)
+    )
     event_docs = list(q.stream())
 
     if not event_docs:
@@ -208,45 +281,16 @@ def handle_join_event(event_code: str, user_id: str, reply_token: str):
     event_id = event_doc.id
     event_name = event_data.get("event_name", "イベント")
 
-    # Check if user already joined this event
+    # 2. Deactivate registrations in other events (outside transaction — idempotent)
+    _deactivate_other_registrations(user_id, event_id)
+
+    # 3. Transactional check-and-set for user document
     composite_key = f"{user_id}_{event_id}"
     user_ref = db.collection("users").document(composite_key)
-    existing_user = user_ref.get()
+    transaction = db.transaction()
+    message = _join_event_transaction(transaction, user_ref, user_id, event_id, event_name)
 
-    if existing_user.exists:
-        existing_data = existing_user.to_dict()
-        status = existing_data.get("join_status")
-        if status == "pending_name":
-            message = TextMessage(
-                text=f"「{event_name}」に参加登録中です。\n\nお名前（フルネーム）をテキストで送信してください。\n例: 山田太郎"
-            )
-        else:
-            name = existing_data.get("name", "ゲスト")
-            message = TextMessage(
-                text=f"{name}さん、「{event_name}」に既に参加済みです！\n\n笑顔の写真をアップロードしよう！"
-            )
-        messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
-        return
-
-    # Create user document with composite key
-    user_ref.set(
-        {
-            "line_user_id": user_id,
-            "event_id": event_id,
-            "join_status": "pending_name",
-            "created_at": firestore.SERVER_TIMESTAMP,
-            "total_uploads": 0,
-            "best_score": 0,
-        }
-    )
-
-    logger.info(f"User {user_id} joined event {event_id} (pending name)")
-
-    message = TextMessage(
-        text=f"「{event_name}」への参加を受け付けました！\n\n"
-        "お名前（フルネーム）をテキストで送信してください。\n"
-        "例: 山田太郎"
-    )
+    # 4. Reply outside transaction (executed once, retry-safe)
     messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
 
 
@@ -263,6 +307,10 @@ def handle_text_message(event: MessageEvent):
     user_id = event.source.user_id
     text = event.message.text.strip()
     reply_token = event.reply_token
+
+    # Normalize: strip LINE deeplink "text=" artifact
+    if text.startswith("text="):
+        text = text[len("text=") :]
 
     logger.info(f"Text message from {user_id}: {text}")
 
@@ -378,6 +426,21 @@ def handle_image_message(event: MessageEvent):
     if not event_id:
         logger.error(f"User {user_id} has no event_id in document {user_doc.id}")
         message = TextMessage(text="エラーが発生しました。もう一度イベントに参加してください。")
+        messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
+        return
+
+    # Reject image if event is no longer active
+    event_doc = db.collection("events").document(event_id).get()
+    if not event_doc.exists:
+        logger.error(f"Event not found: {event_id}")
+        message = TextMessage(text="イベントが見つかりません。\nもう一度参加してください。")
+        messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
+        return
+
+    event_status = event_doc.to_dict().get("status")
+    if event_status not in ("active", "test"):
+        logger.info(f"Image rejected: event {event_id} status is {event_status}")
+        message = TextMessage(text="このイベントは終了しました。\n\n写真の投稿は受け付けていません。")
         messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
         return
 
