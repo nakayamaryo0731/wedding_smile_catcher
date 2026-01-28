@@ -1494,31 +1494,10 @@ document.querySelectorAll(".auth-tab-btn").forEach((btn) => {
   });
 });
 
-// Terms of Service modal
+// Terms of Service link - open in new tab
 document.getElementById("termsLink").addEventListener("click", (e) => {
   e.preventDefault();
-  const modal = document.getElementById("termsModal");
-  const body = document.getElementById("termsBody");
-  body.innerHTML =
-    "<p>Wedding Smile Catcher をご利用いただきありがとうございます。</p>" +
-    "<p>本サービスは結婚式での写真イベント運営を支援するツールです。</p>" +
-    "<ul>" +
-    "<li>本サービスで収集した写真・データはイベント目的のみに使用されます。</li>" +
-    "<li>ゲストの個人情報（LINE ID、名前）はイベント終了後、顧客の操作により削除可能です。</li>" +
-    "<li>サービスの可用性について最善を尽くしますが、一時的な障害が発生する可能性があります。</li>" +
-    "<li>利用規約の詳細は正式版リリース時に公開されます。</li>" +
-    "</ul>";
-  modal.classList.add("show");
-});
-
-document.getElementById("closeTermsModal").addEventListener("click", () => {
-  document.getElementById("termsModal").classList.remove("show");
-});
-
-document.getElementById("termsModal").addEventListener("click", (e) => {
-  if (e.target === e.currentTarget) {
-    e.currentTarget.classList.remove("show");
-  }
+  window.open("/terms", "_blank");
 });
 
 // Login form handler
