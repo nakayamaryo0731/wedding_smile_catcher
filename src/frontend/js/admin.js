@@ -1555,6 +1555,7 @@ document
         email: email,
         display_name: displayName,
         created_at: serverTimestamp(),
+        terms_accepted_at: serverTimestamp(),
         status: "active",
       });
 
