@@ -14,3 +14,6 @@ window.GCS_BUCKET_NAME = "wedding-smile-images-wedding-smile-catcher";
 
 // Final presentation loading animation type: "envelope" or "particles"
 window.FINAL_ANIMATION_TYPE = "envelope";
+
+// LINE Bot ID for deep link QR code generation
+window.LINE_BOT_ID = "@581qtuij";
