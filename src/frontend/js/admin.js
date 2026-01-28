@@ -532,10 +532,13 @@ function createEventCard(docId, data) {
     );
     actions.appendChild(testBtn);
   } else if (status === "test") {
-    const notice = document.createElement("span");
-    notice.className = "event-card-notice";
-    notice.textContent = "Contact us to activate";
-    actions.appendChild(notice);
+    const activateBtn = document.createElement("button");
+    activateBtn.className = "btn-primary btn-sm";
+    activateBtn.textContent = "Activate";
+    activateBtn.addEventListener("click", () =>
+      updateEventStatus(docId, "active")
+    );
+    actions.appendChild(activateBtn);
   } else if (status === "active") {
     const archiveBtn = document.createElement("button");
     archiveBtn.className = "btn-danger btn-sm";
@@ -549,6 +552,17 @@ function createEventCard(docId, data) {
   card.appendChild(checkbox);
   card.appendChild(info);
   card.appendChild(actions);
+
+  if (status === "test") {
+    fetchTestStatus(docId)
+      .then((testStatus) => {
+        const testSection = renderTestSection(docId, testStatus);
+        card.appendChild(testSection);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch test status:", err);
+      });
+  }
 
   return card;
 }
@@ -671,11 +685,15 @@ function selectAllItems(type) {
   updateSelectionCount(type);
 }
 
-function showConfirmModal(type, count) {
+function showConfirmModal(type, countOrMessage) {
   const modal = document.getElementById("confirmModal");
   const message = document.getElementById("confirmMessage");
 
-  message.innerHTML = `Are you sure you want to delete <strong>${count}</strong> ${type}?<br><br>This action cannot be undone.`;
+  if (type === "test-data" || type === "status-change") {
+    message.innerHTML = countOrMessage.replace(/\n/g, "<br>");
+  } else {
+    message.innerHTML = `Are you sure you want to delete <strong>${countOrMessage}</strong> ${type}?<br><br>This action cannot be undone.`;
+  }
 
   modal.classList.add("show");
 
@@ -1288,16 +1306,165 @@ function copyToClipboard(text) {
   );
 }
 
+// Test flow functions
+async function fetchTestStatus(eventId) {
+  const usersQuery = query(
+    collection(db, "users"),
+    where("event_id", "==", eventId)
+  );
+  const imagesQuery = query(
+    collection(db, "images"),
+    where("event_id", "==", eventId)
+  );
+
+  const [usersSnap, imagesSnap] = await Promise.all([
+    getDocs(usersQuery),
+    getDocs(imagesQuery),
+  ]);
+
+  const scoredCount = imagesSnap.docs.filter(
+    (doc) => doc.data().status === "completed"
+  ).length;
+
+  return {
+    userCount: usersSnap.size,
+    imageCount: imagesSnap.size,
+    scoredCount,
+  };
+}
+
+function renderTestSection(eventId, status) {
+  const section = document.createElement("div");
+  section.className = "test-section";
+  section.id = `test-section-${eventId}`;
+
+  const title = document.createElement("div");
+  title.className = "test-section-title";
+  title.textContent = "Test Status";
+  section.appendChild(title);
+
+  const checklist = document.createElement("div");
+  checklist.className = "test-checklist";
+
+  const items = [
+    { label: "User registered", count: status.userCount },
+    { label: "Photos uploaded", count: status.imageCount },
+    { label: "Scoring completed", count: status.scoredCount },
+  ];
+
+  items.forEach(({ label, count }) => {
+    const item = document.createElement("div");
+    item.className = "test-checklist-item";
+    const icon = count > 0 ? "\u2705" : "\u2B1C";
+    item.textContent = `${icon} ${label}: ${count}`;
+    checklist.appendChild(item);
+  });
+
+  section.appendChild(checklist);
+
+  if (status.userCount > 0 || status.imageCount > 0) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn-danger btn-sm test-delete-btn";
+    deleteBtn.textContent = "Clear Test Data";
+    deleteBtn.addEventListener("click", () => handleClearTestData(eventId));
+    section.appendChild(deleteBtn);
+  }
+
+  return section;
+}
+
+async function clearTestData(eventId) {
+  const usersQuery = query(
+    collection(db, "users"),
+    where("event_id", "==", eventId)
+  );
+  const imagesQuery = query(
+    collection(db, "images"),
+    where("event_id", "==", eventId)
+  );
+
+  const [usersSnap, imagesSnap] = await Promise.all([
+    getDocs(usersQuery),
+    getDocs(imagesQuery),
+  ]);
+
+  const allDocs = [...usersSnap.docs, ...imagesSnap.docs];
+  if (allDocs.length === 0) {
+    return { deletedUsers: 0, deletedImages: 0 };
+  }
+
+  const batchSize = 500;
+  for (let i = 0; i < allDocs.length; i += batchSize) {
+    const batch = writeBatch(db);
+    const chunk = allDocs.slice(i, i + batchSize);
+    chunk.forEach((docSnap) => batch.delete(docSnap.ref));
+    await batch.commit();
+  }
+
+  return { deletedUsers: usersSnap.size, deletedImages: imagesSnap.size };
+}
+
+async function handleClearTestData(eventId) {
+  const confirmed = await showConfirmModal(
+    "test-data",
+    "All test users and images for this event will be permanently deleted."
+  );
+  if (!confirmed) return;
+
+  const btn = document.querySelector(
+    `#test-section-${eventId} .test-delete-btn`
+  );
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Deleting...";
+  }
+
+  try {
+    const result = await clearTestData(eventId);
+    if (result.deletedUsers === 0 && result.deletedImages === 0) {
+      alert("No test data to delete.");
+    } else {
+      alert(
+        `Deleted ${result.deletedUsers} user(s) and ${result.deletedImages} image(s).`
+      );
+    }
+    const section = document.getElementById(`test-section-${eventId}`);
+    if (section) {
+      const newStatus = { userCount: 0, imageCount: 0, scoredCount: 0 };
+      section.replaceWith(renderTestSection(eventId, newStatus));
+    }
+  } catch (err) {
+    console.error("Failed to clear test data:", err);
+    alert("Failed to delete test data. Please try again.");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Clear Test Data";
+    }
+  }
+}
+
 // Event status management
 async function updateEventStatus(eventId, newStatus) {
   const confirmMsg = {
-    test: "Switch to test mode? Guests can join via QR code for testing.",
+    test: "Switch to test mode?\nGuests can join via QR code for testing.",
+    active:
+      "Activate this event?\n\nAll test data (users and images) will be permanently deleted.\nThis action cannot be undone.",
     archived:
-      "Archive this event? Guests will no longer be able to join.",
+      "Archive this event?\nGuests will no longer be able to join.",
   };
-  if (!confirm(confirmMsg[newStatus])) return;
+
+  const confirmed = await showConfirmModal(
+    "status-change",
+    confirmMsg[newStatus]
+  );
+  if (!confirmed) return;
 
   try {
+    if (newStatus === "active") {
+      await clearTestData(eventId);
+    }
+
     await updateDoc(doc(db, "events", eventId), { status: newStatus });
     await loadEvents();
     await loadStats();
