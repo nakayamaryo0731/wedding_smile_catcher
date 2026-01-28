@@ -3,7 +3,7 @@
 各ドキュメントから集約したリリースまでに必要なタスク。
 優先度・フェーズごとに整理する。
 
-最終更新: 2026-01-27
+最終更新: 2026-01-28
 
 ---
 
@@ -21,7 +21,7 @@ ref: `docs/planning/multi-tenant-design.md`
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
 | 1.1 | `accounts` コレクション追加 | ✅ | Firebase Auth自体がアカウント管理。`events.account_id == auth.uid` で認可 |
-| 1.2 | `events` コレクションに `account_id`, `event_code`, `test_completed` フィールド追加 | ✅ | `account_id`, `event_code` 実装済。`test_completed` はPhase 1-b |
+| 1.2 | `events` コレクションに `account_id`, `event_code` フィールド追加 | ✅ | `account_id`, `event_code` 実装済。テスト管理は `status` フィールド（draft/test/active/archived）で対応 |
 | 1.3 | `users` コレクションに `join_status` フィールド追加 | ✅ | `pending_name` / `registered` フロー動作確認済 |
 | 1.4 | webhook: JOIN コマンドハンドラ実装 | ✅ | `handle_join_event` 関数。E2Eテスト済 |
 | 1.5 | webhook: `handle_text_message` をJOINフローに対応 | ✅ | 4分岐ルーティング実装済 |
@@ -29,7 +29,7 @@ ref: `docs/planning/multi-tenant-design.md`
 | 1.7 | webhook: `handle_follow` をシンプルな歓迎メッセージに変更 | ✅ | ディープリンクがJOINを自動送信するため |
 | 1.8 | `CURRENT_EVENT_ID` 環境変数を完全に廃止 | ✅ | webhook・terraform から完全削除 |
 | 1.9 | イベントコード自動生成ロジック実装 | ✅ | UUID v4 `create_event.py` に実装済 |
-| 1.10 | ディープリンクQRコード生成機能 | 🔲 | `https://line.me/R/oaMessage/@xxx/?text=JOIN%20{code}` |
+| 1.10 | ディープリンクQRコード生成機能 | ✅ | admin.js `showQRModal` + QRCode.js。イベント作成時に自動表示 |
 | 1.11 | 1ゲストが複数イベントに参加するケースの対応 | ✅ | 複合キー `{line_user_id}_{event_id}` で設計済み |
 
 ---
@@ -55,11 +55,11 @@ ref: `docs/planning/mvp-features.md`
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 3.1 | 顧客アカウント登録画面 | 🔲 | 利用規約同意チェックボックス付き |
-| 3.2 | イベント作成フォーム | 🔲 | イベント名、日付を入力 |
-| 3.3 | イベントコード + QRコード + ランキングURL自動発行 | 🔲 | 作成完了後に表示 |
-| 3.4 | イベント管理画面（顧客向けダッシュボード） | 🔲 | イベント一覧、各種URL確認 |
-| 3.5 | 運営者によるイベント有効化機能（status: draft → active） | 🔲 | 支払い確認後に手動で有効化。管理画面 or CLI |
+| 3.1 | 顧客アカウント登録画面 | ✅ | admin.html 登録フォーム。利用規約同意チェックボックス付き |
+| 3.2 | イベント作成フォーム | ✅ | admin.html イベント名・日付入力フォーム |
+| 3.3 | イベントコード + QRコード + ランキングURL自動発行 | ✅ | 作成完了後に QR モーダル自動表示 |
+| 3.4 | イベント管理画面（顧客向けダッシュボード） | ✅ | イベントカード一覧、QR/Ranking URL、ステータス管理 |
+| 3.5 | 運営者によるイベント有効化機能（status: draft → active） | ✅ | 管理画面の Activate ボタン。有効化時にテストデータ自動削除 |
 
 ---
 
@@ -69,9 +69,9 @@ ref: `docs/planning/mvp-features.md`
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 4.1 | テスト投稿機能（顧客自身がBotからテスト可能） | 🔲 | |
-| 4.2 | テスト完了チェック（テスト成功の確認UI） | 🔲 | |
-| 4.3 | テストデータ一括削除機能 | 🔲 | 管理画面から実行 |
+| 4.1 | テスト投稿機能（顧客自身がBotからテスト可能） | ✅ | Phase 1-b-1 で webhook 対応済 |
+| 4.2 | テスト完了チェック（テスト成功の確認UI） | ✅ | admin.js テストセクション |
+| 4.3 | テストデータ一括削除機能 | ✅ | 有効化時の自動削除 + 手動削除ボタン |
 | 4.4 | 利用ガイドに事前テスト手順を記載 | 🔲 | |
 
 ---
@@ -82,12 +82,12 @@ ref: `docs/planning/security-requirements.md`
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 5.1 | スコアリングのフォールバック実装（API障害時のグレースフルデグラデーション） | 🔲 | `scoring.md` のフォールバック設計に基づく |
+| 5.1 | スコアリングのフォールバック実装（API障害時のグレースフルデグラデーション） | ✅ | Vision API: 0点フォールバック、Vertex AI: 50点フォールバック、Hash: エラースキップ、LINE: 3回リトライ |
 | 5.2 | Cloud Storage 画像アクセスを署名付きURLに変更 | 🔲 | 有効期限付き |
 | 5.3 | ランキング表示の画像URLリフレッシュ頻度を検討・実装 | 🔲 | リアルタイム性とのバランス |
 | 5.4 | 入力バリデーション強化（イベントコード、ユーザー名） | 🔲 | |
-| 5.5 | LINE署名検証（`X-Line-Signature`）が正しく動作していることを確認 | 🔲 | 既存コードのレビュー |
-| 5.6 | 環境変数・シークレットがGCP Secret Managerで管理されていることを確認 | 🔲 | |
+| 5.5 | LINE署名検証（`X-Line-Signature`）が正しく動作していることを確認 | ✅ | `handler.handle(body, signature)` + `InvalidSignatureError` ハンドリング確認済 |
+| 5.6 | 環境変数・シークレットがGCP Secret Managerで管理されていることを確認 | ✅ | Terraform `secret_environment_variables` で Cloud Functions に注入 |
 | 5.7 | LINE Botのunsend対応（写真取消時にCloud Storage + Firestoreから削除） | 🔲 | LINE User Data Policy 準拠 |
 
 ---
@@ -193,10 +193,10 @@ Phase 1-a: 基盤（認証・マルチテナント） ✅
   ├── 1.4〜1.9 webhook フロー変更 + イベントコード生成 ✅
   └── 2.6 Security Rules テスト 🔲
 
-Phase 1-b: セルフサービス
-  ├── 1.10 QRコード生成
-  ├── 3.1〜3.4 顧客向けUI
-  └── 4.1〜4.3 事前テストフロー
+Phase 1-b: セルフサービス ✅
+  ├── 1.10 QRコード生成 ✅
+  ├── 3.1〜3.4 顧客向けUI ✅
+  └── 4.1〜4.3 事前テストフロー ✅
 
 Phase 1-c: セキュリティ・法務
   ├── 5.1〜5.5 セキュリティ強化

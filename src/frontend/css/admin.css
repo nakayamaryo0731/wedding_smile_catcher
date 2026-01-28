@@ -538,6 +538,7 @@ main {
 .event-card {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     padding: 1rem;
     background: #f9f9f9;
     border-radius: 8px;
@@ -601,6 +602,43 @@ main {
     font-size: 0.8rem;
     color: #888;
     font-style: italic;
+}
+
+/* Test Section */
+.test-section {
+    width: 100%;
+    padding: 12px 16px;
+    border-top: 1px solid #e0e0e0;
+    background: #f0f0f0;
+    border-radius: 6px;
+}
+
+.test-section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.test-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.test-checklist:not(:last-child) {
+    margin-bottom: 12px;
+}
+
+.test-checklist-item {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.test-delete-btn {
+    margin-top: 4px;
 }
 
 /* Status badges */
