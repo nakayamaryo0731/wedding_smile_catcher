@@ -106,7 +106,7 @@ ref: `docs/planning/terms-of-service.md`
 | 6.6 | 連絡先・住所など具体的情報の記入 | 🔲 | |
 | 6.7 | Google / LINE のデータ処理規約との整合性確認 | ✅ | プライバシーポリシーに反映済み |
 | 6.8 | LINE Bot初回メッセージで写真処理の同意確認ステップ実装 | ✅ | 登録完了時に同意メッセージ表示。LINE User Data Policy 準拠 |
-| 6.9 | LINE Botリッチメニューにプライバシーポリシーリンク設置 | 🔲 | |
+| 6.9 | LINE Botリッチメニューにプライバシーポリシーリンク設置 | ✅ | `scripts/setup_rich_menu.py` で設定 |
 
 ---
 
