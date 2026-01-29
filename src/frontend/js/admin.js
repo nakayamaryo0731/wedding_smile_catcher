@@ -866,11 +866,7 @@ async function downloadSelectedImages() {
 
     const zip = new JSZip();
     const imagesFolder = zip.folder("images");
-    const metadata = {
-      downloaded_at: new Date().toISOString(),
-      total_images: 0,
-      images: [],
-    };
+    let downloadedCount = 0;
 
     // Download images in batches
     const downloadImage = async (img) => {
@@ -882,7 +878,7 @@ async function downloadSelectedImages() {
       const userName = sanitizeFilename(img.user_name);
       const filename = `${userName}_${score}_${img.id}.jpg`;
 
-      return { filename, blob, img };
+      return { filename, blob };
     };
 
     const results = await processBatches(
@@ -894,21 +890,10 @@ async function downloadSelectedImages() {
     );
 
     // Add to ZIP
-    for (const { filename, blob, img } of results) {
+    for (const { filename, blob } of results) {
       imagesFolder.file(filename, blob);
-      metadata.images.push({
-        filename,
-        user_name: img.user_name,
-        score: img.total_score,
-        event_id: img.event_id,
-        created_at: img.created_at,
-      });
+      downloadedCount++;
     }
-
-    metadata.total_images = metadata.images.length;
-
-    // Add metadata JSON
-    zip.file("metadata.json", JSON.stringify(metadata, null, 2));
 
     // Generate ZIP and download
     btn.innerHTML = "Creating ZIP...";
@@ -927,7 +912,7 @@ async function downloadSelectedImages() {
     link.click();
     URL.revokeObjectURL(link.href);
 
-    alert(`Downloaded ${metadata.total_images} images successfully.`);
+    alert(`Downloaded ${downloadedCount} images successfully.`);
   } catch (error) {
     console.error("Download failed:", error);
     alert("Download failed: " + error.message);
