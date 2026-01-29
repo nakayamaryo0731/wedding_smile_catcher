@@ -656,6 +656,12 @@ function updateSelectionCount(type) {
   document.getElementById(
     `deleteSelected${type.charAt(0).toUpperCase() + type.slice(1)}`
   ).disabled = count === 0;
+
+  // Update download button for images
+  if (type === "images") {
+    document.getElementById("downloadImagesCount").textContent = count;
+    document.getElementById("downloadSelectedImages").disabled = count === 0;
+  }
 }
 
 function selectAllItems(type) {
@@ -788,6 +794,146 @@ function getImageUrl(imageData) {
   }
   console.warn(`No signed URL for image: ${imageData.id || "unknown"}`);
   return "";
+}
+
+/**
+ * Sanitize filename by removing invalid characters
+ */
+function sanitizeFilename(name) {
+  return (name || "unknown")
+    .replace(/[<>:"/\\|?*]/g, "_")
+    .replace(/\s+/g, "_")
+    .substring(0, 50);
+}
+
+/**
+ * Process items in batches to avoid overwhelming the server
+ */
+const DOWNLOAD_BATCH_SIZE = 5;
+
+async function processBatches(items, processor, onProgress) {
+  const results = [];
+  for (let i = 0; i < items.length; i += DOWNLOAD_BATCH_SIZE) {
+    const batch = items.slice(i, i + DOWNLOAD_BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map((item) =>
+        processor(item).catch((err) => {
+          console.warn("Batch item failed:", err);
+          return null;
+        })
+      )
+    );
+    results.push(...batchResults.filter((r) => r !== null));
+    if (onProgress) {
+      onProgress(Math.min(i + DOWNLOAD_BATCH_SIZE, items.length), items.length);
+    }
+  }
+  return results;
+}
+
+/**
+ * Download selected images as a ZIP file
+ */
+async function downloadSelectedImages() {
+  const btn = document.getElementById("downloadSelectedImages");
+  const originalText = btn.innerHTML;
+
+  if (selectedItems.images.size === 0) {
+    alert("Please select images to download.");
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.innerHTML = "Preparing...";
+
+    // Get selected images from cache
+    const selectedImages = Array.from(selectedItems.images)
+      .map((id) => imagesDataCache.get(id))
+      .filter((img) => img && img.storage_url);
+
+    if (selectedImages.length === 0) {
+      alert("No valid images to download. Images may not have signed URLs.");
+      return;
+    }
+
+    // Check if JSZip is available
+    if (typeof JSZip === "undefined") {
+      alert("ZIP library not loaded. Please refresh the page.");
+      return;
+    }
+
+    const zip = new JSZip();
+    const imagesFolder = zip.folder("images");
+    const metadata = {
+      downloaded_at: new Date().toISOString(),
+      total_images: 0,
+      images: [],
+    };
+
+    // Download images in batches
+    const downloadImage = async (img) => {
+      const response = await fetch(img.storage_url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+
+      const score = (img.total_score || 0).toFixed(2);
+      const userName = sanitizeFilename(img.user_name);
+      const filename = `${userName}_${score}_${img.id}.jpg`;
+
+      return { filename, blob, img };
+    };
+
+    const results = await processBatches(
+      selectedImages,
+      downloadImage,
+      (completed, total) => {
+        btn.innerHTML = `Downloading ${completed}/${total}...`;
+      }
+    );
+
+    // Add to ZIP
+    for (const { filename, blob, img } of results) {
+      imagesFolder.file(filename, blob);
+      metadata.images.push({
+        filename,
+        user_name: img.user_name,
+        score: img.total_score,
+        event_id: img.event_id,
+        created_at: img.created_at,
+      });
+    }
+
+    metadata.total_images = metadata.images.length;
+
+    // Add metadata JSON
+    zip.file("metadata.json", JSON.stringify(metadata, null, 2));
+
+    // Generate ZIP and download
+    btn.innerHTML = "Creating ZIP...";
+    const content = await zip.generateAsync({ type: "blob" });
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace("T", "_")
+      .slice(0, 15);
+    const zipFilename = `images_${timestamp}.zip`;
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(content);
+    link.download = zipFilename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    alert(`Downloaded ${metadata.total_images} images successfully.`);
+  } catch (error) {
+    console.error("Download failed:", error);
+    alert("Download failed: " + error.message);
+  } finally {
+    btn.disabled = selectedItems.images.size === 0;
+    btn.innerHTML = originalText;
+  }
 }
 
 function getUserNameFromCache(userId) {
@@ -1715,6 +1861,10 @@ document
 document
   .getElementById("deleteSelectedEvents")
   .addEventListener("click", () => deleteSelected("events"));
+
+document
+  .getElementById("downloadSelectedImages")
+  .addEventListener("click", () => downloadSelectedImages());
 
 document
   .getElementById("refreshStats")
