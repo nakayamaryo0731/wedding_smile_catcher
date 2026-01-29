@@ -25,9 +25,6 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-const GCS_BUCKET_NAME =
-  window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
-
 const app = initializeApp(window.FIREBASE_CONFIG);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -167,9 +164,7 @@ async function loadImages(forceRefresh = false) {
       const d = docSnap.data();
       return {
         id: docSnap.id,
-        thumbnail: d.storage_path
-          ? `https://storage.googleapis.com/${GCS_BUCKET_NAME}/${d.storage_path}`
-          : "",
+        thumbnail: d.storage_url || "",  // Use signed URL only
         user_name: d.user_name || userNameCache.get(d.user_id) || d.user_id || "N/A",
         event_id: d.event_id || "",
         event_name: d.event_id
@@ -783,13 +778,16 @@ function getStatsEventId() {
   return select ? select.value : "";
 }
 
+/**
+ * Get image URL from image data, using signed URL only
+ * Falls back to empty string if no signed URL is available
+ */
 function getImageUrl(imageData) {
-  const bucketName =
-    window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
-  return (
-    imageData.storage_url ||
-    `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`
-  );
+  if (imageData.storage_url) {
+    return imageData.storage_url;
+  }
+  console.warn(`No signed URL for image: ${imageData.id || "unknown"}`);
+  return "";
 }
 
 function getUserNameFromCache(userId) {

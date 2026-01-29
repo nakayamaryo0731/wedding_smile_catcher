@@ -17,6 +17,7 @@ import random
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import functions_framework
@@ -65,6 +66,39 @@ vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
 
 # Initialize Gemini model once at module level to avoid re-initialization overhead
 gemini_model = GenerativeModel("gemini-2.5-flash")
+
+# Signed URL configuration (7 days - sufficient for wedding event + post-event viewing)
+SIGNED_URL_EXPIRATION_HOURS = 168
+
+
+def generate_signed_url(
+    bucket_name: str, storage_path: str, expiration_hours: int = SIGNED_URL_EXPIRATION_HOURS
+) -> tuple[str, datetime]:
+    """
+    Generate a signed URL for Cloud Storage object.
+
+    Args:
+        bucket_name: Name of the Cloud Storage bucket
+        storage_path: Path to the object in the bucket
+        expiration_hours: URL validity period in hours (default: 1)
+
+    Returns:
+        Tuple of (signed_url, expiration_time)
+    """
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(storage_path)
+
+    expiration = timedelta(hours=expiration_hours)
+    expiration_time = datetime.now(UTC) + expiration
+
+    url = blob.generate_signed_url(
+        version="v4",
+        expiration=expiration,
+        method="GET",
+    )
+
+    logger.info(f"Generated signed URL for {storage_path}, expires at {expiration_time.isoformat()}")
+    return url, expiration_time
 
 
 @functions_framework.http
@@ -825,6 +859,7 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
         "average_hash": average_hash,
         "line_user_id": line_user_id,  # Cache LINE user ID to avoid duplicate Firestore read
         "event_id": event_id,  # Cache event_id for composite key construction
+        "storage_path": storage_path,  # Cache storage_path for signed URL generation
     }
 
     # Add error flags if any occurred
@@ -897,7 +932,7 @@ def update_firestore(image_id: str, user_id: str, scores: dict[str, Any]):
     Args:
         image_id: Image document ID
         user_id: User ID (LINE user ID)
-        scores: Scoring results (includes event_id for composite key construction)
+        scores: Scoring results (includes event_id and storage_path for composite key construction and signed URL generation)
 
     Raises:
         Exception: If Firestore update fails
@@ -912,9 +947,23 @@ def update_firestore(image_id: str, user_id: str, scores: dict[str, Any]):
         logger.warning(f"No event_id in scores for image {image_id}, falling back to user_id as doc key")
         user_ref = db.collection("users").document(user_id)
 
+    # Generate signed URL for the image
+    signed_url_data = None
+    storage_path = scores.get("storage_path")
+    if storage_path:
+        try:
+            signed_url, expiration_time = generate_signed_url(STORAGE_BUCKET, storage_path)
+            signed_url_data = {
+                "storage_url": signed_url,
+                "storage_url_expires_at": expiration_time,
+            }
+        except Exception as e:
+            logger.warning(f"Failed to generate signed URL for image {image_id}: {str(e)}")
+            # Continue without signed URL - it can be generated later by url_refresh function
+
     try:
         transaction = db.transaction()
-        _update_image_and_user_stats(transaction, image_ref, user_ref, scores)
+        _update_image_and_user_stats(transaction, image_ref, user_ref, scores, signed_url_data)
         logger.info(f"Successfully updated image {image_id} and user stats {user_id} in transaction")
 
     except Exception as e:
@@ -926,7 +975,7 @@ def update_firestore(image_id: str, user_id: str, scores: dict[str, Any]):
 
 
 @firestore.transactional
-def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict):
+def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict, signed_url_data: dict | None = None):
     """
     Update image document and user statistics in a single transaction.
 
@@ -940,28 +989,34 @@ def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict)
         image_ref: Image document reference
         user_ref: User document reference
         scores: Scoring results containing total_score, smile_score, etc.
+        signed_url_data: Optional dict with 'storage_url' and 'storage_url_expires_at'
     """
     # IMPORTANT: All reads must come before any writes in a transaction
     # Read user document first to get current best score
     user_doc = user_ref.get(transaction=transaction)
 
+    # Build image update data
+    image_update = {
+        "smile_score": scores["smile_score"],
+        "ai_score": scores["ai_score"],
+        "total_score": scores["total_score"],
+        "comment": scores["comment"],
+        "average_hash": scores["average_hash"],
+        "is_similar": scores["is_similar"],
+        "face_count": scores["face_count"],
+        "status": "completed",
+        "scored_at": firestore.SERVER_TIMESTAMP,
+    }
+
+    # Add signed URL data if provided
+    if signed_url_data:
+        image_update["storage_url"] = signed_url_data["storage_url"]
+        image_update["storage_url_expires_at"] = signed_url_data["storage_url_expires_at"]
+
     if not user_doc.exists:
         logger.warning(f"User document not found: {user_ref.id}")
         # Still update the image document even if user not found
-        transaction.update(
-            image_ref,
-            {
-                "smile_score": scores["smile_score"],
-                "ai_score": scores["ai_score"],
-                "total_score": scores["total_score"],
-                "comment": scores["comment"],
-                "average_hash": scores["average_hash"],
-                "is_similar": scores["is_similar"],
-                "face_count": scores["face_count"],
-                "status": "completed",
-                "scored_at": firestore.SERVER_TIMESTAMP,
-            },
-        )
+        transaction.update(image_ref, image_update)
         return
 
     user_data = user_doc.to_dict()
@@ -970,20 +1025,7 @@ def _update_image_and_user_stats(transaction, image_ref, user_ref, scores: dict)
 
     # Now perform all writes
     # Update image document
-    transaction.update(
-        image_ref,
-        {
-            "smile_score": scores["smile_score"],
-            "ai_score": scores["ai_score"],
-            "total_score": scores["total_score"],
-            "comment": scores["comment"],
-            "average_hash": scores["average_hash"],
-            "is_similar": scores["is_similar"],
-            "face_count": scores["face_count"],
-            "status": "completed",
-            "scored_at": firestore.SERVER_TIMESTAMP,
-        },
-    )
+    transaction.update(image_ref, image_update)
 
     # Update user statistics
     transaction.update(user_ref, {"total_uploads": firestore.Increment(1), "best_score": new_best})

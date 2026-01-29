@@ -109,20 +109,27 @@ function getTopImages(images, count = 3) {
  * @param {array} images - Array of image data (should be items 4-10)
  * @param {number} startRank - Starting rank number (default 4)
  */
+/**
+ * Get image URL from image data, using signed URL only
+ * Falls back to empty string if no signed URL is available
+ */
+function getImageUrl(imageData) {
+  if (imageData.storage_url) {
+    return imageData.storage_url;
+  }
+  console.warn(`No signed URL for image: ${imageData.id}`);
+  return "";
+}
+
 function renderRankingList(images, startRank = 4) {
   const listContainer = document.getElementById("ranking-list-items");
   if (!listContainer) return;
 
   listContainer.innerHTML = "";
 
-  const bucketName =
-    window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
-
   images.forEach((imageData, index) => {
     const rank = startRank + index;
-    const imageUrl =
-      imageData.storage_url ||
-      `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
+    const imageUrl = getImageUrl(imageData);
     const userName = imageData.user_name || imageData.user_id || "ゲスト";
     const score = Math.round(imageData.total_score);
 
@@ -185,12 +192,8 @@ function updateRankCard(rank, imageData, useDecimal = false) {
   // Remove empty state
   card.card.classList.remove("empty");
 
-  // Construct full image URL from storage_path
-  const bucketName =
-    window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
-  const imageUrl =
-    imageData.storage_url ||
-    `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
+  // Use signed URL only (no public URL fallback)
+  const imageUrl = getImageUrl(imageData);
 
   // Update content
   card.image.src = imageUrl;
@@ -1077,11 +1080,7 @@ function calculateRandomPosition(index, _existingPositions) {
  * Create a photo item DOM element
  */
 function createPhotoElement(imageData, position, zIndex) {
-  const bucketName =
-    window.GCS_BUCKET_NAME || "wedding-smile-images-wedding-smile-catcher";
-  const imageUrl =
-    imageData.storage_url ||
-    `https://storage.googleapis.com/${bucketName}/${imageData.storage_path}`;
+  const imageUrl = getImageUrl(imageData);
 
   const photoItem = document.createElement("div");
   photoItem.className = "photo-item";
