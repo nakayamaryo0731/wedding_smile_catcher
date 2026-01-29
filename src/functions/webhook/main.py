@@ -73,8 +73,60 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 # Pattern for JOIN command (case-insensitive)
 JOIN_PATTERN = re.compile(r"^JOIN\s+(.+)$", re.IGNORECASE)
 
+# Input validation constants
+USER_NAME_MIN_LENGTH = 1
+USER_NAME_MAX_LENGTH = 50
+EVENT_CODE_PATTERN = re.compile(r"^[a-zA-Z0-9\-]+$")
+EVENT_CODE_MAX_LENGTH = 100
+
 # Signed URL configuration (7 days - sufficient for wedding event + post-event viewing)
 SIGNED_URL_EXPIRATION_HOURS = 168
+
+
+def validate_user_name(name: str) -> tuple[bool, str | None]:
+    """
+    Validate user name input.
+
+    Args:
+        name: Raw user name input
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not name or not name.strip():
+        return False, "お名前を入力してください。"
+
+    name = name.strip()
+    if len(name) < USER_NAME_MIN_LENGTH:
+        return False, "お名前を入力してください。"
+
+    if len(name) > USER_NAME_MAX_LENGTH:
+        return False, f"お名前は{USER_NAME_MAX_LENGTH}文字以内で入力してください。"
+
+    return True, None
+
+
+def validate_event_code(code: str) -> tuple[bool, str | None]:
+    """
+    Validate event code input.
+
+    Args:
+        code: Raw event code input
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not code or not code.strip():
+        return False, "参加コードを入力してください。"
+
+    code = code.strip()
+    if len(code) > EVENT_CODE_MAX_LENGTH:
+        return False, "参加コードが無効です。コードを確認してください。"
+
+    if not EVENT_CODE_PATTERN.match(code):
+        return False, "参加コードが無効です。コードを確認してください。"
+
+    return True, None
 
 
 def generate_signed_url(
@@ -304,6 +356,18 @@ def handle_join_event(event_code: str, user_id: str, reply_token: str):
         reply_token: LINE reply token
     """
     event_code = event_code.strip()
+
+    # Validate event code format
+    is_valid, error_message = validate_event_code(event_code)
+    if not is_valid:
+        messaging_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=reply_token,
+                messages=[TextMessage(text=error_message)],
+            )
+        )
+        return
+
     logger.info(f"JOIN request from {user_id} with code: {event_code}")
 
     # 1. Look up event by event_code (outside transaction — events don't change during JOIN)
@@ -402,6 +466,19 @@ def _register_name(name: str, user_id: str, user_doc, user_ref, reply_token: str
         user_ref: User document reference
         reply_token: LINE reply token
     """
+    # Validate user name
+    is_valid, error_message = validate_user_name(name)
+    if not is_valid:
+        messaging_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=reply_token,
+                messages=[TextMessage(text=error_message)],
+            )
+        )
+        return
+
+    name = name.strip()
+
     try:
         user_ref.update(
             {
