@@ -85,7 +85,7 @@ ref: `docs/planning/security-requirements.md`
 | 5.1 | スコアリングのフォールバック実装（API障害時のグレースフルデグラデーション） | ✅ | Vision API: 0点フォールバック、Vertex AI: 50点フォールバック、Hash: エラースキップ、LINE: 3回リトライ |
 | 5.2 | Cloud Storage 画像アクセスを署名付きURLに変更 | ✅ | 7日間有効期限。アップロード時とスコアリング完了時に生成 |
 | 5.3 | ランキング表示の画像URLリフレッシュ頻度を検討・実装 | ✅ | 7日間有効のため定期更新不要（イベントは1日で完了） |
-| 5.4 | 入力バリデーション強化（イベントコード、ユーザー名） | 🔲 | |
+| 5.4 | 入力バリデーション強化（イベントコード、ユーザー名） | ✅ | イベントコード: 英数字+ハイフン、ユーザー名: 1-50文字 |
 | 5.5 | LINE署名検証（`X-Line-Signature`）が正しく動作していることを確認 | ✅ | `handler.handle(body, signature)` + `InvalidSignatureError` ハンドリング確認済 |
 | 5.6 | 環境変数・シークレットがGCP Secret Managerで管理されていることを確認 | ✅ | Terraform `secret_environment_variables` で Cloud Functions に注入 |
 | 5.7 | LINE Botのunsend対応（写真取消時にCloud Storage + Firestoreから削除） | ✅ | LINE User Data Policy 準拠。UnsendEventハンドラ実装済 |
