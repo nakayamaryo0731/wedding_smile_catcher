@@ -28,7 +28,7 @@ gcloud --version
 firebase --version
 
 # Python dependencies
-pip install google-cloud-firestore
+pip install -r scripts/requirements.txt
 ```
 
 ### 認証
@@ -295,6 +295,46 @@ python scripts/export_event_data.py wedding_20250315_tanaka
 # カスタムディレクトリにダウンロード
 ./scripts/download_event_images.sh wedding_20250315_tanaka ./my_downloads
 ```
+
+---
+
+### `setup_rich_menu.py`
+
+LINE Botのリッチメニューを設定（プライバシーポリシーリンク）
+
+**前提条件**:
+
+- LINE_CHANNEL_ACCESS_TOKEN 環境変数が設定されていること
+- Pillow がインストールされていること
+
+**引数**:
+
+- `--privacy-url` (オプション): プライバシーポリシーURL（デフォルト: `https://wedding-smile-catcher.web.app/privacy`）
+- `--delete-existing` (オプション): 既存のデフォルトリッチメニューを削除
+
+**処理内容**:
+
+1. リッチメニューオブジェクトを作成
+2. メニュー画像を生成・アップロード
+3. デフォルトメニューとして設定
+
+**例**:
+
+```bash
+# 環境変数を設定
+export LINE_CHANNEL_ACCESS_TOKEN="your_access_token"
+
+# デフォルト設定で実行
+python scripts/setup_rich_menu.py
+
+# 既存メニューを削除して新規作成
+python scripts/setup_rich_menu.py --delete-existing
+
+# カスタムURLを指定
+python scripts/setup_rich_menu.py --privacy-url "https://example.com/privacy"
+```
+
+**注意**: このスクリプトは一度実行すれば十分です。再実行すると新しいリッチメニューが作成されます。
 
 ---
 
