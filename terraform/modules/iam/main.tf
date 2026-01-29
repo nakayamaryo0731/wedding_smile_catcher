@@ -46,6 +46,13 @@ resource "google_project_iam_member" "webhook_functions_invoker" {
   member  = "serviceAccount:${google_service_account.webhook_function.email}"
 }
 
+# Service Account Token Creator for signed URL generation (Webhook)
+resource "google_service_account_iam_member" "webhook_token_creator" {
+  service_account_id = google_service_account.webhook_function.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.webhook_function.email}"
+}
+
 # IAM Bindings for Scoring Function
 
 # Firestore access for score storage
@@ -74,4 +81,11 @@ resource "google_project_iam_member" "scoring_secret_manager" {
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.scoring_function.email}"
+}
+
+# Service Account Token Creator for signed URL generation (Scoring)
+resource "google_service_account_iam_member" "scoring_token_creator" {
+  service_account_id = google_service_account.scoring_function.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.scoring_function.email}"
 }
