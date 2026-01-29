@@ -8,7 +8,16 @@ import {
   limit,
   getDocs,
   onSnapshot,
+  updateDoc,
+  getCountFromServer,
+  serverTimestamp,
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // State
 let currentTop3 = [];
@@ -17,6 +26,12 @@ let unsubscribeSnapshot = null; // Firestore listener unsubscribe function
 let pendingUpdate = null; // For debouncing updates
 const UPDATE_DEBOUNCE_MS = 2000; // Debounce updates by 2 seconds
 const userNameCache = new Map(); // Cache user names to avoid repeated queries
+
+// Owner/Settings State
+let currentUser = null;
+let isEventOwner = false;
+let currentEventData = null;
+let settingsQRInstance = null;
 
 // =========================
 // Slideshow Mode State & Config
@@ -280,9 +295,12 @@ async function fetchRecentRankings() {
       ...doc.data(),
     }));
 
-    // Filter out images without valid scores (scoring not completed)
+    // Filter out soft-deleted images and images without valid scores
     images = images.filter(
-      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+      (img) =>
+        !img.deleted_at &&
+        typeof img.total_score === "number" &&
+        !isNaN(img.total_score)
     );
 
     // Sort by total_score descending
@@ -328,9 +346,12 @@ async function fetchAllTimeRankings() {
       ...doc.data(),
     }));
 
-    // Filter out images without valid scores (scoring not completed)
+    // Filter out soft-deleted images and images without valid scores
     images = images.filter(
-      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+      (img) =>
+        !img.deleted_at &&
+        typeof img.total_score === "number" &&
+        !isNaN(img.total_score)
     );
 
     // Sort by total_score desc, then smile_score desc for tiebreaker
@@ -806,9 +827,12 @@ function processSnapshotData(snapshot) {
       ...doc.data(),
     }));
 
-    // Filter out images without valid scores (scoring not completed)
+    // Filter out soft-deleted images and images without valid scores
     images = images.filter(
-      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+      (img) =>
+        !img.deleted_at &&
+        typeof img.total_score === "number" &&
+        !isNaN(img.total_score)
     );
 
     // Sort by total_score descending
@@ -912,9 +936,12 @@ async function fetchSlideshowImages() {
       ...doc.data(),
     }));
 
-    // Filter to completed images only (has valid score)
+    // Filter out soft-deleted and incomplete images
     images = images.filter(
-      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+      (img) =>
+        !img.deleted_at &&
+        typeof img.total_score === "number" &&
+        !isNaN(img.total_score)
     );
 
     // Resolve user names (prefer denormalized user_name from image doc)
@@ -955,9 +982,12 @@ async function refreshSlideshowImages() {
       ...doc.data(),
     }));
 
-    // Filter to completed images only
+    // Filter out soft-deleted and incomplete images
     newImages = newImages.filter(
-      (img) => typeof img.total_score === "number" && !isNaN(img.total_score)
+      (img) =>
+        !img.deleted_at &&
+        typeof img.total_score === "number" &&
+        !isNaN(img.total_score)
     );
 
     // Find images not already in the queue
@@ -1416,6 +1446,559 @@ function cleanupSlideshow() {
   stopAutoModeSwitch();
 }
 
+// =========================
+// Settings Panel Functions
+// =========================
+
+/**
+ * Check if current user is the owner of the current event
+ */
+async function checkEventOwnership() {
+  const eventId = getCurrentEventId();
+  if (!currentUser || !currentEventData) {
+    isEventOwner = false;
+    return false;
+  }
+
+  isEventOwner = currentEventData.account_id === currentUser.uid;
+  console.log(`Event ownership check: ${isEventOwner}`);
+  return isEventOwner;
+}
+
+/**
+ * Update settings button visibility based on ownership
+ */
+function updateSettingsButtonVisibility() {
+  const settingsBtn = document.getElementById("settings-btn");
+  if (settingsBtn) {
+    if (isEventOwner) {
+      settingsBtn.classList.remove("hidden");
+    } else {
+      settingsBtn.classList.add("hidden");
+    }
+  }
+}
+
+/**
+ * Show login modal
+ */
+function showLoginModal() {
+  const modal = document.getElementById("login-modal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    document.getElementById("owner-email")?.focus();
+  }
+}
+
+/**
+ * Hide login modal
+ */
+function hideLoginModal() {
+  const modal = document.getElementById("login-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.getElementById("owner-email").value = "";
+    document.getElementById("owner-password").value = "";
+    document.getElementById("login-error").textContent = "";
+  }
+}
+
+/**
+ * Show settings panel
+ */
+async function showSettingsPanel() {
+  const panel = document.getElementById("settings-panel");
+  if (!panel) return;
+
+  // Load event data
+  await loadEventInfoForSettings();
+
+  // Load data counts
+  await loadDataCounts();
+
+  // Generate QR code
+  generateSettingsQRCode();
+
+  panel.classList.remove("hidden");
+}
+
+/**
+ * Hide settings panel
+ */
+function hideSettingsPanel() {
+  const panel = document.getElementById("settings-panel");
+  if (panel) {
+    panel.classList.add("hidden");
+  }
+}
+
+/**
+ * Load event info for settings panel
+ */
+async function loadEventInfoForSettings() {
+  if (!currentEventData) return;
+
+  document.getElementById("settings-event-name").textContent =
+    currentEventData.event_name || "イベント設定";
+  document.getElementById("settings-event-name-value").textContent =
+    currentEventData.event_name || "-";
+  document.getElementById("settings-event-date").textContent =
+    currentEventData.event_date || "-";
+
+  const statusEl = document.getElementById("settings-event-status");
+  const status = currentEventData.status || "draft";
+  statusEl.textContent =
+    status === "active" ? "公開中" : status === "archived" ? "終了" : "準備中";
+  statusEl.className = `info-value status-badge status-${status}`;
+}
+
+/**
+ * Load image and user counts
+ */
+async function loadDataCounts() {
+  const eventId = getCurrentEventId();
+  try {
+    const imagesQuery = query(
+      collection(window.db, "images"),
+      where("event_id", "==", eventId),
+      where("deleted_at", "==", null)
+    );
+    const usersQuery = query(
+      collection(window.db, "users"),
+      where("event_id", "==", eventId),
+      where("deleted_at", "==", null)
+    );
+
+    const [imagesSnap, usersSnap] = await Promise.all([
+      getCountFromServer(imagesQuery),
+      getCountFromServer(usersQuery),
+    ]);
+
+    document.getElementById("settings-image-count").textContent =
+      imagesSnap.data().count;
+    document.getElementById("settings-user-count").textContent =
+      usersSnap.data().count;
+  } catch (error) {
+    // Fallback: count without deleted_at filter (for existing data without this field)
+    console.warn("Count with deleted_at filter failed, trying without:", error);
+    try {
+      const imagesQuery = query(
+        collection(window.db, "images"),
+        where("event_id", "==", eventId)
+      );
+      const usersQuery = query(
+        collection(window.db, "users"),
+        where("event_id", "==", eventId)
+      );
+
+      const [imagesSnap, usersSnap] = await Promise.all([
+        getCountFromServer(imagesQuery),
+        getCountFromServer(usersQuery),
+      ]);
+
+      document.getElementById("settings-image-count").textContent =
+        imagesSnap.data().count;
+      document.getElementById("settings-user-count").textContent =
+        usersSnap.data().count;
+    } catch (err) {
+      console.error("Error loading data counts:", err);
+    }
+  }
+}
+
+/**
+ * Generate QR code for LINE deep link
+ */
+function generateSettingsQRCode() {
+  if (!currentEventData) return;
+
+  const eventCode = currentEventData.event_code || "";
+  const botId = window.LINE_BOT_ID || "@581qtuij";
+  const deepLinkUrl = `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
+
+  // Update URL display
+  document.getElementById("settings-deep-link-url").textContent = deepLinkUrl;
+
+  // Generate QR code
+  const container = document.getElementById("settings-qr-code");
+  container.innerHTML = "";
+
+  if (typeof QRCode !== "undefined") {
+    settingsQRInstance = new QRCode(container, {
+      text: deepLinkUrl,
+      width: 200,
+      height: 200,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+}
+
+/**
+ * Download QR code as image
+ */
+function downloadSettingsQRCode() {
+  const container = document.getElementById("settings-qr-code");
+  const canvas = container?.querySelector("canvas");
+  if (!canvas) return;
+
+  const eventCode = currentEventData?.event_code || "event";
+  const link = document.createElement("a");
+  link.download = `qrcode_${eventCode}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+/**
+ * Copy text to clipboard
+ */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("コピーしました");
+  } catch (error) {
+    console.error("Failed to copy:", error);
+    alert("コピーに失敗しました");
+  }
+}
+
+/**
+ * Show confirm modal
+ */
+function showConfirmModal(message) {
+  const modal = document.getElementById("confirm-modal");
+  const messageEl = document.getElementById("confirm-message");
+  if (modal && messageEl) {
+    messageEl.textContent = message;
+    modal.classList.remove("hidden");
+  }
+
+  return new Promise((resolve) => {
+    const yesBtn = document.getElementById("confirm-yes");
+    const noBtn = document.getElementById("confirm-no");
+
+    const cleanup = () => {
+      yesBtn?.removeEventListener("click", onYes);
+      noBtn?.removeEventListener("click", onNo);
+      modal?.classList.add("hidden");
+    };
+
+    const onYes = () => {
+      cleanup();
+      resolve(true);
+    };
+    const onNo = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    yesBtn?.addEventListener("click", onYes);
+    noBtn?.addEventListener("click", onNo);
+  });
+}
+
+/**
+ * Soft delete event data (set deleted_at timestamp)
+ */
+async function softDeleteEventData() {
+  const eventId = getCurrentEventId();
+
+  const confirmed = await showConfirmModal(
+    "このイベントのすべてのテストデータ（画像・ユーザー）を削除しますか？\n\nこの操作は運営者によって復元可能です。"
+  );
+
+  if (!confirmed) return;
+
+  const deleteBtn = document.getElementById("delete-data-btn");
+  if (deleteBtn) {
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = "削除中...";
+  }
+
+  try {
+    // Get all images for this event
+    const imagesQuery = query(
+      collection(window.db, "images"),
+      where("event_id", "==", eventId)
+    );
+    const imagesSnap = await getDocs(imagesQuery);
+
+    // Get all users for this event
+    const usersQuery = query(
+      collection(window.db, "users"),
+      where("event_id", "==", eventId)
+    );
+    const usersSnap = await getDocs(usersQuery);
+
+    const now = serverTimestamp();
+    const batchSize = 500;
+
+    // Soft delete images
+    const allDocs = [...imagesSnap.docs, ...usersSnap.docs];
+    for (let i = 0; i < allDocs.length; i += batchSize) {
+      const batch = writeBatch(window.db);
+      const chunk = allDocs.slice(i, i + batchSize);
+      chunk.forEach((docSnap) => {
+        batch.update(docSnap.ref, { deleted_at: now });
+      });
+      await batch.commit();
+    }
+
+    alert(
+      `${imagesSnap.docs.length}枚の画像と${usersSnap.docs.length}人のユーザーデータを削除しました`
+    );
+
+    // Refresh counts
+    await loadDataCounts();
+
+    // Refresh ranking display
+    fetchRecentRankings();
+  } catch (error) {
+    console.error("Error soft deleting data:", error);
+    alert("削除に失敗しました: " + error.message);
+  } finally {
+    if (deleteBtn) {
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = "🗑️ テストデータを削除";
+    }
+  }
+}
+
+/**
+ * Download all images as ZIP
+ */
+async function downloadAllImages() {
+  const eventId = getCurrentEventId();
+  const downloadBtn = document.getElementById("download-images-btn");
+
+  if (downloadBtn) {
+    downloadBtn.disabled = true;
+    downloadBtn.textContent = "準備中...";
+  }
+
+  try {
+    // Fetch all images for this event
+    const imagesQuery = query(
+      collection(window.db, "images"),
+      where("event_id", "==", eventId),
+      orderBy("total_score", "desc"),
+      limit(500)
+    );
+    const snapshot = await getDocs(imagesQuery);
+
+    let images = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Filter out deleted and images without signed URLs
+    images = images.filter(
+      (img) => !img.deleted_at && img.storage_url
+    );
+
+    if (images.length === 0) {
+      alert("ダウンロード可能な画像がありません");
+      return;
+    }
+
+    if (typeof JSZip === "undefined") {
+      alert("ZIPライブラリが読み込まれていません。ページを再読み込みしてください。");
+      return;
+    }
+
+    const zip = new JSZip();
+    const imagesFolder = zip.folder("images");
+    let downloadedCount = 0;
+
+    // Download images in batches
+    const batchSize = 5;
+    for (let i = 0; i < images.length; i += batchSize) {
+      const batch = images.slice(i, i + batchSize);
+
+      if (downloadBtn) {
+        downloadBtn.textContent = `ダウンロード中 ${Math.min(
+          i + batchSize,
+          images.length
+        )}/${images.length}...`;
+      }
+
+      await Promise.all(
+        batch.map(async (img) => {
+          try {
+            const response = await fetch(img.storage_url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+
+            const score = (img.total_score || 0).toFixed(0);
+            const userName = (img.user_name || img.user_id || "guest")
+              .replace(/[<>:"/\\|?*]/g, "_")
+              .substring(0, 30);
+            const filename = `${String(downloadedCount + 1).padStart(3, "0")}_${userName}_${score}.jpg`;
+
+            imagesFolder.file(filename, blob);
+            downloadedCount++;
+          } catch (err) {
+            console.warn(`Failed to download image ${img.id}:`, err);
+          }
+        })
+      );
+    }
+
+    if (downloadedCount === 0) {
+      alert("画像のダウンロードに失敗しました");
+      return;
+    }
+
+    // Generate ZIP
+    if (downloadBtn) {
+      downloadBtn.textContent = "ZIP作成中...";
+    }
+
+    const content = await zip.generateAsync({ type: "blob" });
+
+    // Download
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace("T", "_")
+      .slice(0, 15);
+    const eventName = (currentEventData?.event_name || "event")
+      .replace(/[<>:"/\\|?*]/g, "_")
+      .substring(0, 30);
+    const zipFilename = `${eventName}_${timestamp}.zip`;
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(content);
+    link.download = zipFilename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    alert(`${downloadedCount}枚の画像をダウンロードしました`);
+  } catch (error) {
+    console.error("Download failed:", error);
+    alert("ダウンロードに失敗しました: " + error.message);
+  } finally {
+    if (downloadBtn) {
+      downloadBtn.disabled = false;
+      downloadBtn.textContent = "📥 画像をダウンロード";
+    }
+  }
+}
+
+/**
+ * Handle owner login
+ */
+async function handleOwnerLogin(email, password) {
+  const errorEl = document.getElementById("login-error");
+
+  try {
+    await signInWithEmailAndPassword(window.auth, email, password);
+    hideLoginModal();
+  } catch (error) {
+    console.error("Login failed:", error);
+    if (
+      error.code === "auth/invalid-credential" ||
+      error.code === "auth/wrong-password" ||
+      error.code === "auth/user-not-found"
+    ) {
+      errorEl.textContent = "メールアドレスまたはパスワードが正しくありません";
+    } else {
+      errorEl.textContent = "ログインに失敗しました";
+    }
+  }
+}
+
+/**
+ * Handle owner logout
+ */
+async function handleOwnerLogout() {
+  try {
+    await signOut(window.auth);
+    hideSettingsPanel();
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+}
+
+/**
+ * Setup settings panel event listeners
+ */
+function setupSettingsPanel() {
+  // Settings button click
+  const settingsBtn = document.getElementById("settings-btn");
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", () => {
+      if (currentUser && isEventOwner) {
+        showSettingsPanel();
+      } else {
+        showLoginModal();
+      }
+    });
+  }
+
+  // Close login modal
+  document.getElementById("close-login-modal")?.addEventListener("click", hideLoginModal);
+  document.getElementById("login-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "login-modal") hideLoginModal();
+  });
+
+  // Login form submit
+  document.getElementById("owner-login-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("owner-email").value;
+    const password = document.getElementById("owner-password").value;
+    await handleOwnerLogin(email, password);
+  });
+
+  // Close settings panel
+  document.getElementById("close-settings-panel")?.addEventListener("click", hideSettingsPanel);
+  document.getElementById("settings-panel")?.addEventListener("click", (e) => {
+    if (e.target.id === "settings-panel") hideSettingsPanel();
+  });
+
+  // Copy deep link URL
+  document.getElementById("copy-deep-link")?.addEventListener("click", () => {
+    const url = document.getElementById("settings-deep-link-url")?.textContent;
+    if (url) copyToClipboard(url);
+  });
+
+  // Download QR code
+  document.getElementById("download-qr-btn")?.addEventListener("click", downloadSettingsQRCode);
+
+  // Download images
+  document.getElementById("download-images-btn")?.addEventListener("click", downloadAllImages);
+
+  // Delete data
+  document.getElementById("delete-data-btn")?.addEventListener("click", softDeleteEventData);
+
+  // Logout
+  document.getElementById("owner-logout-btn")?.addEventListener("click", handleOwnerLogout);
+}
+
+/**
+ * Setup Firebase Auth state listener
+ */
+function setupAuthListener() {
+  onAuthStateChanged(window.auth, async (user) => {
+    currentUser = user;
+    if (user) {
+      console.log("User logged in:", user.email);
+      await checkEventOwnership();
+      updateSettingsButtonVisibility();
+
+      // If settings panel was waiting for login, show it now
+      if (isEventOwner) {
+        showSettingsPanel();
+      }
+    } else {
+      console.log("User logged out");
+      isEventOwner = false;
+      updateSettingsButtonVisibility();
+    }
+  });
+}
+
 /**
  * Initialize the app
  */
@@ -1437,12 +2020,13 @@ async function init() {
     return;
   }
 
-  // Check event status for archived events
+  // Check event status and store event data
   try {
     const eventDocRef = doc(window.db, "events", currentEventId);
     const eventDoc = await getDoc(eventDocRef);
     if (eventDoc.exists()) {
-      const status = eventDoc.data().status;
+      currentEventData = { id: eventDoc.id, ...eventDoc.data() };
+      const status = currentEventData.status;
       if (status === "archived") {
         console.log(`Event ${currentEventId} is archived, showing ended banner`);
         document.getElementById("event-ended-banner").classList.remove("hidden");
@@ -1451,6 +2035,9 @@ async function init() {
         document.getElementById("final-btn")?.classList.add("hidden");
         document.getElementById("ranking-content")?.classList.add("hidden");
         loadingEl.classList.add("hidden");
+        // Still setup settings panel for archived events (for image download)
+        setupSettingsPanel();
+        setupAuthListener();
         return;
       }
     }
@@ -1464,6 +2051,10 @@ async function init() {
 
   // Set up header mode buttons (slideshow/ranking)
   setupModeButtons();
+
+  // Set up settings panel (for event owners)
+  setupSettingsPanel();
+  setupAuthListener();
 
   // Set up real-time listener (replaces periodic polling)
   setupRealtimeListener();

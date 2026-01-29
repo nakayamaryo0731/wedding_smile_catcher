@@ -38,6 +38,7 @@
                     <button id="slideshow-btn" class="header-btn slideshow-btn">スライドショー</button>
                     <button id="ranking-btn" class="header-btn ranking-btn hidden">ランキング</button>
                     <button id="final-btn" class="header-btn final-btn">最終結果</button>
+                    <button id="settings-btn" class="header-btn settings-btn hidden">⚙️</button>
                 </div>
             </div>
         </header>
@@ -172,18 +173,124 @@
             <div class="spinner"></div>
             <p>Loading rankings...</p>
         </div>
+
+        <!-- Login Modal (for event owners) -->
+        <div id="login-modal" class="settings-modal hidden">
+            <div class="settings-modal-content login-modal-content">
+                <div class="settings-modal-header">
+                    <h2>オーナーログイン</h2>
+                    <button class="settings-close-btn" id="close-login-modal">&times;</button>
+                </div>
+                <form id="owner-login-form" class="owner-login-form">
+                    <input type="email" id="owner-email" placeholder="メールアドレス" required autocomplete="username">
+                    <input type="password" id="owner-password" placeholder="パスワード" required autocomplete="current-password">
+                    <div id="login-error" class="login-error"></div>
+                    <button type="submit" class="btn-primary">ログイン</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings Panel Modal (for event owners) -->
+        <div id="settings-panel" class="settings-modal hidden">
+            <div class="settings-modal-content">
+                <div class="settings-modal-header">
+                    <h2 id="settings-event-name">イベント設定</h2>
+                    <button class="settings-close-btn" id="close-settings-panel">&times;</button>
+                </div>
+
+                <!-- Event Info Section -->
+                <div class="settings-section">
+                    <h3>イベント情報</h3>
+                    <div class="event-info-grid">
+                        <div class="info-item">
+                            <span class="info-label">イベント名</span>
+                            <span id="settings-event-name-value" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">開催日</span>
+                            <span id="settings-event-date" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">ステータス</span>
+                            <span id="settings-event-status" class="info-value status-badge">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Code Section -->
+                <div class="settings-section">
+                    <h3>QRコード</h3>
+                    <p class="section-description">ゲストに共有するQRコードです</p>
+                    <div class="qr-container">
+                        <div id="settings-qr-code"></div>
+                    </div>
+                    <div class="qr-urls">
+                        <div class="url-item">
+                            <span class="url-label">LINE参加URL:</span>
+                            <code id="settings-deep-link-url" class="url-value"></code>
+                            <button class="btn-sm btn-secondary" id="copy-deep-link">コピー</button>
+                        </div>
+                    </div>
+                    <button class="btn-secondary" id="download-qr-btn">QRコードをダウンロード</button>
+                </div>
+
+                <!-- Data Management Section -->
+                <div class="settings-section">
+                    <h3>データ管理</h3>
+                    <div class="data-stats">
+                        <span id="settings-image-count">0</span> 枚の画像 /
+                        <span id="settings-user-count">0</span> 人の参加者
+                    </div>
+
+                    <div class="settings-actions">
+                        <button class="btn-primary" id="download-images-btn">
+                            📥 画像をダウンロード
+                        </button>
+                        <button class="btn-danger" id="delete-data-btn">
+                            🗑️ テストデータを削除
+                        </button>
+                    </div>
+                    <p class="warning-text">※ データ削除は復元可能です（運営者にお問い合わせください）</p>
+                </div>
+
+                <!-- Logout Section -->
+                <div class="settings-section settings-footer">
+                    <button class="btn-secondary" id="owner-logout-btn">ログアウト</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Modal -->
+        <div id="confirm-modal" class="settings-modal hidden">
+            <div class="settings-modal-content confirm-modal-content">
+                <h2>確認</h2>
+                <p id="confirm-message"></p>
+                <div class="confirm-actions">
+                    <button class="btn-danger" id="confirm-yes">削除する</button>
+                    <button class="btn-secondary" id="confirm-no">キャンセル</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Canvas Confetti Library -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <!-- JSZip for image download -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         // Firebase configuration will be loaded from config
         window.firebaseApp = initializeApp(window.FIREBASE_CONFIG);
         window.db = getFirestore(window.firebaseApp);
+        window.auth = getAuth(window.firebaseApp);
     </script>
 
     <!-- Firebase Config (will be populated) -->
