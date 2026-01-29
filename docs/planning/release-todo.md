@@ -119,7 +119,7 @@ ref: `docs/planning/security-requirements.md`, `docs/planning/mvp-features.md`
 | 7.1 | Cloud Monitoring ダッシュボード設定 | 🔲 | エラー率、レイテンシ |
 | 7.2 | アラート通知設定（メール） | 🔲 | Cloud Functions エラー、Firestore異常 |
 | 7.3 | データ自動削除の仕組み（イベント後30日） | 🔲 | Cloud Scheduler + Cloud Functions |
-| 7.4 | 管理画面から画像一括ダウンロード機能のUI実装 | 🔲 | 現状shell scriptのみ。顧客向けUI化が必要 |
+| 7.4 | 管理画面から画像一括ダウンロード機能のUI実装 | ✅ | Imagesタブから選択してZIPダウンロード |
 
 ---
 
