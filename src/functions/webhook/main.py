@@ -36,6 +36,7 @@ from linebot.v3.webhooks import (
     ImageMessageContent,
     MessageEvent,
     TextMessageContent,
+    UnsendEvent,
 )
 
 # Initialize logging
@@ -730,3 +731,49 @@ def trigger_scoring_function(image_id: str, user_id: str):
                 extra={"attempt": attempt + 1, "final": is_last_attempt},
             )
             return  # Give up after max retries or non-retryable error
+
+
+@handler.add(UnsendEvent)
+def handle_unsend(event):
+    """
+    Handle message unsend event.
+    Deletes image from Cloud Storage and Firestore when user unsends a photo.
+    This is required for LINE User Data Policy compliance.
+
+    Args:
+        event: LINE UnsendEvent
+    """
+    message_id = event.unsend.message_id
+    user_id = event.source.user_id
+    logger.info(f"Unsend event from {user_id} for message: {message_id}")
+
+    try:
+        # Find image document by line_message_id
+        images_ref = db.collection("images")
+        query = images_ref.where(filter=firestore.FieldFilter("line_message_id", "==", message_id)).limit(1)
+        image_docs = list(query.stream())
+
+        if not image_docs:
+            logger.info(f"No image found for message_id: {message_id}")
+            return
+
+        image_doc = image_docs[0]
+        image_data = image_doc.to_dict()
+        storage_path = image_data.get("storage_path")
+
+        # Delete from Cloud Storage
+        if storage_path:
+            try:
+                bucket = storage_client.bucket(STORAGE_BUCKET)
+                blob = bucket.blob(storage_path)
+                blob.delete()
+                logger.info(f"Deleted image from Storage: {storage_path}")
+            except Exception as e:
+                logger.warning(f"Failed to delete from Storage: {str(e)}")
+
+        # Delete from Firestore
+        image_doc.reference.delete()
+        logger.info(f"Deleted image document: {image_doc.id}")
+
+    except Exception as e:
+        logger.error(f"Failed to handle unsend event: {str(e)}")
