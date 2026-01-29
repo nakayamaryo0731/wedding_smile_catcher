@@ -25,10 +25,10 @@ resource "google_project_iam_member" "webhook_firestore" {
   member  = "serviceAccount:${google_service_account.webhook_function.email}"
 }
 
-# Storage bucket access for image upload
+# Storage bucket access for image upload and delete (unsend)
 resource "google_storage_bucket_iam_member" "webhook_storage" {
   bucket = var.storage_bucket_name
-  role   = "roles/storage.objectCreator"
+  role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.webhook_function.email}"
 }
 
