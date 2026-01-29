@@ -9,7 +9,7 @@ import os
 import re
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import functions_framework
 import google.auth
@@ -72,6 +72,39 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # Pattern for JOIN command (case-insensitive)
 JOIN_PATTERN = re.compile(r"^JOIN\s+(.+)$", re.IGNORECASE)
+
+# Signed URL configuration (7 days - sufficient for wedding event + post-event viewing)
+SIGNED_URL_EXPIRATION_HOURS = 168
+
+
+def generate_signed_url(
+    bucket_name: str, storage_path: str, expiration_hours: int = SIGNED_URL_EXPIRATION_HOURS
+) -> tuple[str, datetime]:
+    """
+    Generate a signed URL for Cloud Storage object.
+
+    Args:
+        bucket_name: Name of the Cloud Storage bucket
+        storage_path: Path to the object in the bucket
+        expiration_hours: URL validity period in hours (default: 1)
+
+    Returns:
+        Tuple of (signed_url, expiration_time)
+    """
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(storage_path)
+
+    expiration = timedelta(hours=expiration_hours)
+    expiration_time = datetime.now(UTC) + expiration
+
+    url = blob.generate_signed_url(
+        version="v4",
+        expiration=expiration,
+        method="GET",
+    )
+
+    logger.info(f"Generated signed URL for {storage_path}, expires at {expiration_time.isoformat()}")
+    return url, expiration_time
 
 
 @functions_framework.http
@@ -464,19 +497,29 @@ def handle_image_message(event: MessageEvent):
 
         logger.info(f"Image uploaded to Storage: {storage_path}")
 
+        # Generate signed URL for immediate display
+        image_doc_data = {
+            "user_id": user_id,
+            "user_name": user_name,
+            "event_id": event_id,
+            "storage_path": storage_path,
+            "upload_timestamp": firestore.SERVER_TIMESTAMP,
+            "status": "pending",
+            "line_message_id": message_id,
+        }
+
+        try:
+            signed_url, expiration_time = generate_signed_url(STORAGE_BUCKET, storage_path)
+            image_doc_data["storage_url"] = signed_url
+            image_doc_data["storage_url_expires_at"] = expiration_time
+            logger.info(f"Signed URL generated for image {image_id}")
+        except Exception as e:
+            logger.warning(f"Failed to generate signed URL for image {image_id}: {str(e)}")
+            # Continue without signed URL - scoring function will generate it later
+
         # Create Firestore document (user_name denormalized for frontend)
         image_ref = db.collection("images").document(image_id)
-        image_ref.set(
-            {
-                "user_id": user_id,
-                "user_name": user_name,
-                "event_id": event_id,
-                "storage_path": storage_path,
-                "upload_timestamp": firestore.SERVER_TIMESTAMP,
-                "status": "pending",
-                "line_message_id": message_id,
-            }
-        )
+        image_ref.set(image_doc_data)
 
         logger.info(f"Firestore document created: {image_id}")
 
