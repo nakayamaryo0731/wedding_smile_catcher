@@ -83,10 +83,13 @@ def generate_signed_url(
     """
     Generate a signed URL for Cloud Storage object.
 
+    Uses IAM signBlob API for signing when running in Cloud Functions
+    (where ADC doesn't have a private key).
+
     Args:
         bucket_name: Name of the Cloud Storage bucket
         storage_path: Path to the object in the bucket
-        expiration_hours: URL validity period in hours (default: 1)
+        expiration_hours: URL validity period in hours (default: 168)
 
     Returns:
         Tuple of (signed_url, expiration_time)
@@ -97,10 +100,24 @@ def generate_signed_url(
     expiration = timedelta(hours=expiration_hours)
     expiration_time = datetime.now(UTC) + expiration
 
+    # Get credentials and refresh if needed
+    credentials, project = google.auth.default()
+    if not credentials.valid:
+        credentials.refresh(google.auth.transport.requests.Request())
+
+    # Get service account email for IAM signing
+    if hasattr(credentials, "service_account_email"):
+        service_account_email = credentials.service_account_email
+    else:
+        # Fallback for local development or other credential types
+        service_account_email = f"webhook-function-sa@{GCP_PROJECT_ID}.iam.gserviceaccount.com"
+
     url = blob.generate_signed_url(
         version="v4",
         expiration=expiration,
         method="GET",
+        service_account_email=service_account_email,
+        access_token=credentials.token,
     )
 
     logger.info(f"Generated signed URL for {storage_path}, expires at {expiration_time.isoformat()}")
