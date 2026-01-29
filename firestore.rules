@@ -6,44 +6,63 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Helper: Check if user is an admin (operator)
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/accounts/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/accounts/$(request.auth.uid)).data.is_admin == true;
+    }
+
+    // Helper: Check if user owns the event
+    function isEventOwner(eventId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/events/$(eventId)) &&
+        get(/databases/$(database)/documents/events/$(eventId)).data.account_id == request.auth.uid;
+    }
+
     // Accounts collection
-    // Owner-only read/create/update; no client-side delete
+    // Admins can read all; regular users can only read their own
+    // Only admins can create/update other accounts; users can update their own
     match /accounts/{accountId} {
-      allow read: if request.auth != null && request.auth.uid == accountId;
+      allow read: if request.auth != null && (isAdmin() || request.auth.uid == accountId);
       allow create: if request.auth != null && request.auth.uid == accountId;
-      allow update: if request.auth != null && request.auth.uid == accountId;
+      allow update: if request.auth != null && (isAdmin() || request.auth.uid == accountId);
       allow delete: if false;
     }
 
     // Events collection
     // Public get (single doc) for ranking UI status check
-    // List (query) restricted to authenticated users
-    // Only the event owner (account_id) can write
+    // Admins can list all; regular users can list their own
+    // Write requires ownership or admin
     match /events/{eventId} {
       allow get: if true;
       allow list: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.account_id == request.auth.uid;
       allow update, delete: if request.auth != null
-        && resource.data.account_id == request.auth.uid;
+        && (isAdmin() || resource.data.account_id == request.auth.uid);
     }
 
-    // Users collection
+    // Users collection (LINE users, not Firebase users)
     // Public read for ranking display
-    // Write restricted to Cloud Functions (server-side only)
+    // Admins can write; event owners can update (for soft delete)
     match /users/{userId} {
       allow read: if true;
-      allow create, update: if false;
-      allow delete: if request.auth != null;
+      allow create: if false;
+      allow update: if request.auth != null &&
+        (isAdmin() || isEventOwner(resource.data.event_id));
+      allow delete: if request.auth != null && isAdmin();
     }
 
     // Images collection
     // Public read for ranking display
-    // Write restricted to Cloud Functions (server-side only)
+    // Admins can write; event owners can update (for soft delete)
     match /images/{imageId} {
       allow read: if true;
-      allow create, update: if false;
-      allow delete: if request.auth != null;
+      allow create: if false;
+      allow update: if request.auth != null &&
+        (isAdmin() || isEventOwner(resource.data.event_id));
+      allow delete: if request.auth != null && isAdmin();
     }
   }
 }

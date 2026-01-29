@@ -40,6 +40,7 @@ let pendingDeleteAction = null;
 // Tabulator instances
 let imagesTable = null;
 let usersTable = null;
+let accountsTable = null;
 
 // Images data cache - maintains pagination stability
 let imagesDataCache = null;
@@ -53,30 +54,34 @@ let eventNameCache = new Map();
 // Current event filter
 let currentEventFilter = "";
 
-// Owned event IDs cache (filtered by account_id)
-let ownedEventIds = [];
-let ownedEventsLoaded = false;
-
-async function loadOwnedEventIds() {
-  if (!currentUser || ownedEventsLoaded) return ownedEventIds;
-  try {
-    const q = query(
-      collection(db, "events"),
-      where("account_id", "==", currentUser.uid)
-    );
-    const snapshot = await getDocs(q);
-    ownedEventIds = snapshot.docs.map((d) => d.id);
-    ownedEventsLoaded = true;
-    console.log(`Loaded ${ownedEventIds.length} owned events`);
-    return ownedEventIds;
-  } catch (error) {
-    console.error("Error loading owned events:", error);
-    return [];
-  }
-}
+// Admin flag (operators only)
+let isAdminUser = false;
 
 // Current authenticated user (set by onAuthStateChanged)
 let currentUser = null;
+
+// Check if current user is an admin (operator)
+async function checkAdminStatus() {
+  if (!currentUser) {
+    isAdminUser = false;
+    return false;
+  }
+  try {
+    const accountRef = doc(db, "accounts", currentUser.uid);
+    const accountSnap = await getDoc(accountRef);
+    if (accountSnap.exists()) {
+      isAdminUser = accountSnap.data().is_admin === true;
+    } else {
+      isAdminUser = false;
+    }
+    console.log(`Admin status: ${isAdminUser}`);
+    return isAdminUser;
+  } catch (error) {
+    console.error("Error checking admin status:", error);
+    isAdminUser = false;
+    return false;
+  }
+}
 
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((screen) => {
@@ -92,20 +97,10 @@ function showError(message) {
 
 async function loadStats() {
   try {
-    const eventIds = await loadOwnedEventIds();
-
-    let imagesQuery, usersQuery, eventsQuery;
-    if (eventIds.length > 0) {
-      imagesQuery = query(collection(db, "images"), where("event_id", "in", eventIds));
-      usersQuery = query(collection(db, "users"), where("event_id", "in", eventIds));
-      eventsQuery = currentUser
-        ? query(collection(db, "events"), where("account_id", "==", currentUser.uid))
-        : query(collection(db, "events"));
-    } else {
-      imagesQuery = query(collection(db, "images"));
-      usersQuery = query(collection(db, "users"));
-      eventsQuery = query(collection(db, "events"));
-    }
+    // Admin sees all data (no filtering)
+    const imagesQuery = query(collection(db, "images"));
+    const usersQuery = query(collection(db, "users"));
+    const eventsQuery = query(collection(db, "events"));
 
     const [imagesSnapshot, usersSnapshot, eventsSnapshot] = await Promise.all([
       getCountFromServer(imagesQuery),
@@ -131,22 +126,12 @@ async function loadImages(forceRefresh = false) {
   }
 
   try {
-    const eventIds = await loadOwnedEventIds();
-    let q;
-    if (eventIds.length > 0) {
-      q = query(
-        collection(db, "images"),
-        where("event_id", "in", eventIds),
-        orderBy("upload_timestamp", "desc"),
-        limit(1000)
-      );
-    } else {
-      q = query(
-        collection(db, "images"),
-        orderBy("upload_timestamp", "desc"),
-        limit(1000)
-      );
-    }
+    // Admin sees all data (no filtering)
+    const q = query(
+      collection(db, "images"),
+      orderBy("upload_timestamp", "desc"),
+      limit(1000)
+    );
     const snapshot = await getDocs(q);
 
     // Cache user names from image documents (denormalized user_name field)
@@ -338,23 +323,19 @@ async function loadUsers(forceRefresh = false) {
   }
 
   try {
-    const eventIds = await loadOwnedEventIds();
-    let q;
-    if (eventIds.length > 0) {
-      q = query(
-        collection(db, "users"),
-        where("event_id", "in", eventIds),
-        orderBy("best_score", "desc"),
-        limit(500)
-      );
-    } else {
-      q = query(
-        collection(db, "users"),
-        orderBy("best_score", "desc"),
-        limit(500)
-      );
-    }
+    // Admin sees all data (no filtering)
+    const q = query(
+      collection(db, "users"),
+      orderBy("best_score", "desc"),
+      limit(500)
+    );
     const snapshot = await getDocs(q);
+
+    // Fetch event names for users
+    const userEventIds = [
+      ...new Set(snapshot.docs.map((d) => d.data().event_id).filter(Boolean)),
+    ];
+    await fetchEventNames(userEventIds);
 
     // Transform data for Tabulator
     const data = snapshot.docs.map((docSnap) => {
@@ -362,6 +343,10 @@ async function loadUsers(forceRefresh = false) {
       return {
         id: docSnap.id,
         name: d.name || "N/A",
+        event_id: d.event_id || "",
+        event_name: d.event_id
+          ? eventNameCache.get(d.event_id) || d.event_id
+          : "N/A",
         total_uploads: d.total_uploads || 0,
         best_score: d.best_score ?? null,
         created_at: d.created_at?.seconds
@@ -392,6 +377,7 @@ async function loadUsers(forceRefresh = false) {
             width: 40,
           },
           { title: "Name", field: "name", sorter: "string", widthGrow: 2 },
+          { title: "Event", field: "event_name", sorter: "string", width: 180 },
           {
             title: "Uploads",
             field: "total_uploads",
@@ -431,6 +417,92 @@ async function loadUsers(forceRefresh = false) {
   } catch (error) {
     console.error("Error loading users:", error);
     container.innerHTML = '<p class="loading">Error loading users</p>';
+  }
+}
+
+// Accounts data cache
+let accountsDataCache = null;
+
+async function loadAccounts(forceRefresh = false) {
+  const container = document.getElementById("accountsTable");
+  if (!container) return;
+
+  // Use cached data if available and not forcing refresh
+  if (!forceRefresh && accountsDataCache && accountsTable) {
+    return;
+  }
+
+  try {
+    const q = query(
+      collection(db, "accounts"),
+      orderBy("created_at", "desc"),
+      limit(500)
+    );
+    const snapshot = await getDocs(q);
+
+    // Transform data for Tabulator
+    const data = snapshot.docs.map((docSnap) => {
+      const d = docSnap.data();
+      return {
+        id: docSnap.id,
+        email: d.email || "N/A",
+        display_name: d.display_name || "N/A",
+        is_admin: d.is_admin === true,
+        status: d.status || "active",
+        created_at: d.created_at?.seconds
+          ? new Date(d.created_at.seconds * 1000)
+          : null,
+      };
+    });
+
+    // Cache the data
+    accountsDataCache = data;
+
+    if (accountsTable) {
+      accountsTable.setData(data);
+    } else {
+      accountsTable = new Tabulator("#accountsTable", {
+        data: data,
+        layout: "fitDataFill",
+        pagination: true,
+        paginationSize: 30,
+        paginationSizeSelector: [10, 30, 50, 100],
+        columns: [
+          { title: "Email", field: "email", sorter: "string", widthGrow: 2 },
+          { title: "Display Name", field: "display_name", sorter: "string", widthGrow: 2 },
+          {
+            title: "Role",
+            field: "is_admin",
+            width: 100,
+            hozAlign: "center",
+            formatter: (cell) => {
+              const isAdmin = cell.getValue();
+              return isAdmin
+                ? '<span class="status-badge status-active">Admin</span>'
+                : '<span class="status-badge status-draft">Customer</span>';
+            },
+          },
+          { title: "Status", field: "status", width: 100 },
+          {
+            title: "Created",
+            field: "created_at",
+            width: 160,
+            sorter: (a, b) => {
+              if (!a) return 1;
+              if (!b) return -1;
+              return a.getTime() - b.getTime();
+            },
+            formatter: (cell) => {
+              const val = cell.getValue();
+              return val ? val.toLocaleString("ja-JP") : "N/A";
+            },
+          },
+        ],
+      });
+    }
+  } catch (error) {
+    console.error("Error loading accounts:", error);
+    container.innerHTML = '<p class="loading">Error loading accounts</p>';
   }
 }
 
@@ -566,21 +638,12 @@ async function loadEvents() {
   container.innerHTML = '<p class="loading">Loading events...</p>';
 
   try {
-    let q;
-    if (currentUser) {
-      q = query(
-        collection(db, "events"),
-        where("account_id", "==", currentUser.uid),
-        orderBy("created_at", "desc"),
-        limit(500)
-      );
-    } else {
-      q = query(
-        collection(db, "events"),
-        orderBy("created_at", "desc"),
-        limit(500)
-      );
-    }
+    // Admin sees all events (no filtering)
+    const q = query(
+      collection(db, "events"),
+      orderBy("created_at", "desc"),
+      limit(500)
+    );
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
@@ -728,6 +791,7 @@ function switchTab(tabName) {
   if (tabName === "images") loadImages();
   if (tabName === "users") loadUsers();
   if (tabName === "events") loadEvents();
+  if (tabName === "accounts") loadAccounts();
   if (tabName === "statistics") loadStatistics();
 }
 
@@ -1018,15 +1082,8 @@ async function populateStatsEventDropdown() {
   const currentValue = select.value;
 
   try {
-    let eventsQuery;
-    if (currentUser) {
-      eventsQuery = query(
-        collection(db, "events"),
-        where("account_id", "==", currentUser.uid)
-      );
-    } else {
-      eventsQuery = query(collection(db, "events"));
-    }
+    // Admin sees all events (no filtering)
+    const eventsQuery = query(collection(db, "events"));
     const eventsSnapshot = await getDocs(eventsQuery);
     select.innerHTML = '<option value="">All Events</option>';
 
@@ -1723,9 +1780,6 @@ document
       document.getElementById("eventCreateForm").style.display = "none";
       document.getElementById("eventCreateToggle").classList.remove("open");
 
-      // Reset owned events cache so new event appears
-      ownedEventsLoaded = false;
-
       // Reload events list
       await loadEvents();
       await loadStats();
@@ -1744,6 +1798,11 @@ document
 document
   .getElementById("refreshEvents")
   .addEventListener("click", () => loadEvents());
+
+// Refresh accounts button
+document
+  .getElementById("refreshAccounts")
+  .addEventListener("click", () => loadAccounts(true));
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   try {
@@ -1860,20 +1919,26 @@ document.getElementById("cancelDelete").addEventListener("click", () => {
 });
 
 // Firebase Auth state listener - handles login/logout state
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
-    // Reset owned events cache for fresh load
-    ownedEventIds = [];
-    ownedEventsLoaded = false;
     console.log("Authenticated as:", user.email);
+
+    // Check if user is admin (operator)
+    const isAdmin = await checkAdminStatus();
+    if (!isAdmin) {
+      // Non-admin users cannot access admin panel
+      showError("Access denied. Admin privileges required.");
+      await signOut(auth);
+      return;
+    }
+
     showScreen("adminScreen");
     loadStats();
     loadImages();
   } else {
     currentUser = null;
-    ownedEventIds = [];
-    ownedEventsLoaded = false;
+    isAdminUser = false;
     showScreen("loginScreen");
     document.getElementById("emailInput").value = "";
     document.getElementById("passwordInput").value = "";
