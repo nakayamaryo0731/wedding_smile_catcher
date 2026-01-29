@@ -58,12 +58,6 @@ GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 GCP_REGION = os.environ.get("GCP_REGION", "asia-northeast1")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 
-# Validate required environment variables at startup
-_REQUIRED_ENV_VARS = ["LINE_CHANNEL_ACCESS_TOKEN"]
-_missing_vars = [var for var in _REQUIRED_ENV_VARS if not os.environ.get(var)]
-if _missing_vars:
-    raise RuntimeError(f"Missing required environment variables: {', '.join(_missing_vars)}")
-
 # Initialize LINE Bot API (v3)
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
 api_client = ApiClient(configuration)

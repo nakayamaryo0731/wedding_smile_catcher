@@ -7,6 +7,7 @@ import {
   query,
   orderBy,
   limit,
+  startAfter,
   writeBatch,
   doc,
   where,
@@ -601,6 +602,50 @@ async function loadEvents() {
     console.error("Error loading events:", error);
     container.innerHTML = '<p class="loading">Error loading events</p>';
   }
+}
+
+function createDataItem(id, fields, type) {
+  const item = document.createElement("div");
+  item.className = "data-item";
+  item.dataset.id = id;
+  item.dataset.type = type;
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = selectedItems[type].has(id);
+  checkbox.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      selectedItems[type].add(id);
+    } else {
+      selectedItems[type].delete(id);
+    }
+    updateSelectionCount(type);
+  });
+
+  const content = document.createElement("div");
+  content.className = "data-item-content";
+
+  Object.entries(fields).forEach(([label, value]) => {
+    const field = document.createElement("div");
+    field.className = "data-field";
+
+    const fieldLabel = document.createElement("div");
+    fieldLabel.className = "data-field-label";
+    fieldLabel.textContent = label;
+
+    const fieldValue = document.createElement("div");
+    fieldValue.className = "data-field-value";
+    fieldValue.textContent = value;
+
+    field.appendChild(fieldLabel);
+    field.appendChild(fieldValue);
+    content.appendChild(field);
+  });
+
+  item.appendChild(checkbox);
+  item.appendChild(content);
+
+  return item;
 }
 
 function updateSelectionCount(type) {
