@@ -490,7 +490,14 @@ def _register_name(name: str, user_id: str, user_doc, user_ref, reply_token: str
 
         logger.info(f"User registered: {user_id} - {name}")
 
-        message = TextMessage(text=f"{name}さん、登録完了です！\n\n早速、笑顔の写真を送ってみましょう！")
+        message = TextMessage(
+            text=f"{name}さん、登録完了です！\n\n"
+            "📷 写真の取り扱いについて\n"
+            "送信された写真はAI分析・ランキング表示に使用されます。\n"
+            "詳細: https://wedding-smile-catcher.web.app/privacy\n\n"
+            "写真を送信することで上記に同意したものとみなします。\n"
+            "早速、笑顔の写真を送ってみましょう！"
+        )
         messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
 
     except Exception as e:
