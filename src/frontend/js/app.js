@@ -8,16 +8,9 @@ import {
   limit,
   getDocs,
   onSnapshot,
-  updateDoc,
-  getCountFromServer,
   serverTimestamp,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import {
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // State
 let currentTop3 = [];
@@ -27,9 +20,7 @@ let pendingUpdate = null; // For debouncing updates
 const UPDATE_DEBOUNCE_MS = 2000; // Debounce updates by 2 seconds
 const userNameCache = new Map(); // Cache user names to avoid repeated queries
 
-// Owner/Settings State
-let currentUser = null;
-let isEventOwner = false;
+// Settings State
 let currentEventData = null;
 let settingsQRInstance = null;
 
@@ -1451,59 +1442,6 @@ function cleanupSlideshow() {
 // =========================
 
 /**
- * Check if current user is the owner of the current event
- */
-async function checkEventOwnership() {
-  const eventId = getCurrentEventId();
-  if (!currentUser || !currentEventData) {
-    isEventOwner = false;
-    return false;
-  }
-
-  isEventOwner = currentEventData.account_id === currentUser.uid;
-  console.log(`Event ownership check: ${isEventOwner}`);
-  return isEventOwner;
-}
-
-/**
- * Update settings button visibility based on ownership
- */
-function updateSettingsButtonVisibility() {
-  const settingsBtn = document.getElementById("settings-btn");
-  if (settingsBtn) {
-    if (isEventOwner) {
-      settingsBtn.classList.remove("hidden");
-    } else {
-      settingsBtn.classList.add("hidden");
-    }
-  }
-}
-
-/**
- * Show login modal
- */
-function showLoginModal() {
-  const modal = document.getElementById("login-modal");
-  if (modal) {
-    modal.classList.remove("hidden");
-    document.getElementById("owner-email")?.focus();
-  }
-}
-
-/**
- * Hide login modal
- */
-function hideLoginModal() {
-  const modal = document.getElementById("login-modal");
-  if (modal) {
-    modal.classList.add("hidden");
-    document.getElementById("owner-email").value = "";
-    document.getElementById("owner-password").value = "";
-    document.getElementById("login-error").textContent = "";
-  }
-}
-
-/**
  * Show settings panel
  */
 async function showSettingsPanel() {
@@ -1512,9 +1450,6 @@ async function showSettingsPanel() {
 
   // Load event data
   await loadEventInfoForSettings();
-
-  // Load data counts
-  await loadDataCounts();
 
   // Generate QR code
   generateSettingsQRCode();
@@ -1552,59 +1487,6 @@ async function loadEventInfoForSettings() {
   statusEl.className = `info-value status-badge status-${status}`;
 }
 
-/**
- * Load image and user counts
- */
-async function loadDataCounts() {
-  const eventId = getCurrentEventId();
-  try {
-    const imagesQuery = query(
-      collection(window.db, "images"),
-      where("event_id", "==", eventId),
-      where("deleted_at", "==", null)
-    );
-    const usersQuery = query(
-      collection(window.db, "users"),
-      where("event_id", "==", eventId),
-      where("deleted_at", "==", null)
-    );
-
-    const [imagesSnap, usersSnap] = await Promise.all([
-      getCountFromServer(imagesQuery),
-      getCountFromServer(usersQuery),
-    ]);
-
-    document.getElementById("settings-image-count").textContent =
-      imagesSnap.data().count;
-    document.getElementById("settings-user-count").textContent =
-      usersSnap.data().count;
-  } catch (error) {
-    // Fallback: count without deleted_at filter (for existing data without this field)
-    console.warn("Count with deleted_at filter failed, trying without:", error);
-    try {
-      const imagesQuery = query(
-        collection(window.db, "images"),
-        where("event_id", "==", eventId)
-      );
-      const usersQuery = query(
-        collection(window.db, "users"),
-        where("event_id", "==", eventId)
-      );
-
-      const [imagesSnap, usersSnap] = await Promise.all([
-        getCountFromServer(imagesQuery),
-        getCountFromServer(usersQuery),
-      ]);
-
-      document.getElementById("settings-image-count").textContent =
-        imagesSnap.data().count;
-      document.getElementById("settings-user-count").textContent =
-        usersSnap.data().count;
-    } catch (err) {
-      console.error("Error loading data counts:", err);
-    }
-  }
-}
 
 /**
  * Generate QR code for LINE deep link
@@ -1886,70 +1768,16 @@ async function downloadAllImages() {
   }
 }
 
-/**
- * Handle owner login
- */
-async function handleOwnerLogin(email, password) {
-  const errorEl = document.getElementById("login-error");
-
-  try {
-    await signInWithEmailAndPassword(window.auth, email, password);
-    hideLoginModal();
-  } catch (error) {
-    console.error("Login failed:", error);
-    if (
-      error.code === "auth/invalid-credential" ||
-      error.code === "auth/wrong-password" ||
-      error.code === "auth/user-not-found"
-    ) {
-      errorEl.textContent = "メールアドレスまたはパスワードが正しくありません";
-    } else {
-      errorEl.textContent = "ログインに失敗しました";
-    }
-  }
-}
-
-/**
- * Handle owner logout
- */
-async function handleOwnerLogout() {
-  try {
-    await signOut(window.auth);
-    hideSettingsPanel();
-  } catch (error) {
-    console.error("Logout failed:", error);
-  }
-}
 
 /**
  * Setup settings panel event listeners
  */
 function setupSettingsPanel() {
-  // Settings button click
+  // Settings button click - directly open settings panel
   const settingsBtn = document.getElementById("settings-btn");
   if (settingsBtn) {
-    settingsBtn.addEventListener("click", () => {
-      if (currentUser && isEventOwner) {
-        showSettingsPanel();
-      } else {
-        showLoginModal();
-      }
-    });
+    settingsBtn.addEventListener("click", showSettingsPanel);
   }
-
-  // Close login modal
-  document.getElementById("close-login-modal")?.addEventListener("click", hideLoginModal);
-  document.getElementById("login-modal")?.addEventListener("click", (e) => {
-    if (e.target.id === "login-modal") hideLoginModal();
-  });
-
-  // Login form submit
-  document.getElementById("owner-login-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("owner-email").value;
-    const password = document.getElementById("owner-password").value;
-    await handleOwnerLogin(email, password);
-  });
 
   // Close settings panel
   document.getElementById("close-settings-panel")?.addEventListener("click", hideSettingsPanel);
@@ -1971,33 +1799,8 @@ function setupSettingsPanel() {
 
   // Delete data
   document.getElementById("delete-data-btn")?.addEventListener("click", softDeleteEventData);
-
-  // Logout
-  document.getElementById("owner-logout-btn")?.addEventListener("click", handleOwnerLogout);
 }
 
-/**
- * Setup Firebase Auth state listener
- */
-function setupAuthListener() {
-  onAuthStateChanged(window.auth, async (user) => {
-    currentUser = user;
-    if (user) {
-      console.log("User logged in:", user.email);
-      await checkEventOwnership();
-      updateSettingsButtonVisibility();
-
-      // If settings panel was waiting for login, show it now
-      if (isEventOwner) {
-        showSettingsPanel();
-      }
-    } else {
-      console.log("User logged out");
-      isEventOwner = false;
-      updateSettingsButtonVisibility();
-    }
-  });
-}
 
 /**
  * Initialize the app
@@ -2037,7 +1840,6 @@ async function init() {
         loadingEl.classList.add("hidden");
         // Still setup settings panel for archived events (for image download)
         setupSettingsPanel();
-        setupAuthListener();
         return;
       }
     }
@@ -2052,9 +1854,8 @@ async function init() {
   // Set up header mode buttons (slideshow/ranking)
   setupModeButtons();
 
-  // Set up settings panel (for event owners)
+  // Set up settings panel
   setupSettingsPanel();
-  setupAuthListener();
 
   // Set up real-time listener (replaces periodic polling)
   setupRealtimeListener();
