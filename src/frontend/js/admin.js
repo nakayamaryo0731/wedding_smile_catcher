@@ -847,10 +847,11 @@ async function downloadSelectedImages() {
     btn.disabled = true;
     btn.innerHTML = "Preparing...";
 
-    // Get selected images from cache
+    // Get selected images from cache (imagesDataCache is an array)
+    // Note: storage_url is stored as 'thumbnail' in the cache
     const selectedImages = Array.from(selectedItems.images)
-      .map((id) => imagesDataCache.get(id))
-      .filter((img) => img && img.storage_url);
+      .map((id) => imagesDataCache.find((img) => img.id === id))
+      .filter((img) => img && img.thumbnail);
 
     if (selectedImages.length === 0) {
       alert("No valid images to download. Images may not have signed URLs.");
@@ -873,7 +874,7 @@ async function downloadSelectedImages() {
 
     // Download images in batches
     const downloadImage = async (img) => {
-      const response = await fetch(img.storage_url);
+      const response = await fetch(img.thumbnail); // thumbnail contains signed URL
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
 
