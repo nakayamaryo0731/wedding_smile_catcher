@@ -118,7 +118,7 @@ ref: `docs/planning/security-requirements.md`, `docs/planning/mvp-features.md`
 |---|--------|------|------|
 | 7.1 | Cloud Monitoring アラート設定 | ✅ | Terraform module。エラー率>5%、レイテンシp95閾値超過でメール通知 |
 | 7.2 | アラート通知設定（メール） | ✅ | `terraform/modules/monitoring/` - webhook/scoringのエラー・レイテンシ監視 |
-| 7.3 | データ自動削除の仕組み（イベント後30日） | 🔲 | Cloud Scheduler + Cloud Functions |
+| 7.3 | データ自動削除の仕組み（イベント後30日） | ✅ | Cloud Storage Lifecycle Policy（Firestoreは保持） |
 | 7.4 | 管理画面から画像一括ダウンロード機能のUI実装 | ✅ | Imagesタブから選択してZIPダウンロード |
 
 ---
@@ -129,7 +129,7 @@ ref: `docs/planning/public-release-roadmap.md`, `docs/planning/competitor-analys
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 8.1 | イベント終了後LINE通知（サービス紹介）実装 | 🔲 | MVP。バイラル施策 |
+| 8.1 | イベント終了後LINE通知（サービス紹介）実装 | ✅ | notification関数 + admin UIボタン |
 | 8.2 | ランキング画面にサービスロゴ表示（控えめに） | 🔲 | |
 | 8.3 | サービスロゴ・ブランドアセット制作 | 🔲 | |
 | 8.4 | ランキング画面のスクリーンショット素材撮影 | 🔲 | デモデータ使用 |
