@@ -560,6 +560,11 @@ main {
     flex-shrink: 0;
 }
 
+.event-card > .status-dropdown-wrapper {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
 .event-card-notice {
     font-size: 0.8rem;
     color: #888;
@@ -567,42 +572,6 @@ main {
 }
 
 /* Test Section */
-.test-section {
-    width: 100%;
-    padding: 12px 16px;
-    border-top: 1px solid #e0e0e0;
-    background: #f0f0f0;
-    border-radius: 6px;
-}
-
-.test-section-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #888;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.test-checklist {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.test-checklist:not(:last-child) {
-    margin-bottom: 12px;
-}
-
-.test-checklist-item {
-    font-size: 0.9rem;
-    color: #333;
-}
-
-.test-delete-btn {
-    margin-top: 4px;
-}
-
 /* Status badges */
 .status-badge {
     display: inline-block;
@@ -619,17 +588,75 @@ main {
     color: #856404;
 }
 
-.status-test {
-    background: #cce5ff;
-    color: #004085;
-}
-
 .status-active {
     background: #d4edda;
     color: #155724;
 }
 
 .status-archived {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* Clickable status badge */
+.status-badge.clickable {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.status-badge.clickable:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Status dropdown */
+.status-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.status-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    min-width: 100px;
+    overflow: hidden;
+}
+
+.status-dropdown.hidden {
+    display: none;
+}
+
+.status-dropdown-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: background 0.2s;
+}
+
+.status-dropdown-option:hover {
+    filter: brightness(0.95);
+}
+
+.status-dropdown-option.status-draft {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-dropdown-option.status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-dropdown-option.status-archived {
     background: #e2e3e5;
     color: #383d41;
 }
