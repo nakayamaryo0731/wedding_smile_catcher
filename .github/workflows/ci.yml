@@ -180,13 +180,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: tests/firestore-rules/package-lock.json
 
+      - name: Cache Firebase Emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}
+
       - name: Install dependencies
         working-directory: tests/firestore-rules
-        run: npm ci || npm install
-
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
+        run: npm ci
 
       - name: Run Firestore Rules Tests
         working-directory: tests/firestore-rules
-        run: firebase emulators:exec --only firestore 'npm test'
+        run: npx firebase emulators:exec --only firestore 'npm test'
