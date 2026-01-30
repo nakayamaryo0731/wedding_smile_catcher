@@ -469,7 +469,6 @@ async function loadAccounts(forceRefresh = false) {
         paginationSizeSelector: [10, 30, 50, 100],
         columns: [
           { title: "Email", field: "email", sorter: "string", widthGrow: 2 },
-          { title: "Display Name", field: "display_name", sorter: "string", widthGrow: 2 },
           {
             title: "Role",
             field: "is_admin",
@@ -508,10 +507,12 @@ async function loadAccounts(forceRefresh = false) {
 
 const STATUS_BADGE = {
   draft: { label: "Draft", cssClass: "status-draft" },
-  test: { label: "Testing", cssClass: "status-test" },
   active: { label: "Active", cssClass: "status-active" },
   archived: { label: "Archived", cssClass: "status-archived" },
 };
+
+// Valid status transitions
+const AVAILABLE_STATUSES = ["draft", "active", "archived"];
 
 function createEventCard(docId, data) {
   const status = data.status || "draft";
@@ -546,22 +547,55 @@ function createEventCard(docId, data) {
   const header = document.createElement("div");
   header.className = "event-card-header";
 
+  // Status dropdown wrapper
+  const statusWrapper = document.createElement("div");
+  statusWrapper.className = "status-dropdown-wrapper";
+
   const badgeEl = document.createElement("span");
-  badgeEl.className = `status-badge ${badge.cssClass}`;
+  badgeEl.className = `status-badge ${badge.cssClass} clickable`;
   badgeEl.textContent = badge.label;
+  badgeEl.title = "Click to change status";
+
+  const dropdown = document.createElement("div");
+  dropdown.className = "status-dropdown hidden";
+
+  AVAILABLE_STATUSES.forEach((s) => {
+    if (s !== status) {
+      const option = document.createElement("div");
+      option.className = `status-dropdown-option ${STATUS_BADGE[s].cssClass}`;
+      option.textContent = STATUS_BADGE[s].label;
+      option.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.classList.add("hidden");
+        updateEventStatus(docId, s);
+      });
+      dropdown.appendChild(option);
+    }
+  });
+
+  badgeEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    // Close other dropdowns
+    document.querySelectorAll(".status-dropdown").forEach((d) => {
+      if (d !== dropdown) d.classList.add("hidden");
+    });
+    dropdown.classList.toggle("hidden");
+  });
+
+  statusWrapper.appendChild(badgeEl);
+  statusWrapper.appendChild(dropdown);
 
   const title = document.createElement("span");
   title.className = "event-card-title";
   title.textContent = eventName;
 
-  header.appendChild(badgeEl);
   header.appendChild(title);
 
   const meta = document.createElement("div");
   meta.className = "event-card-meta";
   meta.innerHTML =
     `<span>Date: ${eventDate}</span>` +
-    `<span>Code: <code>${eventCode.substring(0, 8)}...</code></span>`;
+    `<span>Code: <code>${eventCode}</code></span>`;
 
   info.appendChild(header);
   info.appendChild(meta);
@@ -588,47 +622,10 @@ function createEventCard(docId, data) {
   );
   actions.appendChild(rankBtn);
 
-  // Status-specific action buttons
-  if (status === "draft") {
-    const testBtn = document.createElement("button");
-    testBtn.className = "btn-primary btn-sm";
-    testBtn.textContent = "Start Testing";
-    testBtn.addEventListener("click", () =>
-      updateEventStatus(docId, "test")
-    );
-    actions.appendChild(testBtn);
-  } else if (status === "test") {
-    const activateBtn = document.createElement("button");
-    activateBtn.className = "btn-primary btn-sm";
-    activateBtn.textContent = "Activate";
-    activateBtn.addEventListener("click", () =>
-      updateEventStatus(docId, "active")
-    );
-    actions.appendChild(activateBtn);
-  } else if (status === "active") {
-    const archiveBtn = document.createElement("button");
-    archiveBtn.className = "btn-danger btn-sm";
-    archiveBtn.textContent = "Archive";
-    archiveBtn.addEventListener("click", () =>
-      updateEventStatus(docId, "archived")
-    );
-    actions.appendChild(archiveBtn);
-  }
-
   card.appendChild(checkbox);
   card.appendChild(info);
   card.appendChild(actions);
-
-  if (status === "test") {
-    fetchTestStatus(docId)
-      .then((testStatus) => {
-        const testSection = renderTestSection(docId, testStatus);
-        card.appendChild(testSection);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch test status:", err);
-      });
-  }
+  card.appendChild(statusWrapper);
 
   return card;
 }
@@ -1398,15 +1395,12 @@ function showQRModal(eventId, eventName, eventCode) {
   const modal = document.getElementById("qrModal");
   const container = document.getElementById("qrCodeContainer");
   const deepLinkEl = document.getElementById("qrDeepLinkUrl");
-  const rankingEl = document.getElementById("qrRankingUrl");
   const titleEl = document.getElementById("qrModalTitle");
 
   const deepLinkUrl = getDeepLinkUrl(eventCode);
-  const rankingUrl = getRankingUrl(eventId);
 
   titleEl.textContent = eventName || "QR Code";
   deepLinkEl.textContent = deepLinkUrl;
-  rankingEl.textContent = rankingUrl;
 
   // Clear previous QR code
   container.innerHTML = "";
@@ -1448,152 +1442,12 @@ function copyToClipboard(text) {
   );
 }
 
-// Test flow functions
-async function fetchTestStatus(eventId) {
-  const usersQuery = query(
-    collection(db, "users"),
-    where("event_id", "==", eventId)
-  );
-  const imagesQuery = query(
-    collection(db, "images"),
-    where("event_id", "==", eventId)
-  );
-
-  const [usersSnap, imagesSnap] = await Promise.all([
-    getDocs(usersQuery),
-    getDocs(imagesQuery),
-  ]);
-
-  const scoredCount = imagesSnap.docs.filter(
-    (doc) => doc.data().status === "completed"
-  ).length;
-
-  return {
-    userCount: usersSnap.size,
-    imageCount: imagesSnap.size,
-    scoredCount,
-  };
-}
-
-function renderTestSection(eventId, status) {
-  const section = document.createElement("div");
-  section.className = "test-section";
-  section.id = `test-section-${eventId}`;
-
-  const title = document.createElement("div");
-  title.className = "test-section-title";
-  title.textContent = "Test Status";
-  section.appendChild(title);
-
-  const checklist = document.createElement("div");
-  checklist.className = "test-checklist";
-
-  const items = [
-    { label: "User registered", count: status.userCount },
-    { label: "Photos uploaded", count: status.imageCount },
-    { label: "Scoring completed", count: status.scoredCount },
-  ];
-
-  items.forEach(({ label, count }) => {
-    const item = document.createElement("div");
-    item.className = "test-checklist-item";
-    const icon = count > 0 ? "\u2705" : "\u2B1C";
-    item.textContent = `${icon} ${label}: ${count}`;
-    checklist.appendChild(item);
-  });
-
-  section.appendChild(checklist);
-
-  if (status.userCount > 0 || status.imageCount > 0) {
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "btn-danger btn-sm test-delete-btn";
-    deleteBtn.textContent = "Clear Test Data";
-    deleteBtn.addEventListener("click", () => handleClearTestData(eventId));
-    section.appendChild(deleteBtn);
-  }
-
-  return section;
-}
-
-async function clearTestData(eventId) {
-  const usersQuery = query(
-    collection(db, "users"),
-    where("event_id", "==", eventId)
-  );
-  const imagesQuery = query(
-    collection(db, "images"),
-    where("event_id", "==", eventId)
-  );
-
-  const [usersSnap, imagesSnap] = await Promise.all([
-    getDocs(usersQuery),
-    getDocs(imagesQuery),
-  ]);
-
-  const allDocs = [...usersSnap.docs, ...imagesSnap.docs];
-  if (allDocs.length === 0) {
-    return { deletedUsers: 0, deletedImages: 0 };
-  }
-
-  const batchSize = 500;
-  for (let i = 0; i < allDocs.length; i += batchSize) {
-    const batch = writeBatch(db);
-    const chunk = allDocs.slice(i, i + batchSize);
-    chunk.forEach((docSnap) => batch.delete(docSnap.ref));
-    await batch.commit();
-  }
-
-  return { deletedUsers: usersSnap.size, deletedImages: imagesSnap.size };
-}
-
-async function handleClearTestData(eventId) {
-  const confirmed = await showConfirmModal(
-    "test-data",
-    "All test users and images for this event will be permanently deleted."
-  );
-  if (!confirmed) return;
-
-  const btn = document.querySelector(
-    `#test-section-${eventId} .test-delete-btn`
-  );
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Deleting...";
-  }
-
-  try {
-    const result = await clearTestData(eventId);
-    if (result.deletedUsers === 0 && result.deletedImages === 0) {
-      alert("No test data to delete.");
-    } else {
-      alert(
-        `Deleted ${result.deletedUsers} user(s) and ${result.deletedImages} image(s).`
-      );
-    }
-    const section = document.getElementById(`test-section-${eventId}`);
-    if (section) {
-      const newStatus = { userCount: 0, imageCount: 0, scoredCount: 0 };
-      section.replaceWith(renderTestSection(eventId, newStatus));
-    }
-  } catch (err) {
-    console.error("Failed to clear test data:", err);
-    alert("Failed to delete test data. Please try again.");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Clear Test Data";
-    }
-  }
-}
-
 // Event status management
 async function updateEventStatus(eventId, newStatus) {
   const confirmMsg = {
-    test: "Switch to test mode?\nGuests can join via QR code for testing.",
-    active:
-      "Activate this event?\n\nAll test data (users and images) will be permanently deleted.\nThis action cannot be undone.",
-    archived:
-      "Archive this event?\nGuests will no longer be able to join.",
+    draft: "Change status to Draft?",
+    active: "Activate this event?\nGuests will be able to join via QR code.",
+    archived: "Archive this event?\nGuests will no longer be able to join.",
   };
 
   const confirmed = await showConfirmModal(
@@ -1603,10 +1457,6 @@ async function updateEventStatus(eventId, newStatus) {
   if (!confirmed) return;
 
   try {
-    if (newStatus === "active") {
-      await clearTestData(eventId);
-    }
-
     await updateDoc(doc(db, "events", eventId), { status: newStatus });
     await loadEvents();
     await loadStats();
@@ -1899,11 +1749,6 @@ document.getElementById("copyDeepLinkBtn").addEventListener("click", () => {
   copyToClipboard(url);
 });
 
-document.getElementById("copyRankingBtn").addEventListener("click", () => {
-  const url = document.getElementById("qrRankingUrl").textContent;
-  copyToClipboard(url);
-});
-
 document.getElementById("confirmDelete").addEventListener("click", () => {
   if (pendingDeleteAction) {
     pendingDeleteAction(true);
@@ -1915,6 +1760,15 @@ document.getElementById("cancelDelete").addEventListener("click", () => {
   if (pendingDeleteAction) {
     pendingDeleteAction(false);
     hideConfirmModal();
+  }
+});
+
+// Close status dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".status-dropdown-wrapper")) {
+    document.querySelectorAll(".status-dropdown").forEach((d) => {
+      d.classList.add("hidden");
+    });
   }
 });
 
