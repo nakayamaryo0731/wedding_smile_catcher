@@ -57,11 +57,13 @@ service cloud.firestore {
     // Images collection
     // Public read for ranking display
     // Admins can write; event owners can update (for soft delete)
+    // Unauthenticated users can only set deleted_at (for ranking page soft delete)
     match /images/{imageId} {
       allow read: if true;
       allow create: if false;
-      allow update: if request.auth != null &&
-        (isAdmin() || isEventOwner(resource.data.event_id));
+      allow update: if (request.auth != null &&
+        (isAdmin() || isEventOwner(resource.data.event_id)))
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted_at']);
       allow delete: if request.auth != null && isAdmin();
     }
   }

@@ -299,11 +299,48 @@ describe("Images Collection", () => {
     );
   });
 
-  test("non-owner cannot update images", async () => {
-    const db = testEnv.authenticatedContext(OTHER_UID).firestore();
+  test("unauthenticated user can soft delete images (deleted_at only)", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "images", "image-123"), {
+        deleted_at: new Date(),
+      })
+    );
+  });
+
+  test("unauthenticated user cannot update other fields", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      updateDoc(doc(db, "images", "image-123"), {
+        status: "deleted",
+      })
+    );
+  });
+
+  test("unauthenticated user cannot update deleted_at with other fields", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
     await assertFails(
       updateDoc(doc(db, "images", "image-123"), {
         deleted_at: new Date(),
+        status: "deleted",
+      })
+    );
+  });
+
+  test("non-owner authenticated user can soft delete images (deleted_at only)", async () => {
+    const db = testEnv.authenticatedContext(OTHER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "images", "image-123"), {
+        deleted_at: new Date(),
+      })
+    );
+  });
+
+  test("non-owner authenticated user cannot update other fields", async () => {
+    const db = testEnv.authenticatedContext(OTHER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(db, "images", "image-123"), {
+        status: "deleted",
       })
     );
   });

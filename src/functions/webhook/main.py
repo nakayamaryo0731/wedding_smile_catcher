@@ -311,7 +311,7 @@ def _join_event_transaction(transaction, user_ref, user_id: str, event_id: str, 
         status = data.get("join_status")
         if status == "pending_name":
             return TextMessage(
-                text=f"「{event_name}」に参加登録中です。\n\nお名前（フルネーム）をテキストで送信してください。\n例: 山田太郎"
+                text=f"「{event_name}」に参加登録中です。\n\nお名前をテキストで送信してください。\n例: 山田太郎"
             )
         if status == "left":
             name = data.get("name")
@@ -324,9 +324,7 @@ def _join_event_transaction(transaction, user_ref, user_id: str, event_id: str, 
             transaction.update(user_ref, {"join_status": "pending_name"})
             logger.info(f"User {user_id} reactivated in event {event_id} (pending name)")
             return TextMessage(
-                text=f"「{event_name}」に再参加しました！\n\n"
-                "お名前（フルネーム）をテキストで送信してください。\n"
-                "例: 山田太郎"
+                text=f"「{event_name}」に再参加しました！\n\nお名前をテキストで送信してください。\n例: 山田太郎"
             )
         # "registered" or any other status
         name = data.get("name", "ゲスト")
@@ -346,9 +344,7 @@ def _join_event_transaction(transaction, user_ref, user_id: str, event_id: str, 
     )
     logger.info(f"User {user_id} joined event {event_id} (pending name)")
     return TextMessage(
-        text=f"「{event_name}」への参加を受け付けました！\n\n"
-        "お名前（フルネーム）をテキストで送信してください。\n"
-        "例: 山田太郎"
+        text=f"「{event_name}」への参加を受け付けました！\n\nお名前をテキストで送信してください。\n例: 山田太郎"
     )
 
 

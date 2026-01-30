@@ -160,6 +160,9 @@ async function loadImages(forceRefresh = false) {
           ? new Date(d.upload_timestamp.seconds * 1000)
           : null,
         ai_comment: d.ai_comment || d.comment || "",
+        deleted_at: d.deleted_at?.seconds
+          ? new Date(d.deleted_at.seconds * 1000)
+          : null,
       };
     });
 
@@ -208,6 +211,19 @@ async function loadImages(forceRefresh = false) {
               cell.getValue() != null ? Math.round(cell.getValue()) : "N/A",
           },
           { title: "Status", field: "status", width: 100 },
+          {
+            title: "Deleted",
+            field: "deleted_at",
+            width: 100,
+            hozAlign: "center",
+            formatter: (cell) => {
+              const val = cell.getValue();
+              if (val) {
+                return '<span class="status-badge status-archived">Deleted</span>';
+              }
+              return "";
+            },
+          },
           {
             title: "Uploaded",
             field: "upload_timestamp",
@@ -352,6 +368,9 @@ async function loadUsers(forceRefresh = false) {
         created_at: d.created_at?.seconds
           ? new Date(d.created_at.seconds * 1000)
           : null,
+        deleted_at: d.deleted_at?.seconds
+          ? new Date(d.deleted_at.seconds * 1000)
+          : null,
       };
     });
 
@@ -404,6 +423,19 @@ async function loadUsers(forceRefresh = false) {
             formatter: (cell) => {
               const val = cell.getValue();
               return val ? val.toLocaleString("ja-JP") : "N/A";
+            },
+          },
+          {
+            title: "Deleted",
+            field: "deleted_at",
+            width: 100,
+            hozAlign: "center",
+            formatter: (cell) => {
+              const val = cell.getValue();
+              if (val) {
+                return '<span class="status-badge status-archived">Deleted</span>';
+              }
+              return "";
             },
           },
         ],
@@ -704,10 +736,23 @@ function selectAllItems(type) {
 function showConfirmModal(type, countOrMessage) {
   const modal = document.getElementById("confirmModal");
   const message = document.getElementById("confirmMessage");
+  const title = document.getElementById("confirmTitle");
+  const confirmBtn = document.getElementById("confirmDelete");
 
-  if (type === "test-data" || type === "status-change") {
+  if (type === "status-change") {
+    title.textContent = "Confirm Status Change";
+    confirmBtn.textContent = "Confirm";
+    confirmBtn.className = "btn-primary";
+    message.innerHTML = countOrMessage.replace(/\n/g, "<br>");
+  } else if (type === "test-data") {
+    title.textContent = "Confirm Deletion";
+    confirmBtn.textContent = "Delete";
+    confirmBtn.className = "btn-danger";
     message.innerHTML = countOrMessage.replace(/\n/g, "<br>");
   } else {
+    title.textContent = "Confirm Deletion";
+    confirmBtn.textContent = "Delete";
+    confirmBtn.className = "btn-danger";
     message.innerHTML = `Are you sure you want to delete <strong>${countOrMessage}</strong> ${type}?<br><br>This action cannot be undone.`;
   }
 
@@ -1633,9 +1678,6 @@ document
       // Reload events list
       await loadEvents();
       await loadStats();
-
-      // Show QR modal for the newly created event
-      showQRModal(docRef.id, eventName, eventCode);
     } catch (error) {
       console.error("Error creating event:", error);
       alert("Failed to create event: " + error.message);

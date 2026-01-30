@@ -1583,9 +1583,7 @@ function showConfirmModal(message) {
 async function softDeleteEventData() {
   const eventId = getCurrentEventId();
 
-  const confirmed = await showConfirmModal(
-    "投稿画像を全て削除しますか？"
-  );
+  const confirmed = await showConfirmModal("投稿画像を全て削除しますか？");
 
   if (!confirmed) return;
 
@@ -1597,27 +1595,37 @@ async function softDeleteEventData() {
   }
 
   try {
-    // Get all images for this event
+    // Get all images for this event that are not already deleted
     const imagesQuery = query(
       collection(window.db, "images"),
       where("event_id", "==", eventId)
     );
     const imagesSnap = await getDocs(imagesQuery);
 
+    // Filter out already deleted images
+    const imagesToDelete = imagesSnap.docs.filter(
+      (doc) => !doc.data().deleted_at
+    );
+
+    if (imagesToDelete.length === 0) {
+      alert("削除する画像がありません");
+      return;
+    }
+
     const now = serverTimestamp();
     const batchSize = 500;
 
-    // Soft delete images only
-    for (let i = 0; i < imagesSnap.docs.length; i += batchSize) {
+    // Soft delete images in batches
+    for (let i = 0; i < imagesToDelete.length; i += batchSize) {
       const batch = writeBatch(window.db);
-      const chunk = imagesSnap.docs.slice(i, i + batchSize);
+      const chunk = imagesToDelete.slice(i, i + batchSize);
       chunk.forEach((docSnap) => {
         batch.update(docSnap.ref, { deleted_at: now });
       });
       await batch.commit();
     }
 
-    alert(`${imagesSnap.docs.length}枚の画像データを削除しました`);
+    alert(`${imagesToDelete.length}枚の画像データを削除しました`);
 
     // Refresh ranking display
     fetchRecentRankings();

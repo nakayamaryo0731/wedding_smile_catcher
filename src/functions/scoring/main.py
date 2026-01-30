@@ -1141,7 +1141,7 @@ def send_result_to_line(user_id: str, scores: dict[str, Any]):
         message_text = (
             f"📸 スコア: {scores['total_score']}点\n\n"
             f"⚠️ この写真は、以前の投稿と似ています。\n"
-            f"連写ではなく、違う構図で撮影してみましょう！\n\n"
+            f"違う構図で撮影してみましょう！\n\n"
             f"😊 笑顔スコア: {scores['smile_score']}点（{face_count_display}）\n"
             f"🤖 AIテーマ評価: {scores['ai_score']}点"
         )
