@@ -7,6 +7,8 @@ on:
       - 'src/**'
       - '.github/workflows/**'
       - 'Makefile'
+      - 'firestore.rules'
+      - 'tests/firestore-rules/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -23,6 +25,7 @@ jobs:
     outputs:
       terraform: ${{ steps.filter.outputs.terraform }}
       python: ${{ steps.filter.outputs.python }}
+      firestore-rules: ${{ steps.filter.outputs.firestore-rules }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
@@ -34,6 +37,9 @@ jobs:
               - '.github/workflows/ci.yml'
             python:
               - 'src/**'
+            firestore-rules:
+              - 'firestore.rules'
+              - 'tests/firestore-rules/**'
 
   terraform:
     runs-on: ubuntu-latest
@@ -151,3 +157,30 @@ jobs:
 
       - name: Lint Python code
         run: ruff check src/
+
+  firestore-rules:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.firestore-rules == 'true'
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tests/firestore-rules/package-lock.json
+
+      - name: Install dependencies
+        working-directory: tests/firestore-rules
+        run: npm ci || npm install
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Run Firestore Rules Tests
+        working-directory: tests/firestore-rules
+        run: firebase emulators:exec --only firestore 'npm test'

@@ -45,7 +45,7 @@ ref: `docs/planning/security-requirements.md`
 | 2.3 | 管理画面: ログイン/ログアウトUI実装 | ✅ | `admin.html` 更新済 |
 | 2.4 | 管理画面: 自分のイベントのみ表示するフィルタ | ✅ | `account_id == currentUser.uid` フィルタ実装済 |
 | 2.5 | Firestore Security Rules 更新 | ✅ | マルチテナント対応ルール実装済 |
-| 2.6 | Firestore Security Rules のテスト | 🔲 | |
+| 2.6 | Firestore Security Rules のテスト | ✅ | tests/firestore-rules/ に Jest テスト追加 |
 
 ---
 
@@ -103,7 +103,7 @@ ref: `docs/planning/terms-of-service.md`
 | 6.3 | 特定商取引法に基づく表記ページを実装 | ✅ | `/commerce` タブUIで実装 |
 | 6.4 | アカウント作成時の同意フロー実装 | ✅ | チェックボックス + `terms_accepted_at` 記録 |
 | 6.5 | 法律専門家によるレビュー | 🔲 | リリース前に推奨 |
-| 6.6 | 連絡先・住所など具体的情報の記入 | 🔲 | |
+| 6.6 | 連絡先・住所など具体的情報の記入 | ✅ | legal.html, usage-guide.md 更新済み |
 | 6.7 | Google / LINE のデータ処理規約との整合性確認 | ✅ | プライバシーポリシーに反映済み |
 | 6.8 | LINE Bot初回メッセージで写真処理の同意確認ステップ実装 | ✅ | 登録完了時に同意メッセージ表示。LINE User Data Policy 準拠 |
 | 6.9 | LINE Botリッチメニューにプライバシーポリシーリンク設置 | ✅ | `scripts/setup_rich_menu.py` で設定 |

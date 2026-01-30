@@ -381,7 +381,7 @@ def handle_join_event(event_code: str, user_id: str, reply_token: str):
     events_ref = db.collection("events")
     q = (
         events_ref.where(filter=firestore.FieldFilter("event_code", "==", event_code))
-        .where(filter=firestore.FieldFilter("status", "in", ["active", "test"]))
+        .where(filter=firestore.FieldFilter("status", "==", "active"))
         .limit(1)
     )
     event_docs = list(q.stream())
@@ -579,7 +579,7 @@ def handle_image_message(event: MessageEvent):
         return
 
     event_status = event_doc.to_dict().get("status")
-    if event_status not in ("active", "test"):
+    if event_status != "active":
         logger.info(f"Image rejected: event {event_id} status is {event_status}")
         message = TextMessage(text="このイベントは終了しました。\n\n写真の投稿は受け付けていません。")
         messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
