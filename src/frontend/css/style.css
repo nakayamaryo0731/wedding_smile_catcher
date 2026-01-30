@@ -147,6 +147,7 @@ body {
 .ranking-content {
     animation: fadeIn 0.5s ease-out;
     margin-top: 0.3rem;
+    margin-right: 30px;
     opacity: 1;
     transition: opacity 3s ease-in-out;
 }
@@ -183,6 +184,50 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--white);
+}
+
+/* Fixed QR Code (Bottom Right) */
+.fixed-qr-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    z-index: 100;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fixed-qr-container.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+}
+
+.fixed-qr-code {
+    width: 140px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fixed-qr-code img,
+.fixed-qr-code canvas {
+    width: 140px !important;
+    height: 140px !important;
+}
+
+.fixed-qr-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a472a;
+    letter-spacing: 0.05em;
 }
 
 /* Event Ended Banner */
@@ -1367,14 +1412,18 @@ body {
    ========================= */
 
 .settings-btn {
-    background: rgba(255, 255, 255, 0.15) !important;
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    font-size: 1.2rem !important;
-    padding: 0.5rem 0.75rem !important;
+    background: transparent !important;
+    border: none !important;
+    font-size: 1.4rem !important;
+    padding: 0.5rem !important;
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .settings-btn:hover {
-    background: rgba(255, 255, 255, 0.25) !important;
+    background: transparent !important;
+    opacity: 1;
+    transform: rotate(30deg);
 }
 
 /* Settings Modal Overlay */
@@ -1400,15 +1449,19 @@ body {
 
 /* Settings Modal Content */
 .settings-modal-content {
-    background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%);
+    --settings-text: #292524;
+    --settings-text-muted: #78716c;
+    --settings-border: #d6d3d1;
+    position: relative;
+    background: linear-gradient(135deg, #faf9f7 0%, #f5f3ef 100%);
     border-radius: 16px;
     padding: 2rem;
     max-width: 500px;
     width: 90%;
     max-height: 85vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e7e5e4;
 }
 
 .login-modal-content {
@@ -1433,14 +1486,17 @@ body {
 .settings-modal-header h2 {
     font-family: 'Playfair Display', serif;
     font-size: 1.5rem;
-    color: var(--white);
+    color: var(--settings-text, var(--white));
     margin: 0;
 }
 
 .settings-close-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
     background: transparent;
     border: none;
-    color: var(--white);
+    color: var(--settings-text, var(--white));
     font-size: 1.8rem;
     cursor: pointer;
     opacity: 0.7;
@@ -1597,9 +1653,9 @@ body {
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.15);
-    color: var(--white);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: #f5f5f4;
+    color: #292524;
+    border: 1px solid #d6d3d1;
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
     font-size: 1rem;
@@ -1608,7 +1664,7 @@ body {
 }
 
 .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: #e7e5e4;
 }
 
 .btn-danger {
@@ -1665,12 +1721,12 @@ body {
 
 /* Confirm Modal */
 .confirm-modal-content h2 {
-    color: var(--white);
+    color: var(--settings-text, #292524);
     margin: 0 0 1rem 0;
 }
 
 .confirm-modal-content p {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--settings-text, #292524);
     margin: 0 0 1.5rem 0;
     line-height: 1.5;
 }
@@ -1687,6 +1743,118 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 1rem;
     margin-top: 0.5rem;
+}
+
+/* ================================
+   Compact Settings Modal
+   ================================ */
+/* Settings Header */
+.settings-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--settings-border, rgba(255, 255, 255, 0.15));
+}
+
+.settings-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--settings-text, var(--white));
+    margin: 0 0 0.5rem 0;
+}
+
+.settings-date {
+    font-size: 1rem;
+    color: var(--settings-text-muted, rgba(255, 255, 255, 0.7));
+    margin: 0;
+}
+
+/* Settings Actions */
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.settings-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-align: left;
+}
+
+.settings-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.settings-action-btn:active {
+    transform: translateY(0);
+}
+
+.settings-action-btn .action-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.settings-action-btn .action-text {
+    font-size: 1rem;
+    font-weight: 600;
+    display: block;
+}
+
+.settings-action-btn .action-desc {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    display: block;
+    margin-top: 0.15rem;
+}
+
+.settings-action-btn.primary {
+    background: #f5f5f4;
+    border: 1px solid #d6d3d1;
+    color: #292524;
+}
+
+.settings-action-btn.secondary {
+    background: #f5f5f4;
+    border: 1px solid #d6d3d1;
+    color: #292524;
+}
+
+.settings-action-btn.danger {
+    background: #f5f5f4;
+    border: 1px solid #d6d3d1;
+    color: #292524;
+}
+
+.settings-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Legacy compact styles - keep for backwards compatibility */
+.action-btn.secondary {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+}
+
+.action-btn.danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Mobile responsive for settings */

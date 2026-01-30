@@ -174,62 +174,33 @@
             <p>Loading rankings...</p>
         </div>
 
+        <!-- Fixed QR Code (Bottom Right) -->
+        <div id="fixed-qr-container" class="fixed-qr-container">
+            <div id="main-qr-code" class="fixed-qr-code"></div>
+            <span class="fixed-qr-label">参加はこちら</span>
+        </div>
+
         <!-- Settings Panel Modal -->
         <div id="settings-panel" class="settings-modal hidden">
             <div class="settings-modal-content">
-                <div class="settings-modal-header">
-                    <h2 id="settings-event-name">イベント設定</h2>
-                    <button class="settings-close-btn" id="close-settings-panel">&times;</button>
-                </div>
+                <button class="settings-close-btn" id="close-settings-panel">&times;</button>
 
-                <!-- Event Info Section -->
-                <div class="settings-section">
-                    <h3>イベント情報</h3>
-                    <div class="event-info-grid">
-                        <div class="info-item">
-                            <span class="info-label">イベント名</span>
-                            <span id="settings-event-name-value" class="info-value">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">開催日</span>
-                            <span id="settings-event-date" class="info-value">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">ステータス</span>
-                            <span id="settings-event-status" class="info-value status-badge">-</span>
-                        </div>
-                    </div>
-                </div>
+                <!-- Actions -->
+                <div class="settings-actions">
+                    <button class="settings-action-btn primary" id="download-images-btn">
+                        <span class="action-icon">📥</span>
+                        <span class="action-text">投稿画像を一括ダウンロード</span>
+                    </button>
 
-                <!-- QR Code Section -->
-                <div class="settings-section">
-                    <h3>QRコード</h3>
-                    <p class="section-description">ゲストに共有するQRコードです</p>
-                    <div class="qr-container">
-                        <div id="settings-qr-code"></div>
-                    </div>
-                    <div class="qr-urls">
-                        <div class="url-item">
-                            <span class="url-label">LINE参加URL:</span>
-                            <code id="settings-deep-link-url" class="url-value"></code>
-                            <button class="btn-sm btn-secondary" id="copy-deep-link">コピー</button>
-                        </div>
-                    </div>
-                    <button class="btn-secondary" id="download-qr-btn">QRコードをダウンロード</button>
-                </div>
+                    <button class="settings-action-btn secondary" id="download-qr-btn">
+                        <span class="action-icon">🖨️</span>
+                        <span class="action-text">参加用QRコードをダウンロード</span>
+                    </button>
 
-                <!-- Data Management Section -->
-                <div class="settings-section">
-                    <h3>データ管理</h3>
-                    <div class="settings-actions">
-                        <button class="btn-primary" id="download-images-btn">
-                            📥 画像をダウンロード
-                        </button>
-                        <button class="btn-danger" id="delete-data-btn">
-                            🗑️ テストデータを削除
-                        </button>
-                    </div>
-                    <p class="warning-text">※ データ削除は復元可能です（運営者にお問い合わせください）</p>
+                    <button class="settings-action-btn danger" id="delete-data-btn">
+                        <span class="action-icon">🗑️</span>
+                        <span class="action-text">データを削除</span>
+                    </button>
                 </div>
 
             </div>
