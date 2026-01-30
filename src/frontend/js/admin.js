@@ -654,6 +654,28 @@ function createEventCard(docId, data) {
   );
   actions.appendChild(rankBtn);
 
+  // Notification button (only for archived events)
+  if (status === "archived") {
+    const notifyBtn = document.createElement("button");
+    const notificationSentAt = data.notification_sent_at;
+
+    if (notificationSentAt) {
+      // Already sent - show status
+      notifyBtn.className = "btn-secondary btn-sm";
+      notifyBtn.textContent = "📬 送信済み";
+      notifyBtn.disabled = true;
+      notifyBtn.title = `送信日時: ${notificationSentAt.toDate().toLocaleString("ja-JP")}\n成功: ${data.notification_sent_count || 0}件 / 失敗: ${data.notification_failed_count || 0}件`;
+    } else {
+      // Not sent yet - show send button
+      notifyBtn.className = "btn-primary btn-sm";
+      notifyBtn.textContent = "📣 ゲストへ通知";
+      notifyBtn.addEventListener("click", () =>
+        sendPostEventNotification(docId, eventName)
+      );
+    }
+    actions.appendChild(notifyBtn);
+  }
+
   card.appendChild(checkbox);
   card.appendChild(info);
   card.appendChild(actions);
@@ -1508,6 +1530,42 @@ async function updateEventStatus(eventId, newStatus) {
   } catch (error) {
     console.error("Error updating event status:", error);
     alert("Failed to update status: " + error.message);
+  }
+}
+
+// Post-event notification
+async function sendPostEventNotification(eventId, eventName) {
+  const confirmMsg = `「${eventName}」のゲスト全員にバイラルメッセージを送信しますか？\n\n※一度送信すると取り消しできません`;
+
+  const confirmed = await showConfirmModal("status-change", confirmMsg);
+  if (!confirmed) return;
+
+  try {
+    const notificationUrl =
+      window.NOTIFICATION_FUNCTION_URL ||
+      `https://asia-northeast1-${window.FIREBASE_CONFIG?.projectId || "wedding-smile-catcher"}.cloudfunctions.net/notification`;
+
+    const response = await fetch(notificationUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ event_id: eventId }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Unknown error");
+    }
+
+    alert(
+      `通知送信完了!\n\n成功: ${result.sent_count}件\n失敗: ${result.failed_count}件`
+    );
+    await loadEvents();
+  } catch (error) {
+    console.error("Error sending notification:", error);
+    alert("通知送信に失敗しました: " + error.message);
   }
 }
 

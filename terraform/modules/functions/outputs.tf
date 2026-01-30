@@ -17,3 +17,13 @@ output "scoring_function_name" {
   description = "Name of the scoring Cloud Function"
   value       = google_cloudfunctions2_function.scoring.name
 }
+
+output "notification_function_url" {
+  description = "URL of the notification Cloud Function"
+  value       = google_cloudfunctions2_function.notification.service_config[0].uri
+}
+
+output "notification_function_name" {
+  description = "Name of the notification Cloud Function"
+  value       = google_cloudfunctions2_function.notification.name
+}
