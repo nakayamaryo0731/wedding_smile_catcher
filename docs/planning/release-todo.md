@@ -3,7 +3,7 @@
 各ドキュメントから集約したリリースまでに必要なタスク。
 優先度・フェーズごとに整理する。
 
-最終更新: 2026-01-28
+最終更新: 2026-01-30
 
 ---
 
@@ -116,8 +116,8 @@ ref: `docs/planning/security-requirements.md`, `docs/planning/mvp-features.md`
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 7.1 | Cloud Monitoring ダッシュボード設定 | 🔲 | エラー率、レイテンシ |
-| 7.2 | アラート通知設定（メール） | 🔲 | Cloud Functions エラー、Firestore異常 |
+| 7.1 | Cloud Monitoring アラート設定 | ✅ | Terraform module。エラー率>5%、レイテンシp95閾値超過でメール通知 |
+| 7.2 | アラート通知設定（メール） | ✅ | `terraform/modules/monitoring/` - webhook/scoringのエラー・レイテンシ監視 |
 | 7.3 | データ自動削除の仕組み（イベント後30日） | 🔲 | Cloud Scheduler + Cloud Functions |
 | 7.4 | 管理画面から画像一括ダウンロード機能のUI実装 | ✅ | Imagesタブから選択してZIPダウンロード |
 
