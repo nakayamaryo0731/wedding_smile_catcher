@@ -49,6 +49,13 @@ variable "alert_email" {
   default     = "nakayamaryo0731@gmail.com"
 }
 
+# Data Retention Configuration
+variable "data_retention_days" {
+  description = "Number of days to retain Cloud Storage images before auto-deletion (0 = disabled)"
+  type        = number
+  default     = 3 # 3 days for testing, change to 30 for production
+}
+
 # Labels (for resource organization)
 variable "labels" {
   description = "Common labels for all resources"
