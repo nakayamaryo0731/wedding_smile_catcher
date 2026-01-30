@@ -13,10 +13,10 @@ resource "google_project_service" "required_apis" {
     "aiplatform.googleapis.com",
     "cloudfunctions.googleapis.com",
     "cloudbuild.googleapis.com",
+    "monitoring.googleapis.com",
     # Uncomment as modules are implemented:
     # "run.googleapis.com",
     # "logging.googleapis.com",
-    # "monitoring.googleapis.com",
   ])
 
   project = var.project_id
@@ -117,6 +117,22 @@ module "functions" {
     module.iam,
     module.secret_manager,
     module.storage
+  ]
+}
+
+# Cloud Monitoring Module - Alerts for Cloud Functions
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project_id  = var.project_id
+  alert_email = var.alert_email
+
+  webhook_function_name = "webhook"
+  scoring_function_name = "scoring"
+
+  depends_on = [
+    google_project_service.required_apis,
+    module.functions
   ]
 }
 

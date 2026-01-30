@@ -42,6 +42,13 @@ variable "line_channel_access_token" {
   default     = "placeholder-managed-externally"
 }
 
+# Monitoring Configuration
+variable "alert_email" {
+  description = "Email address for monitoring alerts"
+  type        = string
+  default     = "nakayamaryo0731@gmail.com"
+}
+
 # Labels (for resource organization)
 variable "labels" {
   description = "Common labels for all resources"
