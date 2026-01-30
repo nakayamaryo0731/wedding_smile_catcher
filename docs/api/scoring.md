@@ -6,17 +6,13 @@ Scoring APIは、アップロードされた画像を分析し、スコアを算
 
 ## トリガー
 
-### HTTP Trigger（推奨）
+### HTTP Trigger
 
 Webhook FunctionからHTTPリクエストで起動
 
 ```
 POST /scoring
 ```
-
-### Pub/Sub Trigger（代替案）
-
-Cloud Storageイベントまたはメッセージキューからトリガー
 
 ## リクエスト
 
@@ -31,14 +27,14 @@ Cloud Storageイベントまたはメッセージキューからトリガー
 ```json
 {
   "image_id": "uuid-string",
-  "user_id": "user_001"
+  "user_id": "U1234567890abcdef"
 }
 ```
 
 | フィールド | 型 | 必須 | 説明 |
 |----------|------|------|------|
 | `image_id` | string | ✓ | 画像ドキュメントID |
-| `user_id` | string | ✓ | ユーザーID |
+| `user_id` | string | ✓ | LINE User ID |
 
 ## レスポンス
 
@@ -71,466 +67,237 @@ Cloud Storageイベントまたはメッセージキューからトリガー
 
 ```mermaid
 graph TD
-    A[Scoring Function起動] --> B[Cloud Storageから画像取得]
-    B --> C{画像取得成功?}
-    C -->|No| D[エラーログ記録]
-    C -->|Yes| E[並列処理開始]
+    A[Scoring Function起動] --> B[Firestoreから画像情報取得]
+    B --> C[Cloud Storageから画像取得]
+    C --> D{画像取得成功?}
+    D -->|No| E[エラーログ記録]
+    D -->|Yes| F[並列処理開始]
 
-    E --> F[Vision API<br/>笑顔検出]
-    E --> G[Vertex AI<br/>テーマ評価]
-    E --> H[Firestore<br/>既存ハッシュ取得]
+    F --> G[Vision API<br/>笑顔検出]
+    F --> H[Vertex AI<br/>テーマ評価]
+    F --> I[Average Hash計算]
+    F --> J[既存ハッシュ取得<br/>同一ユーザー]
 
-    F --> I{顔検出成功?}
-    I -->|No| J[スコア0]
-    I -->|Yes| K[笑顔スコア算出]
+    G --> K{顔検出成功?}
+    K -->|No| L[スコア0 - エラー]
+    K -->|Yes| M[笑顔スコア算出]
 
-    G --> L[AI評価スコア取得]
-    H --> M[Average Hash計算]
-    M --> N[類似判定]
+    H --> N[AI評価スコア取得]
+    I --> O[類似判定]
+    J --> O
 
-    K --> O[スコア統合]
-    L --> O
-    N --> P{類似?}
-    P -->|Yes| Q[ペナルティ = 1/3]
-    P -->|No| R[ペナルティ = 1]
+    M --> P[スコア統合]
+    N --> P
+    O --> Q{類似?}
+    Q -->|Yes| R[ペナルティ = 1/3]
+    Q -->|No| S[ペナルティ = 1]
 
-    Q --> S[総合スコア計算]
-    R --> S
+    R --> T[総合スコア計算]
+    S --> T
 
-    S --> T[Firestoreに保存]
-    T --> U[ユーザー統計更新]
-    U --> V[ランキング更新]
-    V --> W[LINE Botに結果送信]
-    W --> X[完了]
+    T --> U[署名付きURL生成/更新]
+    U --> V[Firestoreに保存]
+    V --> W[ユーザー統計更新]
+    W --> X[LINE Botに結果送信]
+    X --> Y[完了]
 
-    J --> Y[エラーメッセージ送信]
-    D --> Y
-    Y --> X
+    L --> Z[エラーメッセージ送信]
+    E --> Z
+    Z --> Y
 ```
+
+## スコアリングアルゴリズム
+
+### 総合スコア計算式
+
+```
+Total Score = (Smile Score × AI Score ÷ 100) × Similarity Penalty
+```
+
+### 1. 笑顔スコア（Vision API）
+
+Cloud Vision APIで顔検出を行い、各顔の`joy_likelihood`を数値化して合計。
+
+#### joy_likelihoodマッピング
+
+| Likelihood | スコア |
+|------------|--------|
+| VERY_LIKELY | 95 |
+| LIKELY | 75 |
+| POSSIBLE | 50 |
+| UNLIKELY | 25 |
+| VERY_UNLIKELY | 5 |
+| UNKNOWN | 0 |
+
+#### 顔サイズ係数
+
+小さい顔（遠景）には係数をかけて調整:
+
+| 顔の面積比率 | 係数 |
+|-------------|------|
+| 5%以上 | 1.0 |
+| 2-5% | 0.7-1.0（補間） |
+| 1-2% | 0.4-0.7（補間） |
+| 1%未満 | 0.4 |
+
+### 2. AI評価スコア（Vertex AI Gemini）
+
+`gemini-2.5-flash`モデルで画像を評価し、0-100点のスコアとコメントを生成。
+
+#### 評価プロンプト
+
+```
+あなたは結婚式写真の専門家です。提供された写真を分析し、
+以下の基準に従って評価を行ってください：
+
+## 評価基準（100点満点）
+1. 自然さ（30点）- 作り笑いではなく、自然な表情か
+2. 幸福度（40点）- 純粋な喜びが表現されているか
+3. 周囲との調和（30点）- 周りの人々と笑顔が調和しているか
+
+## 出力形式
+JSON形式: {"score": 0-100, "comment": "評価コメント"}
+```
+
+### 3. 類似判定（Average Hash）
+
+同一ユーザーの過去画像とAverage Hashで比較し、類似画像を検出。
+
+- ハッシュサイズ: 8x8（64ビット）
+- 閾値: ハミング距離 ≤ 8
+- ペナルティ: 類似検出時は総合スコア × 1/3
+
+**重要**: 類似判定は同一ユーザー内のみで行う（他ユーザーの画像とは比較しない）
 
 ## 実装詳細
 
-### 1. 画像取得
+### 並列処理
+
+Vision API、Vertex AI、ハッシュ計算をThreadPoolExecutorで並列実行:
 
 ```python
-from google.cloud import storage
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-async def get_image_from_storage(storage_path: str) -> bytes:
-    """
-    Get image from Cloud Storage
+def score_image(image_id: str, user_id: str):
+    # 1. 画像取得
+    image_doc = db.collection("images").document(image_id).get()
+    storage_path = image_doc.get("storage_path")
+    image_bytes = download_image_from_storage(storage_path)
 
-    Args:
-        storage_path: Path in Cloud Storage
-
-    Returns:
-        bytes: Image binary data
-
-    Raises:
-        Exception: If image not found
-    """
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(os.environ['STORAGE_BUCKET'])
-    blob = bucket.blob(storage_path)
-
-    if not blob.exists():
-        raise Exception(f"Image not found: {storage_path}")
-
-    return blob.download_as_bytes()
-```
-
-### 2. 笑顔スコア算出
-
-```python
-from google.cloud import vision
-
-async def calculate_smile_score(image_bytes: bytes) -> dict:
-    """
-    Calculate smile score using Cloud Vision API
-
-    Args:
-        image_bytes: Image binary data
-
-    Returns:
-        dict: {
-            'smile_score': float,
-            'face_count': int,
-            'faces': list
+    # 2. 並列処理
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(generate_scores_with_vision_api, image_bytes): "vision",
+            executor.submit(evaluate_theme, image_bytes): "gemini",
+            executor.submit(calculate_average_hash, image_bytes): "hash",
+            executor.submit(get_existing_hashes_for_user, user_id, event_id): "existing_hashes",
         }
 
-    Raises:
-        Exception: If API call fails
-    """
-    client = vision.ImageAnnotatorClient()
-    image = vision.Image(content=image_bytes)
+        results = {}
+        for future in as_completed(futures):
+            key = futures[future]
+            results[key] = future.result()
 
-    response = client.face_detection(image=image)
+    # 3. 類似判定
+    is_similar = is_similar_image(results["hash"], results["existing_hashes"])
 
-    if response.error.message:
-        raise Exception(f"Vision API error: {response.error.message}")
-
-    faces = response.face_annotations
-    face_count = len(faces)
-
-    if face_count == 0:
-        return {
-            'smile_score': 0,
-            'face_count': 0,
-            'faces': []
-        }
-
-    # Likelihood mapping
-    likelihood_scores = {
-        vision.Likelihood.VERY_LIKELY: 95,
-        vision.Likelihood.LIKELY: 75,
-        vision.Likelihood.POSSIBLE: 50,
-        vision.Likelihood.UNLIKELY: 25,
-        vision.Likelihood.VERY_UNLIKELY: 5,
-        vision.Likelihood.UNKNOWN: 0
-    }
-
-    total_smile_score = 0
-    face_details = []
-
-    for face in faces:
-        joy_score = likelihood_scores.get(face.joy_likelihood, 0)
-        total_smile_score += joy_score
-
-        face_details.append({
-            'joy_likelihood': face.joy_likelihood.name,
-            'joy_score': joy_score,
-            'confidence': face.detection_confidence
-        })
-
-    return {
-        'smile_score': total_smile_score,
-        'face_count': face_count,
-        'faces': face_details
-    }
-```
-
-### 3. AI評価
-
-```python
-from vertexai.generative_models import GenerativeModel, Part, Image
-
-THEME_EVALUATION_PROMPT = """
-あなたは結婚式写真の専門家です。提供された写真を分析し、以下の基準に従って笑顔の評価を行ってください：
-
-## 分析対象
-- 新郎新婦を中心に、写真に写っている全ての人物の表情を評価
-- グループショットの場合は、全体的な雰囲気も考慮
-
-## 評価基準（100点満点）
-1. 自然さ（30点）
-   - 作り笑いではなく、自然な表情かどうか
-   - 緊張が感じられず、リラックスしているか
-
-2. 幸福度（40点）
-   - 純粋な喜びが表現されているか
-   - 目が笑っているか
-
-3. 周囲との調和（30点）
-   - 周りの人々と笑顔が調和しているか
-   - 場面に相応しい表情の大きさか
-
-## 出力
-JSON形式でscoreとcommentのキーで返却する。JSONのみを出力すること。
-
-例:
-{
-  "score": 85,
-  "comment": "新郎新婦の目元から溢れる自然な喜びが印象的で、周囲の参列者との一体感も素晴らしい"
-}
-"""
-
-async def evaluate_theme(image_bytes: bytes) -> dict:
-    """
-    Evaluate image theme using Vertex AI
-
-    Args:
-        image_bytes: Image binary data
-
-    Returns:
-        dict: {
-            'score': int,
-            'comment': str
-        }
-
-    Raises:
-        Exception: If API call fails
-    """
-    import json
-
-    model = GenerativeModel(os.environ.get('VERTEX_AI_MODEL', 'gemini-1.5-flash'))
-
-    image_part = Part.from_data(image_bytes, mime_type='image/jpeg')
-
-    try:
-        response = model.generate_content([
-            image_part,
-            THEME_EVALUATION_PROMPT
-        ])
-
-        # Parse JSON response
-        result = json.loads(response.text)
-
-        return {
-            'score': int(result['score']),
-            'comment': str(result['comment'])
-        }
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to parse Gemini response: {e}")
-        # Fallback
-        return {
-            'score': 50,
-            'comment': '評価に失敗しました'
-        }
-    except Exception as e:
-        logging.error(f"Vertex AI error: {e}")
-        raise
-```
-
-### 4. Average Hash計算と類似判定
-
-```python
-from PIL import Image
-import imagehash
-import io
-
-def calculate_average_hash(image_bytes: bytes) -> str:
-    """
-    Calculate Average Hash
-
-    Args:
-        image_bytes: Image binary data
-
-    Returns:
-        str: Hash string (hex)
-    """
-    img = Image.open(io.BytesIO(image_bytes))
-    hash_value = imagehash.average_hash(img, hash_size=8)
-    return str(hash_value)
-
-
-async def is_similar_image(new_hash: str, threshold: int = 8) -> bool:
-    """
-    Check if image is similar to existing images
-
-    Args:
-        new_hash: Hash of new image
-        threshold: Hamming distance threshold
-
-    Returns:
-        bool: True if similar image exists
-    """
-    # Get all existing hashes from Firestore
-    images_ref = db.collection('images').where('status', '==', 'completed')
-    existing_images = images_ref.stream()
-
-    new_hash_obj = imagehash.hex_to_hash(new_hash)
-
-    for doc in existing_images:
-        existing_hash_str = doc.get('average_hash')
-        if not existing_hash_str:
-            continue
-
-        existing_hash_obj = imagehash.hex_to_hash(existing_hash_str)
-        hamming_distance = new_hash_obj - existing_hash_obj
-
-        if hamming_distance <= threshold:
-            logging.info(f"Similar image found: distance={hamming_distance}")
-            return True
-
-    return False
-```
-
-### 5. スコア統合
-
-```python
-def calculate_total_score(
-    smile_score: float,
-    ai_score: int,
-    is_similar: bool
-) -> float:
-    """
-    Calculate total score
-
-    Formula:
-        total_score = (smile_score * ai_score / 100) * penalty
-
-    Args:
-        smile_score: Smile score from Vision API
-        ai_score: AI evaluation score (0-100)
-        is_similar: True if similar image detected
-
-    Returns:
-        float: Total score
-    """
-    penalty = float(os.environ.get('SIMILARITY_PENALTY', '0.33')) if is_similar else 1.0
-
+    # 4. スコア計算
+    smile_score = results["vision"]["smile_score"]
+    ai_score = results["gemini"]["score"]
+    penalty = 0.33 if is_similar else 1.0
     total_score = (smile_score * ai_score / 100) * penalty
 
-    return round(total_score, 2)
+    return {
+        "smile_score": smile_score,
+        "ai_score": ai_score,
+        "total_score": total_score,
+        "comment": results["gemini"]["comment"],
+        "face_count": results["vision"]["face_count"],
+        "is_similar": is_similar,
+        "average_hash": results["hash"],
+    }
 ```
 
-### 6. Firestoreへの保存
+### 署名付きURL生成
+
+スコアリング完了時に署名付きURLを生成/更新:
 
 ```python
-async def save_score_to_firestore(
-    image_id: str,
-    user_id: str,
-    smile_score: float,
-    ai_score: int,
-    total_score: float,
-    comment: str,
-    average_hash: str,
-    is_similar: bool,
-    face_count: int
-):
-    """
-    Save score to Firestore
+def generate_signed_url(bucket_name: str, storage_path: str) -> tuple[str, datetime]:
+    """Generate signed URL for Cloud Storage object."""
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(storage_path)
 
-    Args:
-        image_id: Image document ID
-        user_id: User ID
-        smile_score: Smile score
-        ai_score: AI evaluation score
-        total_score: Total score
-        comment: AI comment
-        average_hash: Image hash
-        is_similar: Similar flag
-        face_count: Number of detected faces
-    """
+    expiration_hours = 168  # 7 days
+    expiration = timedelta(hours=expiration_hours)
+    expiration_time = datetime.utcnow() + expiration
+
+    url = blob.generate_signed_url(
+        version="v4",
+        expiration=expiration,
+        method="GET",
+    )
+    return url, expiration_time
+```
+
+### Firestore更新（トランザクション）
+
+```python
+@firestore.transactional
+def _update_image_and_user_stats(transaction, image_ref, user_ref, scores, signed_url, expiration):
+    """Update image document and user stats atomically."""
+
     # Update image document
-    image_ref = db.collection('images').document(image_id)
-    image_ref.update({
-        'smile_score': smile_score,
-        'ai_score': ai_score,
-        'total_score': total_score,
-        'comment': comment,
-        'average_hash': average_hash,
-        'is_similar': is_similar,
-        'face_count': face_count,
-        'status': 'completed',
-        'scored_at': firestore.SERVER_TIMESTAMP
+    transaction.update(image_ref, {
+        "smile_score": scores["smile_score"],
+        "ai_score": scores["ai_score"],
+        "total_score": scores["total_score"],
+        "comment": scores["comment"],
+        "face_count": scores["face_count"],
+        "is_similar": scores["is_similar"],
+        "average_hash": scores["average_hash"],
+        "status": "completed",
+        "scored_at": firestore.SERVER_TIMESTAMP,
+        "storage_url": signed_url,
+        "storage_url_expires_at": expiration,
     })
 
-    # Update user statistics
-    user_ref = db.collection('users').document(user_id)
-    user_doc = user_ref.get()
+    # Update user stats
+    user_doc = user_ref.get(transaction=transaction)
+    current_best = user_doc.get("best_score") or 0.0
+    current_uploads = user_doc.get("total_uploads") or 0
 
-    if user_doc.exists:
-        current_best = user_doc.get('best_score', 0)
-        new_best = max(current_best, total_score)
-
-        user_ref.update({
-            'total_uploads': firestore.Increment(1),
-            'best_score': new_best
-        })
+    transaction.update(user_ref, {
+        "total_uploads": current_uploads + 1,
+        "best_score": max(current_best, scores["total_score"]),
+    })
 ```
 
-### 7. LINE Botへの結果送信
+### LINE結果送信
 
 ```python
-from linebot import LineBotApi
-from linebot.models import TextSendMessage, FlexSendMessage
-
-async def send_score_result(
-    user_id: str,
-    total_score: float,
-    comment: str,
-    is_similar: bool
-):
-    """
-    Send score result to LINE user
-
-    Args:
-        user_id: User ID
-        total_score: Total score
-        comment: AI comment
-        is_similar: Similar flag
-    """
-    line_bot_api = LineBotApi(os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
-
-    # Get user's LINE user ID
-    user_ref = db.collection('users').document(user_id)
-    user = user_ref.get()
-
-    if not user.exists:
-        logging.error(f"User not found: {user_id}")
-        return
-
-    line_user_id = user.get('line_user_id')
+def send_result_to_line(user_id: str, scores: dict, face_count: int, comment: str):
+    """Send scoring result to LINE user."""
+    total_score = scores["total_score"]
+    is_similar = scores["is_similar"]
 
     if is_similar:
-        # Send warning message for similar image
-        message = TextSendMessage(
-            text=f"📸 スコア: {total_score}点\n\n"
-                 f"⚠️ この写真は、以前の投稿と似ています。\n"
-                 f"連写ではなく、違う構図で撮影してみましょう！"
-        )
+        text = f"📸 スコア: {total_score:.1f}点\n\n" \
+               "⚠️ この写真は以前の投稿と似ています。\n" \
+               "連写ではなく、違う構図で撮影してみましょう！"
     elif total_score >= 300:
-        # Send high score with Flex Message
-        message = create_high_score_flex_message(total_score, comment)
+        text = f"🎉 素晴らしい笑顔！\n\n" \
+               f"総合スコア: {total_score:.1f}点\n\n" \
+               f"😊 {face_count}人の笑顔を検出しました！\n\n" \
+               f"💬 {comment}"
     else:
-        # Send normal score
-        message = TextSendMessage(
-            text=f"📸 スコア: {total_score}点\n\n"
-                 f"💬 {comment}"
-        )
+        text = f"📸 スコア: {total_score:.1f}点\n\n" \
+               f"😊 {face_count}人の笑顔を検出しました！\n\n" \
+               f"💬 {comment}"
 
-    try:
-        line_bot_api.push_message(line_user_id, message)
-    except Exception as e:
-        logging.error(f"Failed to send message: {e}")
-```
-
-## 並列処理の実装
-
-Vision API、Vertex AI、ハッシュ取得を並列実行してレイテンシを削減
-
-```python
-import asyncio
-
-async def score_image_parallel(image_id: str, user_id: str, image_bytes: bytes):
-    """
-    Score image with parallel processing
-
-    Args:
-        image_id: Image ID
-        user_id: User ID
-        image_bytes: Image binary data
-
-    Returns:
-        dict: Scoring results
-    """
-    # Run tasks in parallel
-    smile_task = asyncio.create_task(calculate_smile_score(image_bytes))
-    ai_task = asyncio.create_task(evaluate_theme(image_bytes))
-    hash_calc = calculate_average_hash(image_bytes)  # Sync function
-
-    # Wait for all tasks
-    smile_result, ai_result = await asyncio.gather(smile_task, ai_task)
-
-    # Check similarity
-    is_similar = await is_similar_image(hash_calc)
-
-    # Calculate total score
-    total_score = calculate_total_score(
-        smile_result['smile_score'],
-        ai_result['score'],
-        is_similar
+    messaging_api.push_message(
+        PushMessageRequest(to=user_id, messages=[TextMessage(text=text)])
     )
-
-    return {
-        'smile_score': smile_result['smile_score'],
-        'face_count': smile_result['face_count'],
-        'ai_score': ai_result['score'],
-        'comment': ai_result['comment'],
-        'total_score': total_score,
-        'average_hash': hash_calc,
-        'is_similar': is_similar
-    }
 ```
 
 ## エラーハンドリング
@@ -541,12 +308,12 @@ async def score_image_parallel(image_id: str, user_id: str, image_bytes: bytes):
 if face_count == 0:
     # Update status as error
     image_ref.update({
-        'status': 'error',
-        'error_message': 'No faces detected'
+        "status": "error",
+        "error_message": "No faces detected"
     })
 
     # Send error message to user
-    await send_error_message(
+    send_error_to_line(
         user_id,
         "❌ 顔が検出できませんでした。\n\n"
         "・顔がはっきり写っているか確認\n"
@@ -555,45 +322,64 @@ if face_count == 0:
     )
 ```
 
-### APIエラー
+### APIエラー（リトライあり）
+
+Vision APIとVertex AIはそれぞれ指数バックオフでリトライ:
 
 ```python
-try:
-    response = client.face_detection(image=image)
-except Exception as e:
-    logging.error(f"Vision API error: {e}")
-    # Fallback or retry logic
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((Exception,))
+)
+def generate_scores_with_vision_api(image_bytes: bytes) -> dict:
+    # Vision API call with retry
+    ...
 ```
 
 ## 環境変数
 
-`.env`ファイルで以下を設定：
-
 ```bash
-GCP_PROJECT_ID=your-project-id
-STORAGE_BUCKET=wedding-smile-images
-VERTEX_AI_MODEL=gemini-1.5-flash
-SIMILARITY_THRESHOLD=8
-SIMILARITY_PENALTY=0.33
 LINE_CHANNEL_ACCESS_TOKEN=your-access-token
+GCP_PROJECT_ID=your-project-id
+GCP_REGION=asia-northeast1
+STORAGE_BUCKET=wedding-smile-images-{project-id}
 ```
 
 ## デプロイ
+
+GitHub Actionsで自動デプロイ。手動の場合:
 
 ```bash
 gcloud functions deploy scoring \
   --gen2 \
   --runtime=python311 \
   --region=asia-northeast1 \
-  --source=. \
+  --source=src/functions/scoring \
   --entry-point=scoring \
   --trigger-http \
   --timeout=300s \
   --memory=1GB \
-  --set-env-vars="GCP_PROJECT_ID=${GCP_PROJECT_ID},STORAGE_BUCKET=${STORAGE_BUCKET}"
+  --service-account=scoring-function@{project-id}.iam.gserviceaccount.com
 ```
+
+## パフォーマンス
+
+### 処理時間目安
+
+| 処理 | 時間 |
+|-----|------|
+| 画像ダウンロード | ~100ms |
+| Vision API | ~500-1000ms |
+| Vertex AI (Gemini) | ~1000-2000ms |
+| Average Hash | ~50ms |
+| Firestore更新 | ~100ms |
+| **合計** | **~2-3秒** |
+
+並列処理により、Vision APIとVertex AIの呼び出しが同時に行われるため、
+シーケンシャル実行より約1秒短縮。
 
 ## 次のステップ
 
-- [Frontend API仕様](frontend.md)
 - [Webhook API仕様](webhook.md)
+- [LINE Bot設計](line-bot.md)

@@ -123,7 +123,7 @@ Face Detection:
 
 **超過時の料金**: 1,000回あたり$1.50
 
-### 3. Vertex AI (Gemini 1.5)
+### 3. Vertex AI (Gemini)
 
 #### 役割
 画像のテーマ関連性評価とコメント生成
@@ -135,14 +135,13 @@ Face Detection:
 
 #### 使用モデル
 
-**gemini-1.5-pro** または **gemini-1.5-flash**
+**gemini-2.5-flash**（本番採用）
 
 | モデル | 速度 | 精度 | コスト |
 |-------|------|------|--------|
-| gemini-1.5-pro | 遅い | 高い | 高い |
-| gemini-1.5-flash | 速い | 中程度 | 低い |
+| gemini-2.5-flash | 速い | 高い | 低い |
 
-**推奨**: 本番はpro、テストはflash
+**採用理由**: 高速かつ十分な精度でコストパフォーマンスが最も良い
 
 #### プロンプト設計
 
@@ -297,57 +296,38 @@ Nearline Storage（30日後）:
 コスト: 無料枠内
 ```
 
-### 6. Cloud Run
+### 6. Firebase Hosting（変更: Cloud Run → Firebase Hosting）
+
+> **注意**: 当初Cloud Run + Next.jsを計画していましたが、シンプルさと保守性を重視しFirebase Hosting + Vanilla JSに変更しました。
 
 #### 役割
-Next.jsフロントエンドのホスティング
+ランキング表示・管理画面のホスティング
 
 #### 選定理由
-- **コンテナベース**: 任意のランタイムをサポート
-- **自動スケーリング**: 0→N台まで自動スケール
-- **カスタムドメイン**: 独自ドメイン対応
+- **シンプル**: ビルドプロセス不要、即座にデプロイ
+- **Firebase統合**: Firestore、Auth との相性が良い
+- **無料枠**: 十分な無料枠
+- **CDN**: グローバルCDNでの配信
 
-#### 仕様
+#### 構成
 
-| 項目 | 設定値 |
-|------|--------|
-| コンテナイメージ | Next.js 14 (Node.js 20) |
-| CPU | 1 vCPU |
-| メモリ | 512MB |
-| 最大インスタンス数 | 10 |
-| 最小インスタンス数 | 0 |
-| リクエストタイムアウト | 60秒 |
-
-#### Dockerfile例
-
-```dockerfile
-FROM node:20-alpine AS base
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-RUN npm run build
-
-EXPOSE 8080
-CMD ["npm", "start"]
-```
+| ファイル | 役割 |
+|---------|------|
+| `index.html` | ランキング表示画面 |
+| `admin.html` | 管理画面（イベント管理、統計） |
+| `legal.html` | 法的ページ（利用規約、プライバシーポリシー） |
+| `js/app.js` | ランキング表示ロジック（~1,900行） |
+| `js/admin.js` | 管理画面ロジック（~1,900行） |
 
 #### コスト見積もり
 
 ```
-想定：
-  - 式中3時間の利用
-  - 平均リクエスト: 10req/sec
-  - CPU時間: 3時間 × 1 vCPU = 3 vCPU時間
-  - メモリ: 3時間 × 512MB
+Firebase Hosting:
+  - ストレージ: 10GB無料
+  - 転送量: 360MB/日無料
+  - 想定使用量: 無料枠内
 
-月間無料枠:
-  - CPU時間: 180,000 vCPU秒
-  - メモリ: 360,000 GiB秒
-
-コスト: 無料枠内
+コスト: 無料
 ```
 
 ### 7. Cloud CDN

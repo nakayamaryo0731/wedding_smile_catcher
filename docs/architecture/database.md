@@ -1,7 +1,11 @@
 <!-- markdownlint-disable MD024 -->
 # データベース設計
 
-> **注意**: 本ドキュメントは初期設計時のものです。マルチテナント対応に伴うスキーマ変更（`accounts` コレクション追加、`events` / `users` フィールド追加、Firestore Security Rules変更等）は `docs/planning/multi-tenant-design.md` を参照してください。
+> **注意**: 本ドキュメントは初期設計時のものです。以下の変更については各参照先を確認してください：
+> - **マルチテナント対応**: `accounts`コレクション追加、`events`/`users`フィールド追加、Firestore Security Rules変更 → `docs/planning/multi-tenant-design.md`
+> - **署名付きURL**: `images`コレクションに`storage_url`、`storage_url_expires_at`フィールド追加
+> - **同意タイムスタンプ**: `users`コレクションに`consent_timestamp`フィールド追加
+> - **ユーザー名デノーマライズ**: `images`コレクションに`user_name`フィールド追加（フロントエンド用）
 
 ## 概要
 

@@ -165,15 +165,15 @@ addopts = "--cov=src --cov-report=html --cov-report=term-missing"
 ```makefile
 # Python
 py-fmt:
-	black src/ tests/
-	ruff check --fix src/ tests/
+ black src/ tests/
+ ruff check --fix src/ tests/
 
 py-lint:
-	ruff check src/ tests/
-	mypy src/
+ ruff check src/ tests/
+ mypy src/
 
 py-test:
-	pytest
+ pytest
 ```
 
 ### 6. GitHub Actions追加
@@ -416,22 +416,22 @@ module.exports = createJestConfig(customJestConfig)
 ```makefile
 # Frontend
 fe-install:
-	cd src/frontend && npm install
+ cd src/frontend && npm install
 
 fe-dev:
-	cd src/frontend && npm run dev
+ cd src/frontend && npm run dev
 
 fe-build:
-	cd src/frontend && npm run build
+ cd src/frontend && npm run build
 
 fe-test:
-	cd src/frontend && npm test
+ cd src/frontend && npm test
 
 fe-lint:
-	cd src/frontend && npm run lint
+ cd src/frontend && npm run lint
 
 fe-format:
-	cd src/frontend && npm run format
+ cd src/frontend && npm run format
 ```
 
 ### 11. GitHub Actions追加
