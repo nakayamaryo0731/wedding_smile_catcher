@@ -22,7 +22,6 @@ const userNameCache = new Map(); // Cache user names to avoid repeated queries
 
 // Settings State
 let currentEventData = null;
-let settingsQRInstance = null;
 
 // =========================
 // Slideshow Mode State & Config
@@ -470,13 +469,12 @@ function backToRecent() {
 
   // Update label back to recent
   const labelEl = document.getElementById("ranking-label-text");
-  const labelContainer = document.querySelector(".ranking-label");
   if (labelEl) {
     labelEl.textContent = "直近15枚のランキング";
   }
-  if (labelContainer) {
-    labelContainer.classList.remove("final-mode");
-  }
+
+  // Show QR code again
+  setQRCodeVisible(true);
 
   // Hide ranking list (4-10位)
   const rankingListSection = document.getElementById("ranking-list");
@@ -516,13 +514,12 @@ async function startFinalPresentation() {
 
   // Update label to show final mode
   const labelEl = document.getElementById("ranking-label-text");
-  const labelContainer = document.querySelector(".ranking-label");
   if (labelEl) {
     labelEl.textContent = "全体ランキング";
   }
-  if (labelContainer) {
-    labelContainer.classList.add("final-mode");
-  }
+
+  // Hide QR code during final presentation
+  setQRCodeVisible(false);
 
   // Set final mode flag
   isFinalMode = true;
@@ -1444,15 +1441,9 @@ function cleanupSlideshow() {
 /**
  * Show settings panel
  */
-async function showSettingsPanel() {
+function showSettingsPanel() {
   const panel = document.getElementById("settings-panel");
   if (!panel) return;
-
-  // Load event data
-  await loadEventInfoForSettings();
-
-  // Generate QR code
-  generateSettingsQRCode();
 
   panel.classList.remove("hidden");
 }
@@ -1468,81 +1459,87 @@ function hideSettingsPanel() {
 }
 
 /**
- * Load event info for settings panel
+ * Generate QR code for the fixed bottom-right display
  */
-async function loadEventInfoForSettings() {
-  if (!currentEventData) return;
-
-  document.getElementById("settings-event-name").textContent =
-    currentEventData.event_name || "イベント設定";
-  document.getElementById("settings-event-name-value").textContent =
-    currentEventData.event_name || "-";
-  document.getElementById("settings-event-date").textContent =
-    currentEventData.event_date || "-";
-
-  const statusEl = document.getElementById("settings-event-status");
-  const status = currentEventData.status || "draft";
-  statusEl.textContent =
-    status === "active" ? "公開中" : status === "archived" ? "終了" : "準備中";
-  statusEl.className = `info-value status-badge status-${status}`;
-}
-
-
-/**
- * Generate QR code for LINE deep link
- */
-function generateSettingsQRCode() {
+function generateMainQRCode() {
   if (!currentEventData) return;
 
   const eventCode = currentEventData.event_code || "";
   const botId = window.LINE_BOT_ID || "@581qtuij";
   const deepLinkUrl = `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
 
-  // Update URL display
-  document.getElementById("settings-deep-link-url").textContent = deepLinkUrl;
+  if (typeof QRCode === "undefined") return;
 
-  // Generate QR code
-  const container = document.getElementById("settings-qr-code");
-  container.innerHTML = "";
-
-  if (typeof QRCode !== "undefined") {
-    settingsQRInstance = new QRCode(container, {
+  const container = document.getElementById("main-qr-code");
+  if (container) {
+    container.innerHTML = "";
+    new QRCode(container, {
       text: deepLinkUrl,
-      width: 200,
-      height: 200,
+      width: 140,
+      height: 140,
       colorDark: "#000000",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.M,
     });
   }
+
+  console.log("Main QR code generated");
 }
 
 /**
- * Download QR code as image
+ * Show/hide the fixed QR code
+ */
+function setQRCodeVisible(visible) {
+  const container = document.getElementById("fixed-qr-container");
+  if (container) {
+    if (visible) {
+      container.classList.remove("hidden");
+    } else {
+      container.classList.add("hidden");
+    }
+  }
+}
+
+/**
+ * Download QR code as image (generates a larger QR for printing)
  */
 function downloadSettingsQRCode() {
-  const container = document.getElementById("settings-qr-code");
-  const canvas = container?.querySelector("canvas");
-  if (!canvas) return;
+  if (!currentEventData) return;
 
-  const eventCode = currentEventData?.event_code || "event";
-  const link = document.createElement("a");
-  link.download = `qrcode_${eventCode}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-}
+  const eventCode = currentEventData.event_code || "";
+  const botId = window.LINE_BOT_ID || "@581qtuij";
+  const deepLinkUrl = `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
 
-/**
- * Copy text to clipboard
- */
-async function copyToClipboard(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    alert("コピーしました");
-  } catch (error) {
-    console.error("Failed to copy:", error);
-    alert("コピーに失敗しました");
-  }
+  // Create a temporary container for high-res QR
+  const tempContainer = document.createElement("div");
+  tempContainer.style.position = "absolute";
+  tempContainer.style.left = "-9999px";
+  document.body.appendChild(tempContainer);
+
+  const qr = new QRCode(tempContainer, {
+    text: deepLinkUrl,
+    width: 512,
+    height: 512,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+
+  // Wait for QR to render then download
+  setTimeout(() => {
+    const canvas = tempContainer.querySelector("canvas");
+    if (!canvas) {
+      document.body.removeChild(tempContainer);
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.download = `qrcode_${eventCode}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+
+    document.body.removeChild(tempContainer);
+  }, 100);
 }
 
 /**
@@ -1587,15 +1584,16 @@ async function softDeleteEventData() {
   const eventId = getCurrentEventId();
 
   const confirmed = await showConfirmModal(
-    "このイベントのすべてのテストデータ（画像・ユーザー）を削除しますか？\n\nこの操作は運営者によって復元可能です。"
+    "投稿画像を全て削除しますか？"
   );
 
   if (!confirmed) return;
 
   const deleteBtn = document.getElementById("delete-data-btn");
+  const deleteActionText = deleteBtn?.querySelector(".action-text");
   if (deleteBtn) {
     deleteBtn.disabled = true;
-    deleteBtn.textContent = "削除中...";
+    if (deleteActionText) deleteActionText.textContent = "削除中...";
   }
 
   try {
@@ -1606,33 +1604,20 @@ async function softDeleteEventData() {
     );
     const imagesSnap = await getDocs(imagesQuery);
 
-    // Get all users for this event
-    const usersQuery = query(
-      collection(window.db, "users"),
-      where("event_id", "==", eventId)
-    );
-    const usersSnap = await getDocs(usersQuery);
-
     const now = serverTimestamp();
     const batchSize = 500;
 
-    // Soft delete images
-    const allDocs = [...imagesSnap.docs, ...usersSnap.docs];
-    for (let i = 0; i < allDocs.length; i += batchSize) {
+    // Soft delete images only
+    for (let i = 0; i < imagesSnap.docs.length; i += batchSize) {
       const batch = writeBatch(window.db);
-      const chunk = allDocs.slice(i, i + batchSize);
+      const chunk = imagesSnap.docs.slice(i, i + batchSize);
       chunk.forEach((docSnap) => {
         batch.update(docSnap.ref, { deleted_at: now });
       });
       await batch.commit();
     }
 
-    alert(
-      `${imagesSnap.docs.length}枚の画像と${usersSnap.docs.length}人のユーザーデータを削除しました`
-    );
-
-    // Refresh counts
-    await loadDataCounts();
+    alert(`${imagesSnap.docs.length}枚の画像データを削除しました`);
 
     // Refresh ranking display
     fetchRecentRankings();
@@ -1642,7 +1627,7 @@ async function softDeleteEventData() {
   } finally {
     if (deleteBtn) {
       deleteBtn.disabled = false;
-      deleteBtn.textContent = "🗑️ テストデータを削除";
+      if (deleteActionText) deleteActionText.textContent = "データを削除";
     }
   }
 }
@@ -1653,10 +1638,13 @@ async function softDeleteEventData() {
 async function downloadAllImages() {
   const eventId = getCurrentEventId();
   const downloadBtn = document.getElementById("download-images-btn");
+  const actionText = downloadBtn?.querySelector(".action-text");
+  const actionDesc = downloadBtn?.querySelector(".action-desc");
 
   if (downloadBtn) {
     downloadBtn.disabled = true;
-    downloadBtn.textContent = "準備中...";
+    if (actionText) actionText.textContent = "準備中...";
+    if (actionDesc) actionDesc.textContent = "";
   }
 
   try {
@@ -1698,8 +1686,8 @@ async function downloadAllImages() {
     for (let i = 0; i < images.length; i += batchSize) {
       const batch = images.slice(i, i + batchSize);
 
-      if (downloadBtn) {
-        downloadBtn.textContent = `ダウンロード中 ${Math.min(
+      if (actionText) {
+        actionText.textContent = `ダウンロード中 ${Math.min(
           i + batchSize,
           images.length
         )}/${images.length}...`;
@@ -1733,8 +1721,8 @@ async function downloadAllImages() {
     }
 
     // Generate ZIP
-    if (downloadBtn) {
-      downloadBtn.textContent = "ZIP作成中...";
+    if (actionText) {
+      actionText.textContent = "ZIP作成中...";
     }
 
     const content = await zip.generateAsync({ type: "blob" });
@@ -1763,7 +1751,7 @@ async function downloadAllImages() {
   } finally {
     if (downloadBtn) {
       downloadBtn.disabled = false;
-      downloadBtn.textContent = "📥 画像をダウンロード";
+      if (actionText) actionText.textContent = "投稿画像を一括ダウンロード";
     }
   }
 }
@@ -1783,12 +1771,6 @@ function setupSettingsPanel() {
   document.getElementById("close-settings-panel")?.addEventListener("click", hideSettingsPanel);
   document.getElementById("settings-panel")?.addEventListener("click", (e) => {
     if (e.target.id === "settings-panel") hideSettingsPanel();
-  });
-
-  // Copy deep link URL
-  document.getElementById("copy-deep-link")?.addEventListener("click", () => {
-    const url = document.getElementById("settings-deep-link-url")?.textContent;
-    if (url) copyToClipboard(url);
   });
 
   // Download QR code
@@ -1837,6 +1819,7 @@ async function init() {
         document.getElementById("slideshow-btn")?.classList.add("hidden");
         document.getElementById("final-btn")?.classList.add("hidden");
         document.getElementById("ranking-content")?.classList.add("hidden");
+        document.getElementById("fixed-qr-container")?.classList.add("hidden");
         loadingEl.classList.add("hidden");
         // Still setup settings panel for archived events (for image download)
         setupSettingsPanel();
@@ -1847,6 +1830,9 @@ async function init() {
     console.warn("Failed to check event status:", error);
     // Continue with normal init on error
   }
+
+  // Generate QR code for fixed bottom-right display
+  generateMainQRCode();
 
   // Set up final presentation button
   setupFinalButton();
