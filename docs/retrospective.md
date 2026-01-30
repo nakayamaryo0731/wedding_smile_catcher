@@ -1,13 +1,15 @@
 # Wedding Smile Catcher Project Retrospective
 
+最終更新: 2026-01-30
+
 ## 1. Project Overview
 
 | Item | Value |
 |------|-------|
-| Total Commits | 235 |
-| Main Code Lines | ~2,850 (webhook: 384, scoring: 1,081, frontend: 1,389) |
+| Total Commits | 324 |
+| Main Code Lines | ~5,700 (webhook: 788, scoring: 1,170, app.js: 1,868, admin.js: 1,901) |
 | GitHub Actions | 5 workflows (CI, deploy-frontend, deploy-functions, etc.) |
-| Testing | Unit tests (pytest) + Integration + Load tests (locust) |
+| Testing | Unit tests (pytest) + Firestore Rules tests (Jest) + Load tests (locust) |
 
 ---
 
@@ -64,10 +66,11 @@
 - Unit tests are comprehensive, but E2E tests are minimal
 - No automated LINE Bot integration testing
 
-#### 2. Multi-event Support
+#### 2. ~~Multi-event Support~~ ✅ Resolved
 
-- `CURRENT_EVENT_ID` managed via environment variables
-- Requires redeployment for concurrent events
+- ~~`CURRENT_EVENT_ID` managed via environment variables~~
+- **Implemented**: Full multi-tenant support with `event_code` and `JOIN` command flow
+- Single deployment supports unlimited concurrent events
 
 #### 3. Error Handling Redundancy
 
@@ -99,10 +102,11 @@
 - Good cost-performance balance
 - **Consider**: Evaluate `gemini-2.0-flash` in future
 
-#### 3. Multi-tenant Support
+#### 3. ~~Multi-tenant Support~~ ✅ Implemented
 
-- Event ID managed via environment variable instead of path parameter
-- **Improvement**: Single deployment receiving event_id in request body
+- ~~Event ID managed via environment variable instead of path parameter~~
+- **Implemented**: `JOIN {event_code}` command flow, Firebase Auth for customers
+- Single deployment supports unlimited events with `events.account_id` ownership
 
 #### 4. Similar Image Detection
 
@@ -219,6 +223,21 @@ Where:
 - **Phase 3**: Frontend (Changed from Next.js to Vanilla JS)
 - **Phase 4**: CI/CD (GitHub Actions workflows)
 - **Phase 5**: Iteration (Performance, UX improvements, slideshow mode)
+- **Phase 6**: Multi-tenant & Security (Firebase Auth, JOIN flow, signed URLs)
+- **Phase 7**: Operations & Marketing (Monitoring alerts, viral notification, auto-cleanup)
+
+### Key Features Added in Phase 6-7
+
+| Feature | Description |
+|---------|-------------|
+| Multi-tenant | `JOIN {event_code}` flow, Firebase Auth, `account_id` ownership |
+| Signed URLs | 7-day expiring URLs for image access (privacy protection) |
+| Admin Panel | Event management, QR code generation, statistics dashboard |
+| Legal Pages | Terms of Service, Privacy Policy, Commercial Law disclosure |
+| Monitoring | Cloud Monitoring alerts for webhook/scoring errors |
+| Viral Notification | Post-event LINE push messages to guests |
+| Auto Data Cleanup | Cloud Storage Lifecycle Policy (30 days retention) |
+| Soft Delete | LINE unsend support (user data protection) |
 
 ---
 
@@ -228,15 +247,19 @@ Where:
 wedding_smile_catcher/
 ├── src/
 │   ├── functions/
-│   │   ├── webhook/main.py    # LINE webhook handler (384 lines)
-│   │   └── scoring/main.py    # Scoring logic (1,081 lines)
+│   │   ├── webhook/main.py      # LINE webhook handler (788 lines)
+│   │   ├── scoring/main.py      # Scoring logic (1,170 lines)
+│   │   └── notification/main.py # Post-event viral notification
 │   └── frontend/
-│       ├── index.html
-│       ├── css/style.css
+│       ├── index.html           # Ranking display
+│       ├── admin.html           # Admin panel
+│       ├── legal.html           # Terms, Privacy, Commerce
+│       ├── css/
 │       └── js/
-│           ├── app.js         # Main application (1,389 lines)
-│           ├── config.js      # Firebase config
-│           └── admin.js       # Admin panel
+│           ├── app.js           # Main application (1,868 lines)
+│           ├── admin.js         # Admin panel (1,901 lines)
+│           ├── config.js        # Firebase config
+│           └── legal.js         # Legal page navigation
 ├── terraform/
 │   ├── main.tf
 │   └── modules/
@@ -244,11 +267,17 @@ wedding_smile_catcher/
 │       ├── firestore/
 │       ├── functions/
 │       ├── iam/
-│       └── secret_manager/
+│       ├── secret_manager/
+│       └── monitoring/          # Cloud Monitoring alerts
 ├── tests/
 │   ├── unit/
-│   ├── integration/
+│   ├── firestore-rules/         # Firestore Security Rules tests (Jest)
 │   └── load/
+├── scripts/                      # Utility scripts
+│   ├── cleanup_test_data.py
+│   ├── create_event.py
+│   ├── archive_event.py
+│   └── setup_rich_menu.py
 ├── .github/workflows/
 │   ├── ci.yml
 │   ├── deploy-frontend.yml
@@ -256,7 +285,9 @@ wedding_smile_catcher/
 │   └── unit-tests.yml
 └── docs/
     ├── architecture/
-    │   ├── overview.md
-    │   └── scoring.md
+    ├── design/
+    ├── planning/
+    ├── setup/
+    ├── testing/
     └── retrospective.md (this file)
 ```
