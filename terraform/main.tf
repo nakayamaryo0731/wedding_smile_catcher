@@ -57,8 +57,9 @@ module "storage" {
     "https://wedding-smile-catcher.firebaseapp.com"
   ]
 
-  # Lifecycle management (disabled for now)
-  lifecycle_age_days = 0
+  # Lifecycle management: auto-delete images after N days
+  # Privacy protection: face images are personal data
+  lifecycle_age_days = var.data_retention_days
 
   # Versioning (disabled for now)
   versioning_enabled = false
