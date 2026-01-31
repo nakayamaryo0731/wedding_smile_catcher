@@ -1480,6 +1480,30 @@ function hideSettingsPanel() {
   }
 }
 
+/**
+ * Show rules panel
+ */
+function showRulesPanel() {
+  const panel = document.getElementById("rules-panel");
+  if (!panel) return;
+
+  panel.classList.remove("hidden");
+  // Initialize Lucide icons in modal
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+/**
+ * Hide rules panel
+ */
+function hideRulesPanel() {
+  const panel = document.getElementById("rules-panel");
+  if (panel) {
+    panel.classList.add("hidden");
+  }
+}
+
 // =========================
 // Theme Selection
 // =========================
@@ -1928,6 +1952,18 @@ function setupSettingsPanel() {
 
   // Delete data
   document.getElementById("delete-data-btn")?.addEventListener("click", softDeleteEventData);
+
+  // Rules button click - open rules panel
+  const rulesBtn = document.getElementById("rules-btn");
+  if (rulesBtn) {
+    rulesBtn.addEventListener("click", showRulesPanel);
+  }
+
+  // Close rules panel
+  document.getElementById("close-rules-panel")?.addEventListener("click", hideRulesPanel);
+  document.getElementById("rules-panel")?.addEventListener("click", (e) => {
+    if (e.target.id === "rules-panel") hideRulesPanel();
+  });
 }
 
 
