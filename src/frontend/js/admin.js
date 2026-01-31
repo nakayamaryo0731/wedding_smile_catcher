@@ -1454,7 +1454,7 @@ function getRankingUrl(eventId) {
     window.FIREBASE_CONFIG?.authDomain?.replace(
       ".firebaseapp.com",
       ".web.app"
-    ) || "wedding-smile-catcher.web.app";
+    ) || "smile-photo-contest.web.app";
   return `https://${baseUrl}?event_id=${eventId}`;
 }
 

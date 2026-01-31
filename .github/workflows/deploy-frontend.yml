@@ -8,6 +8,8 @@ on:
       - 'src/frontend/**'
       - 'firestore.rules'
       - 'firestore.indexes.json'
+      - 'firebase.json'
+      - '.firebaserc'
       - '.github/workflows/deploy-frontend.yml'
 
 concurrency:
@@ -49,4 +51,5 @@ jobs:
         run: firebase deploy --only firestore --project wedding-smile-catcher --non-interactive
 
       - name: Deploy to Firebase Hosting
-        run: firebase deploy --only hosting --project wedding-smile-catcher --non-interactive
+        working-directory: .
+        run: firebase deploy --only hosting:production --project wedding-smile-catcher --non-interactive
