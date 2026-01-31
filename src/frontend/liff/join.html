@@ -180,7 +180,7 @@
                 <p class="next-step-title">📸 次のステップ</p>
                 <p class="next-step-text">LINEのトーク画面で<br>笑顔の写真を投稿してね！</p>
             </div>
-            <button class="btn" onclick="closeWindow()">LINEに戻る</button>
+            <button class="btn" onclick="closeWindow()">写真を投稿する →</button>
             <p class="note">※ ランキングにはLINE名で表示されます</p>
         </div>
 
@@ -197,7 +197,7 @@
                 <p class="next-step-title">📸 笑顔の写真を投稿しよう！</p>
                 <p class="next-step-text">LINEのトーク画面から<br>写真を送信してね</p>
             </div>
-            <button class="btn" onclick="closeWindow()">LINEに戻る</button>
+            <button class="btn" onclick="closeWindow()">写真を投稿する →</button>
         </div>
 
         <!-- Error State -->
@@ -276,7 +276,9 @@
 
         function closeWindow() {
             if (liff.isInClient()) {
-                liff.closeWindow();
+                // Navigate to chat with the bot instead of just closing
+                const botId = window.LINE_BOT_ID || "@581qtuij";
+                window.location.href = `line://oaMessage/${botId}`;
             } else {
                 window.close();
             }
