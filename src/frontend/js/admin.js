@@ -14,6 +14,7 @@ import {
   setDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import {
@@ -566,6 +567,7 @@ const STATUS_BADGE = {
   draft: { label: "Draft", cssClass: "status-draft" },
   active: { label: "Active", cssClass: "status-active" },
   archived: { label: "Archived", cssClass: "status-archived" },
+  deleted: { label: "Deleted", cssClass: "status-deleted" },
 };
 
 // Valid status transitions
@@ -729,7 +731,9 @@ async function loadEvents() {
     }
 
     container.innerHTML = "";
-    snapshot.forEach((docSnap) => {
+    snapshot.docs
+      .filter((docSnap) => docSnap.data().status !== "deleted")
+      .forEach((docSnap) => {
       const data = docSnap.data();
       const card = createEventCard(docSnap.id, data);
       container.appendChild(card);
@@ -829,7 +833,7 @@ async function deleteSelected(type) {
     // Events are soft-deleted along with their images
     if (type === "events") {
       for (const eventId of ids) {
-        await softDeleteEvent(eventId);
+        await hardDeleteEvent(eventId);
       }
     } else {
       // Hard delete for other types (images, users)
@@ -875,41 +879,32 @@ async function deleteSelected(type) {
 /**
  * Soft delete an event and its associated images
  */
-async function softDeleteEvent(eventId) {
-  const now = serverTimestamp();
-
-  // Soft delete the event
-  const eventRef = doc(db, "events", eventId);
-  await updateDoc(eventRef, {
-    status: "deleted",
-    deleted_at: now,
-  });
-
-  // Soft delete all images for this event
+async function hardDeleteEvent(eventId) {
+  // Delete all images for this event
   const imagesQuery = query(
     collection(db, "images"),
     where("event_id", "==", eventId)
   );
   const imagesSnap = await getDocs(imagesQuery);
 
-  const imagesToDelete = imagesSnap.docs.filter(
-    (doc) => !doc.data().deleted_at
-  );
-
-  if (imagesToDelete.length > 0) {
+  if (imagesSnap.docs.length > 0) {
     const batchSize = 500;
-    for (let i = 0; i < imagesToDelete.length; i += batchSize) {
+    for (let i = 0; i < imagesSnap.docs.length; i += batchSize) {
       const batch = writeBatch(db);
-      const chunk = imagesToDelete.slice(i, i + batchSize);
+      const chunk = imagesSnap.docs.slice(i, i + batchSize);
       chunk.forEach((docSnap) => {
-        batch.update(docSnap.ref, { deleted_at: now });
+        batch.delete(docSnap.ref);
       });
       await batch.commit();
     }
   }
 
+  // Delete the event document
+  const eventRef = doc(db, "events", eventId);
+  await deleteDoc(eventRef);
+
   console.log(
-    `Soft deleted event ${eventId} and ${imagesToDelete.length} images`
+    `Deleted event ${eventId} and ${imagesSnap.docs.length} images`
   );
 }
 
