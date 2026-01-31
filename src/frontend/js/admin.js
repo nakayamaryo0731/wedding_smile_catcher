@@ -735,7 +735,12 @@ async function loadEvents() {
       .filter((docSnap) => {
         const data = docSnap.data();
         // Hide archived events that have sent notifications (completed lifecycle)
-        return !(data.status === "archived" && data.notification_sent_at);
+        // unless "Show archived events" checkbox is checked
+        const showArchived = document.getElementById("showArchivedEvents").checked;
+        if (!showArchived && data.status === "archived" && data.notification_sent_at) {
+          return false;
+        }
+        return true;
       })
       .forEach((docSnap) => {
         const data = docSnap.data();
@@ -1834,6 +1839,11 @@ document
 document
   .getElementById("refreshEvents")
   .addEventListener("click", () => loadEvents());
+
+// Show archived events checkbox
+document
+  .getElementById("showArchivedEvents")
+  .addEventListener("change", () => loadEvents());
 
 // Refresh accounts button
 document
