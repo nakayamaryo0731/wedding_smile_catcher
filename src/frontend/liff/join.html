@@ -162,9 +162,10 @@
         </div>
     </div>
 
+    <script src="../js/config.js"></script>
     <script>
-        // LIFF ID will be set from config
-        const LIFF_ID = window.LIFF_ID || "YOUR_LIFF_ID";
+        // LIFF ID from config.js
+        const LIFF_ID = window.LIFF_ID;
 
         // Get event code from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
@@ -197,6 +198,12 @@
 
         async function initializeLiff() {
             try {
+                // Check if LIFF ID is configured
+                if (!LIFF_ID) {
+                    showError('LIFF IDが設定されていません。管理者にお問い合わせください。');
+                    return;
+                }
+
                 // Check if event code is provided
                 if (!eventCode) {
                     showError('イベントコードが指定されていません');
