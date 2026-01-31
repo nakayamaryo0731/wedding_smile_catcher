@@ -12,6 +12,19 @@ import {
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+// =========================
+// LP Redirect Check
+// =========================
+// Redirect to LP if no event_id is specified
+(function checkEventIdAndRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const eventId = params.get("event_id");
+  if (!eventId) {
+    window.location.href = "lp.html";
+    return;
+  }
+})();
+
 // State
 let currentTop3 = [];
 let isFinalMode = false;
