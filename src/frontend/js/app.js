@@ -1991,6 +1991,11 @@ async function init() {
   // Set up settings panel
   setupSettingsPanel();
 
+  // Initialize Lucide icons
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+
   // Initialize theme selector
   initThemeSelector();
 
