@@ -47,12 +47,12 @@
             <div class="header-top">
                 <div class="header-title" id="header-title-link" style="cursor: pointer;">
                     <h1 class="title">笑顔写真コンテスト</h1>
-                    <p class="subtitle">最高の笑顔をありがとう</p>
                 </div>
                 <div class="header-buttons">
                     <button id="slideshow-btn" class="header-btn slideshow-btn">スライドショー</button>
                     <button id="ranking-btn" class="header-btn ranking-btn hidden">ランキング</button>
                     <button id="final-btn" class="header-btn final-btn">最終結果</button>
+                    <button id="rules-btn" class="header-btn settings-btn"><i data-lucide="help-circle"></i></button>
                     <button id="settings-btn" class="header-btn settings-btn"><i data-lucide="settings"></i></button>
                 </div>
             </div>
@@ -193,6 +193,47 @@
         <div id="fixed-qr-container" class="fixed-qr-container">
             <div id="main-qr-code" class="fixed-qr-code"></div>
             <span class="fixed-qr-label">参加はこちら</span>
+        </div>
+
+        <!-- Rules Modal -->
+        <div id="rules-panel" class="settings-modal hidden">
+            <div class="settings-modal-content">
+                <button class="settings-close-btn" id="close-rules-panel">&times;</button>
+                <h2 class="rules-title"><i data-lucide="trophy" class="rules-title-icon"></i> 遊び方・ルール</h2>
+
+                <div class="rules-section">
+                    <h3><i data-lucide="camera"></i> スコアの決まり方</h3>
+                    <ul class="rules-list">
+                        <li><strong>笑顔の人数</strong>が多いほど高得点！みんなで撮ろう</li>
+                        <li>AIが<strong>結婚式らしさ</strong>も判定しています</li>
+                        <li>顔が小さすぎると減点されるので、近くで撮ろう</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h3><i data-lucide="copy-x"></i> 類似判定について</h3>
+                    <ul class="rules-list">
+                        <li>同じような写真を連続で送ると<strong>減点</strong>されます</li>
+                        <li>いろんなシーンで撮影すると高得点を狙えます</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h3><i data-lucide="monitor"></i> 画面に表示されるランキング</h3>
+                    <ul class="rules-list">
+                        <li>直近<strong>15枚</strong>の中でのランキングです</li>
+                        <li>常に変動するので、何度でもチャレンジ！</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h3><i data-lucide="award"></i> 最終結果について</h3>
+                    <ul class="rules-list">
+                        <li>各参加者の<strong>ベストスコア</strong>でランキング</li>
+                        <li>同じ人が1位・2位・3位を独占することはありません</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
         <!-- Settings Panel Modal -->
