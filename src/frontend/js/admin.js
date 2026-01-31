@@ -1463,11 +1463,8 @@ function getJoinUrl(eventCode, eventName = "") {
 }
 
 function getRankingUrl(eventId) {
-  const baseUrl =
-    window.FIREBASE_CONFIG?.authDomain?.replace(
-      ".firebaseapp.com",
-      ".web.app"
-    ) || "smile-photo-contest.web.app";
+  // Use the new Firebase Hosting domain
+  const baseUrl = "smile-photo-contest.web.app";
   return `https://${baseUrl}?event_id=${eventId}`;
 }
 
