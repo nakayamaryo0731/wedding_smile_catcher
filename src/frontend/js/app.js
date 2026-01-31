@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  updateDoc,
   query,
   where,
   orderBy,
@@ -1471,6 +1472,101 @@ function hideSettingsPanel() {
   }
 }
 
+// =========================
+// Theme Selection
+// =========================
+
+const AVAILABLE_THEMES = [
+  // Light themes
+  "classic-ivory",
+  "soft-blush",
+  "soft-peach",
+  "sage-green",
+  "sky-blue",
+  "lavender",
+  // Dark themes
+  "chocolate",
+  "rose-pink",
+  "sunset-orange",
+  "forest-green",
+  "ocean-blue",
+  "elegant-purple",
+];
+
+/**
+ * Get localStorage key for theme (includes event ID for multi-event support)
+ */
+function getThemeCacheKey() {
+  const eventId = currentEventData?.id || new URLSearchParams(window.location.search).get("event");
+  return eventId ? `theme_${eventId}` : "theme_default";
+}
+
+/**
+ * Apply theme to the page
+ */
+function applyTheme(themeName, saveToCache = true) {
+  if (!AVAILABLE_THEMES.includes(themeName)) {
+    themeName = "classic-ivory";
+  }
+  document.documentElement.setAttribute("data-theme", themeName);
+
+  // Update UI selection state
+  document.querySelectorAll(".theme-option").forEach((btn) => {
+    btn.classList.toggle("selected", btn.dataset.theme === themeName);
+  });
+
+  // Cache theme in localStorage for instant loading on next visit
+  if (saveToCache) {
+    try {
+      localStorage.setItem(getThemeCacheKey(), themeName);
+    } catch (e) {
+      // localStorage may be unavailable in some contexts
+    }
+  }
+}
+
+/**
+ * Save theme to Firestore
+ */
+async function saveTheme(themeName) {
+  if (!currentEventData?.id) {
+    console.warn("No event data available to save theme");
+    return;
+  }
+
+  try {
+    const eventRef = doc(window.db, "events", currentEventData.id);
+    await updateDoc(eventRef, { theme: themeName });
+    currentEventData.theme = themeName;
+  } catch (error) {
+    console.error("Failed to save theme:", error);
+  }
+}
+
+/**
+ * Initialize theme selector
+ */
+function initThemeSelector() {
+  const themeButtons = document.querySelectorAll(".theme-option");
+
+  themeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const themeName = btn.dataset.theme;
+      applyTheme(themeName);
+      saveTheme(themeName);
+    });
+  });
+
+  // Apply theme from Firestore data (authoritative source)
+  // This also updates localStorage cache if Firestore has a different theme
+  if (currentEventData?.theme) {
+    applyTheme(currentEventData.theme);
+  } else {
+    // No theme in Firestore, use default
+    applyTheme("forest-green");
+  }
+}
+
 /**
  * Generate QR code for the fixed bottom-right display
  */
@@ -1844,6 +1940,7 @@ async function init() {
         loadingEl.classList.add("hidden");
         // Still setup settings panel for archived events (for image download)
         setupSettingsPanel();
+        initThemeSelector();
         return;
       }
     }
@@ -1863,6 +1960,9 @@ async function init() {
 
   // Set up settings panel
   setupSettingsPanel();
+
+  // Initialize theme selector
+  initThemeSelector();
 
   // Set up real-time listener (replaces periodic polling)
   setupRealtimeListener();

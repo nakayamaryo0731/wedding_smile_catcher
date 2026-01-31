@@ -21,11 +21,25 @@
             rel="stylesheet">
     </noscript>
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- Tailwind CSS (consolidated) -->
+    <link rel="stylesheet" href="css/output.css">
+
+    <!-- Instant theme application to prevent FOUC -->
+    <script>
+        (function() {
+            try {
+                var eventId = new URLSearchParams(window.location.search).get("event");
+                var cacheKey = eventId ? "theme_" + eventId : "theme_default";
+                var cachedTheme = localStorage.getItem(cacheKey);
+                if (cachedTheme) {
+                    document.documentElement.setAttribute("data-theme", cachedTheme);
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 
-<body>
+<body class="ranking-page">
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -184,6 +198,63 @@
         <div id="settings-panel" class="settings-modal hidden">
             <div class="settings-modal-content">
                 <button class="settings-close-btn" id="close-settings-panel">&times;</button>
+
+                <!-- Theme Selection -->
+                <div class="settings-section">
+                    <h3 class="settings-section-title">カラーテーマ</h3>
+                    <div class="theme-selector">
+                        <!-- Light themes (row 1) -->
+                        <button class="theme-option selected" data-theme="classic-ivory" title="Classic Ivory">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #faf7f2, #ebe4d6); border: 1px solid #d4c5b0;"></span>
+                            <span class="theme-name">Ivory</span>
+                        </button>
+                        <button class="theme-option" data-theme="soft-blush" title="Soft Blush">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #fdf2f8, #fbcfe8); border: 1px solid #f9a8d4;"></span>
+                            <span class="theme-name">Blush</span>
+                        </button>
+                        <button class="theme-option" data-theme="soft-peach" title="Soft Peach">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #fff7ed, #fed7aa); border: 1px solid #fdba74;"></span>
+                            <span class="theme-name">Peach</span>
+                        </button>
+                        <button class="theme-option" data-theme="sage-green" title="Sage Green">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #f0fdf4, #bbf7d0); border: 1px solid #86efac;"></span>
+                            <span class="theme-name">Sage</span>
+                        </button>
+                        <button class="theme-option" data-theme="sky-blue" title="Sky Blue">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #f0f9ff, #bae6fd); border: 1px solid #7dd3fc;"></span>
+                            <span class="theme-name">Sky</span>
+                        </button>
+                        <button class="theme-option" data-theme="lavender" title="Lavender">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #faf5ff, #e9d5ff); border: 1px solid #d8b4fe;"></span>
+                            <span class="theme-name">Lavender</span>
+                        </button>
+                        <!-- Dark themes (row 2) -->
+                        <button class="theme-option" data-theme="chocolate" title="Chocolate">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #44281d, #5d3a2e)"></span>
+                            <span class="theme-name">Chocolate</span>
+                        </button>
+                        <button class="theme-option" data-theme="rose-pink" title="Rose Pink">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #be185d, #db2777)"></span>
+                            <span class="theme-name">Rose</span>
+                        </button>
+                        <button class="theme-option" data-theme="sunset-orange" title="Sunset Orange">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #c2410c, #ea580c)"></span>
+                            <span class="theme-name">Sunset</span>
+                        </button>
+                        <button class="theme-option" data-theme="forest-green" title="Forest Green">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #1a472a, #2d5a27)"></span>
+                            <span class="theme-name">Forest</span>
+                        </button>
+                        <button class="theme-option" data-theme="ocean-blue" title="Ocean Blue">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #1e40af, #2563eb)"></span>
+                            <span class="theme-name">Ocean</span>
+                        </button>
+                        <button class="theme-option" data-theme="elegant-purple" title="Elegant Purple">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #581c87, #7c3aed)"></span>
+                            <span class="theme-name">Purple</span>
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Actions -->
                 <div class="settings-actions">

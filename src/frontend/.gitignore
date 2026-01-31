@@ -1,3 +1,9 @@
+# Dependencies
+node_modules/
+
+# Tailwind CSS build output
+css/output.css
+
 # Firebase
 .firebase/
 
