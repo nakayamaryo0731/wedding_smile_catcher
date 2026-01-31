@@ -122,6 +122,52 @@
         .hidden {
             display: none;
         }
+
+        .bot-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            object-fit: cover;
+        }
+
+        .instruction {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .instruction-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            margin-bottom: 8px;
+        }
+
+        .instruction-step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 13px;
+            color: #555;
+        }
     </style>
 </head>
 
@@ -130,8 +176,29 @@
         <!-- Loading State -->
         <div id="loading-state">
             <div class="spinner"></div>
-            <p class="title">参加処理中...</p>
+            <p class="title">準備中...</p>
             <p class="message">しばらくお待ちください</p>
+        </div>
+
+        <!-- Ready State (show before shareTargetPicker) -->
+        <div id="ready-state" class="hidden">
+            <div class="icon">📸</div>
+            <p class="title">イベントに参加する</p>
+            <div class="event-name">
+                <p class="event-name-label">参加イベント</p>
+                <p class="event-name-value" id="event-name-ready">-</p>
+            </div>
+            <div class="instruction">
+                <div class="instruction-step">
+                    <span class="step-number">1</span>
+                    <span class="step-text">下のボタンをタップ</span>
+                </div>
+                <div class="instruction-step">
+                    <span class="step-number">2</span>
+                    <span class="step-text">「AI笑顔写真コンテスト」を選択</span>
+                </div>
+            </div>
+            <button class="btn" onclick="openSharePicker()">参加する</button>
         </div>
 
         <!-- Success State -->
@@ -159,6 +226,14 @@
             <div class="icon">📱</div>
             <p class="title">LINEで開いてください</p>
             <p class="message">このページはLINEアプリ内で<br>開く必要があります</p>
+        </div>
+
+        <!-- Cancelled State -->
+        <div id="cancelled-state" class="hidden">
+            <div class="icon">🤔</div>
+            <p class="title">キャンセルされました</p>
+            <p class="message">もう一度お試しください</p>
+            <button class="btn" onclick="openSharePicker()">やり直す</button>
         </div>
     </div>
 
@@ -229,6 +304,40 @@
             window.location.reload();
         }
 
+        async function openSharePicker() {
+            try {
+                showState('loading-state');
+
+                // Check if shareTargetPicker is available
+                if (!liff.isApiAvailable('shareTargetPicker')) {
+                    showError('この機能はご利用いただけません');
+                    return;
+                }
+
+                // Open share target picker
+                const result = await liff.shareTargetPicker([
+                    {
+                        type: 'text',
+                        text: `JOIN ${eventCode}`
+                    }
+                ]);
+
+                if (result) {
+                    // Message was sent successfully
+                    const displayName = eventName ? decodeURIComponent(eventName) : 'イベント';
+                    document.getElementById('event-name-display').textContent = displayName;
+                    showState('success-state');
+                } else {
+                    // User cancelled
+                    showState('cancelled-state');
+                }
+
+            } catch (error) {
+                console.error('Share error:', error);
+                showError(error.message || '送信に失敗しました');
+            }
+        }
+
         async function initializeLiff() {
             try {
                 // Check if LIFF ID is configured
@@ -261,32 +370,14 @@
                     return;
                 }
 
-                // Send JOIN message
-                await liff.sendMessages([
-                    {
-                        type: 'text',
-                        text: `JOIN ${eventCode}`
-                    }
-                ]);
-
-                // Show success
-                if (eventName) {
-                    document.getElementById('event-name-display').textContent = decodeURIComponent(eventName);
-                } else {
-                    document.getElementById('event-name-display').textContent = 'イベント';
-                }
-                showState('success-state');
+                // Show ready state with event name
+                const displayName = eventName ? decodeURIComponent(eventName) : 'イベント';
+                document.getElementById('event-name-ready').textContent = displayName;
+                showState('ready-state');
 
             } catch (error) {
                 console.error('LIFF Error:', error);
-
-                if (error.code === 'FORBIDDEN') {
-                    showError('メッセージの送信権限がありません。LINEで友だち追加してから再度お試しください。');
-                } else if (error.code === 'INVALID_ARGUMENT') {
-                    showError('無効なリクエストです');
-                } else {
-                    showError(error.message || '予期せぬエラーが発生しました');
-                }
+                showError(error.message || '予期せぬエラーが発生しました');
             }
         }
 
