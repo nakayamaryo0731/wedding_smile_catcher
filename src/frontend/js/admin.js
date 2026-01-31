@@ -76,6 +76,15 @@ function showToast(message, type = "info", duration = 3000) {
   }, duration);
 }
 
+// Set default event date to today
+function setDefaultEventDate() {
+  const dateInput = document.getElementById("newEventDate");
+  if (dateInput) {
+    const today = new Date().toISOString().split("T")[0];
+    dateInput.value = today;
+  }
+}
+
 // Check if current user is an admin (operator)
 async function checkAdminStatus() {
   if (!currentUser) {
@@ -1758,7 +1767,7 @@ document
 
       // Clear form and collapse
       document.getElementById("newEventName").value = "";
-      document.getElementById("newEventDate").value = "";
+      setDefaultEventDate();
       document.getElementById("eventCreateForm").style.display = "none";
       document.getElementById("eventCreateToggle").classList.remove("open");
 
@@ -1917,6 +1926,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     showScreen("adminScreen");
+    setDefaultEventDate();
     loadStats();
     loadImages();
   } else {
