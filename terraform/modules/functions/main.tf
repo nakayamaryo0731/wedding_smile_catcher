@@ -247,3 +247,60 @@ resource "google_cloud_run_service_iam_member" "notification_run_invoker" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# LIFF Join Cloud Function (Gen2)
+# Handles automatic event joining from LIFF app
+resource "google_cloudfunctions2_function" "liff_join" {
+  name        = "liff-join"
+  location    = var.region
+  description = "LIFF automatic event join handler"
+  project     = var.project_id
+
+  build_config {
+    runtime     = "python311"
+    entry_point = "liff_join"
+
+    source {
+      storage_source {
+        bucket = var.storage_bucket_name
+        object = google_storage_bucket_object.webhook_source.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 100
+    min_instance_count    = 0
+    available_memory      = "256M"
+    timeout_seconds       = 30
+    service_account_email = var.webhook_service_account_email
+
+    environment_variables = {
+      GCP_PROJECT_ID = var.project_id
+    }
+  }
+
+  labels = {
+    environment = "production"
+    managed_by  = "terraform"
+    function    = "liff-join"
+  }
+}
+
+# Make liff-join function publicly accessible
+resource "google_cloudfunctions2_function_iam_member" "liff_join_invoker" {
+  project        = var.project_id
+  location       = var.region
+  cloud_function = google_cloudfunctions2_function.liff_join.name
+  role           = "roles/cloudfunctions.invoker"
+  member         = "allUsers"
+}
+
+# Make underlying Cloud Run service publicly accessible
+resource "google_cloud_run_service_iam_member" "liff_join_run_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.liff_join.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}

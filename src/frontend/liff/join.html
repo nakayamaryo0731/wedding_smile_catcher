@@ -71,6 +71,13 @@
             color: #333;
         }
 
+        .user-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 8px;
+        }
+
         .spinner {
             width: 40px;
             height: 40px;
@@ -123,50 +130,30 @@
             display: none;
         }
 
-        .bot-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            margin: 0 auto 16px;
-            object-fit: cover;
-        }
-
-        .instruction {
+        .next-step {
             background: #f8f9fa;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 24px;
         }
 
-        .instruction-step {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-align: left;
+        .next-step-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
             margin-bottom: 8px;
         }
 
-        .instruction-step:last-child {
-            margin-bottom: 0;
-        }
-
-        .step-number {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #FF6B9D, #A17FE0);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
-        .step-text {
+        .next-step-text {
             font-size: 13px;
-            color: #555;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .note {
+            font-size: 12px;
+            color: #888;
+            margin-top: 16px;
         }
     </style>
 </head>
@@ -176,40 +163,40 @@
         <!-- Loading State -->
         <div id="loading-state">
             <div class="spinner"></div>
-            <p class="title">準備中...</p>
+            <p class="title">参加処理中...</p>
             <p class="message">しばらくお待ちください</p>
-        </div>
-
-        <!-- Ready State (show before shareTargetPicker) -->
-        <div id="ready-state" class="hidden">
-            <div class="icon">📸</div>
-            <p class="title">イベントに参加する</p>
-            <div class="event-name">
-                <p class="event-name-label">参加イベント</p>
-                <p class="event-name-value" id="event-name-ready">-</p>
-            </div>
-            <div class="instruction">
-                <div class="instruction-step">
-                    <span class="step-number">1</span>
-                    <span class="step-text">下のボタンをタップ</span>
-                </div>
-                <div class="instruction-step">
-                    <span class="step-number">2</span>
-                    <span class="step-text">「AI笑顔写真コンテスト」を選択</span>
-                </div>
-            </div>
-            <button class="btn" onclick="openSharePicker()">参加する</button>
         </div>
 
         <!-- Success State -->
         <div id="success-state" class="hidden">
             <div class="icon">🎉</div>
             <p class="title">参加完了！</p>
+            <p class="user-name" id="user-name-display">-</p>
             <div class="event-name">
                 <p class="event-name-label">参加イベント</p>
                 <p class="event-name-value" id="event-name-display">-</p>
             </div>
-            <p class="message">LINEのトーク画面で<br>お名前を送信してください</p>
+            <div class="next-step">
+                <p class="next-step-title">📸 次のステップ</p>
+                <p class="next-step-text">LINEのトーク画面で<br>笑顔の写真を投稿してね！</p>
+            </div>
+            <button class="btn" onclick="closeWindow()">LINEに戻る</button>
+            <p class="note">※ ランキングにはLINE名で表示されます</p>
+        </div>
+
+        <!-- Already Joined State -->
+        <div id="already-joined-state" class="hidden">
+            <div class="icon">👋</div>
+            <p class="title">おかえりなさい！</p>
+            <p class="user-name" id="user-name-already">-</p>
+            <div class="event-name">
+                <p class="event-name-label">参加中のイベント</p>
+                <p class="event-name-value" id="event-name-already">-</p>
+            </div>
+            <div class="next-step">
+                <p class="next-step-title">📸 笑顔の写真を投稿しよう！</p>
+                <p class="next-step-text">LINEのトーク画面から<br>写真を送信してね</p>
+            </div>
             <button class="btn" onclick="closeWindow()">LINEに戻る</button>
         </div>
 
@@ -227,20 +214,15 @@
             <p class="title">LINEで開いてください</p>
             <p class="message">このページはLINEアプリ内で<br>開く必要があります</p>
         </div>
-
-        <!-- Cancelled State -->
-        <div id="cancelled-state" class="hidden">
-            <div class="icon">🤔</div>
-            <p class="title">キャンセルされました</p>
-            <p class="message">もう一度お試しください</p>
-            <button class="btn" onclick="openSharePicker()">やり直す</button>
-        </div>
     </div>
 
     <script src="../js/config.js"></script>
     <script>
         // LIFF ID from config.js
         const LIFF_ID = window.LIFF_ID;
+
+        // API endpoint for LIFF join
+        const LIFF_JOIN_API = "https://asia-northeast1-wedding-smile-catcher.cloudfunctions.net/liff-join";
 
         // Event code will be extracted after LIFF init
         let eventCode = null;
@@ -304,38 +286,25 @@
             window.location.reload();
         }
 
-        async function openSharePicker() {
-            try {
-                showState('loading-state');
+        async function joinEvent(userId, displayName) {
+            const response = await fetch(LIFF_JOIN_API, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    display_name: displayName,
+                    event_code: eventCode,
+                }),
+            });
 
-                // Check if shareTargetPicker is available
-                if (!liff.isApiAvailable('shareTargetPicker')) {
-                    showError('この機能はご利用いただけません');
-                    return;
-                }
-
-                // Open share target picker
-                const result = await liff.shareTargetPicker([
-                    {
-                        type: 'text',
-                        text: `JOIN ${eventCode}`
-                    }
-                ]);
-
-                if (result) {
-                    // Message was sent successfully
-                    const displayName = eventName ? decodeURIComponent(eventName) : 'イベント';
-                    document.getElementById('event-name-display').textContent = displayName;
-                    showState('success-state');
-                } else {
-                    // User cancelled
-                    showState('cancelled-state');
-                }
-
-            } catch (error) {
-                console.error('Share error:', error);
-                showError(error.message || '送信に失敗しました');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'APIエラーが発生しました');
             }
+
+            return response.json();
         }
 
         async function initializeLiff() {
@@ -370,10 +339,30 @@
                     return;
                 }
 
-                // Show ready state with event name
-                const displayName = eventName ? decodeURIComponent(eventName) : 'イベント';
-                document.getElementById('event-name-ready').textContent = displayName;
-                showState('ready-state');
+                // Get user profile
+                const profile = await liff.getProfile();
+                const userId = profile.userId;
+                const displayName = profile.displayName;
+
+                console.log('User ID:', userId);
+                console.log('Display Name:', displayName);
+
+                // Call API to join event
+                const result = await joinEvent(userId, displayName);
+
+                console.log('Join result:', result);
+
+                if (result.status === 'already_joined') {
+                    // Already joined
+                    document.getElementById('user-name-already').textContent = result.user_name + 'さん';
+                    document.getElementById('event-name-already').textContent = result.event_name;
+                    showState('already-joined-state');
+                } else {
+                    // New join or reactivated
+                    document.getElementById('user-name-display').textContent = result.user_name + 'さん';
+                    document.getElementById('event-name-display').textContent = result.event_name;
+                    showState('success-state');
+                }
 
             } catch (error) {
                 console.error('LIFF Error:', error);

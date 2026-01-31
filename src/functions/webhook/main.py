@@ -786,3 +786,141 @@ def handle_unsend(event):
 
     except Exception as e:
         logger.error(f"Failed to handle unsend event: {str(e)}")
+
+
+@functions_framework.http
+def liff_join(request: Request):
+    """
+    LIFF endpoint for automatic event joining.
+    Receives LINE user ID, display name, and event code from LIFF app.
+    Registers user directly to Firestore without requiring message send.
+
+    Expected JSON body:
+    {
+        "user_id": "LINE user ID",
+        "display_name": "LINE display name",
+        "event_code": "event code"
+    }
+    """
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Max-Age": "3600",
+        }
+        return ("", 204, headers)
+
+    # CORS headers for actual request
+    cors_headers = {"Access-Control-Allow-Origin": "*"}
+
+    if request.method != "POST":
+        return (jsonify({"error": "Method not allowed"}), 405, cors_headers)
+
+    try:
+        data = request.get_json()
+        if not data:
+            return (jsonify({"error": "Invalid JSON"}), 400, cors_headers)
+
+        user_id = data.get("user_id")
+        display_name = data.get("display_name")
+        event_code = data.get("event_code")
+
+        if not user_id or not display_name or not event_code:
+            return (
+                jsonify({"error": "Missing required fields: user_id, display_name, event_code"}),
+                400,
+                cors_headers,
+            )
+
+        # Validate event code
+        is_valid, error_message = validate_event_code(event_code)
+        if not is_valid:
+            return (jsonify({"error": error_message}), 400, cors_headers)
+
+        logger.info(f"LIFF JOIN request from {user_id} ({display_name}) with code: {event_code}")
+
+        # Look up event by event_code
+        events_ref = db.collection("events")
+        q = (
+            events_ref.where(filter=firestore.FieldFilter("event_code", "==", event_code))
+            .where(filter=firestore.FieldFilter("status", "==", "active"))
+            .limit(1)
+        )
+        event_docs = list(q.stream())
+
+        if not event_docs:
+            return (jsonify({"error": "参加コードが見つかりません"}), 404, cors_headers)
+
+        event_doc = event_docs[0]
+        event_data = event_doc.to_dict()
+        event_id = event_doc.id
+        event_name = event_data.get("event_name", "イベント")
+
+        # Deactivate registrations in other events
+        _deactivate_other_registrations(user_id, event_id)
+
+        # Create or update user document
+        composite_key = f"{user_id}_{event_id}"
+        user_ref = db.collection("users").document(composite_key)
+
+        @firestore.transactional
+        def join_with_name(transaction, user_ref):
+            doc = user_ref.get(transaction=transaction)
+
+            if doc.exists:
+                data = doc.to_dict()
+                status = data.get("join_status")
+                existing_name = data.get("name")
+
+                if status == "left":
+                    # Reactivate with existing name or new display name
+                    transaction.update(
+                        user_ref,
+                        {
+                            "join_status": "registered",
+                            "name": existing_name or display_name,
+                        },
+                    )
+                    return {"status": "reactivated", "name": existing_name or display_name}
+                else:
+                    # Already registered
+                    return {"status": "already_joined", "name": existing_name or display_name}
+            else:
+                # New user - register with LINE display name
+                transaction.set(
+                    user_ref,
+                    {
+                        "line_user_id": user_id,
+                        "event_id": event_id,
+                        "name": display_name,
+                        "join_status": "registered",
+                        "created_at": firestore.SERVER_TIMESTAMP,
+                        "total_uploads": 0,
+                        "best_score": 0,
+                    },
+                )
+                return {"status": "joined", "name": display_name}
+
+        transaction = db.transaction()
+        result = join_with_name(transaction, user_ref)
+
+        logger.info(f"LIFF JOIN result for {user_id}: {result['status']}")
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "status": result["status"],
+                    "event_name": event_name,
+                    "user_name": result["name"],
+                }
+            ),
+            200,
+            cors_headers,
+        )
+
+    except Exception as e:
+        logger.error(f"LIFF JOIN error: {str(e)}")
+        return (jsonify({"error": "サーバーエラーが発生しました"}), 500, cors_headers)
