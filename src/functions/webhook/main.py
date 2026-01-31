@@ -32,10 +32,15 @@ from linebot.v3.messaging import (
 from linebot.v3.messaging.exceptions import ApiException
 from linebot.v3.webhook import InvalidSignatureError, WebhookHandler
 from linebot.v3.webhooks import (
+    AudioMessageContent,
+    FileMessageContent,
     ImageMessageContent,
+    LocationMessageContent,
     MessageEvent,
+    StickerMessageContent,
     TextMessageContent,
     UnsendEvent,
+    VideoMessageContent,
 )
 
 # Initialize logging
@@ -767,6 +772,65 @@ def handle_unsend(event):
 
     except Exception as e:
         logger.error(f"Failed to handle unsend event: {str(e)}")
+
+
+# Message for unsupported content types
+UNSUPPORTED_CONTENT_MESSAGE = "画像を投稿しよう！"
+
+
+@handler.add(MessageEvent, message=VideoMessageContent)
+def handle_video_message(event: MessageEvent):
+    """Handle video message - inform user that only images are supported."""
+    messaging_api.reply_message(
+        ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text=UNSUPPORTED_CONTENT_MESSAGE)],
+        )
+    )
+
+
+@handler.add(MessageEvent, message=StickerMessageContent)
+def handle_sticker_message(event: MessageEvent):
+    """Handle sticker message - inform user that only images are supported."""
+    messaging_api.reply_message(
+        ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text=UNSUPPORTED_CONTENT_MESSAGE)],
+        )
+    )
+
+
+@handler.add(MessageEvent, message=AudioMessageContent)
+def handle_audio_message(event: MessageEvent):
+    """Handle audio message - inform user that only images are supported."""
+    messaging_api.reply_message(
+        ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text=UNSUPPORTED_CONTENT_MESSAGE)],
+        )
+    )
+
+
+@handler.add(MessageEvent, message=LocationMessageContent)
+def handle_location_message(event: MessageEvent):
+    """Handle location message - inform user that only images are supported."""
+    messaging_api.reply_message(
+        ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text=UNSUPPORTED_CONTENT_MESSAGE)],
+        )
+    )
+
+
+@handler.add(MessageEvent, message=FileMessageContent)
+def handle_file_message(event: MessageEvent):
+    """Handle file message - inform user that only images are supported."""
+    messaging_api.reply_message(
+        ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text=UNSUPPORTED_CONTENT_MESSAGE)],
+        )
+    )
 
 
 @functions_framework.http
