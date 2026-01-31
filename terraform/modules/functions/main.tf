@@ -278,6 +278,20 @@ resource "google_cloudfunctions2_function" "liff_join" {
     environment_variables = {
       GCP_PROJECT_ID = var.project_id
     }
+
+    secret_environment_variables {
+      key        = "LINE_CHANNEL_SECRET"
+      project_id = var.project_id
+      secret     = var.line_channel_secret_name
+      version    = "latest"
+    }
+
+    secret_environment_variables {
+      key        = "LINE_CHANNEL_ACCESS_TOKEN"
+      project_id = var.project_id
+      secret     = var.line_channel_access_token_name
+      version    = "latest"
+    }
   }
 
   labels = {
