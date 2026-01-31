@@ -792,6 +792,14 @@ function setupModeButtons() {
     });
     console.log("Ranking button listener set up");
   }
+
+  // Header title click to reload page
+  const headerTitle = document.getElementById("header-title-link");
+  if (headerTitle) {
+    headerTitle.addEventListener("click", () => {
+      window.location.reload();
+    });
+  }
 }
 
 /**
