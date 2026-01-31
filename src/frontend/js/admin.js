@@ -60,6 +60,22 @@ let isAdminUser = false;
 // Current authenticated user (set by onAuthStateChanged)
 let currentUser = null;
 
+// Toast notification function
+function showToast(message, type = "info", duration = 3000) {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("toast-out");
+    toast.addEventListener("animationend", () => toast.remove());
+  }, duration);
+}
+
 // Check if current user is an admin (operator)
 async function checkAdminStatus() {
   if (!currentUser) {
@@ -832,10 +848,10 @@ async function deleteSelected(type) {
 
     await loadStats();
 
-    alert(`Successfully deleted ${count} ${type}`);
+    showToast(`Successfully deleted ${count} ${type}`, "success");
   } catch (error) {
     console.error("Error deleting items:", error);
-    alert(`Error deleting ${type}: ${error.message}`);
+    showToast(`Error deleting ${type}: ${error.message}`, "error", 5000);
   }
 }
 
@@ -922,7 +938,7 @@ async function downloadSelectedImages() {
   const originalText = btn.innerHTML;
 
   if (selectedItems.images.size === 0) {
-    alert("Please select images to download.");
+    showToast("Please select images to download.", "warning");
     return;
   }
 
@@ -937,13 +953,13 @@ async function downloadSelectedImages() {
       .filter((img) => img && img.thumbnail);
 
     if (selectedImages.length === 0) {
-      alert("No valid images to download. Images may not have signed URLs.");
+      showToast("No valid images to download. Images may not have signed URLs.", "warning");
       return;
     }
 
     // Check if JSZip is available
     if (typeof JSZip === "undefined") {
-      alert("ZIP library not loaded. Please refresh the page.");
+      showToast("ZIP library not loaded. Please refresh the page.", "error");
       return;
     }
 
@@ -995,10 +1011,10 @@ async function downloadSelectedImages() {
     link.click();
     URL.revokeObjectURL(link.href);
 
-    alert(`Downloaded ${downloadedCount} images successfully.`);
+    showToast(`Downloaded ${downloadedCount} images successfully.`, "success");
   } catch (error) {
     console.error("Download failed:", error);
-    alert("Download failed: " + error.message);
+    showToast("Download failed: " + error.message, "error", 5000);
   } finally {
     btn.disabled = selectedItems.images.size === 0;
     btn.innerHTML = originalText;
@@ -1514,8 +1530,8 @@ function downloadQRCode() {
 
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(
-    () => alert("Copied to clipboard!"),
-    () => alert("Failed to copy.")
+    () => showToast("Copied to clipboard!", "success"),
+    () => showToast("Failed to copy.", "error")
   );
 }
 
@@ -1539,7 +1555,7 @@ async function updateEventStatus(eventId, newStatus) {
     await loadStats();
   } catch (error) {
     console.error("Error updating event status:", error);
-    alert("Failed to update status: " + error.message);
+    showToast("Failed to update status: " + error.message, "error", 5000);
   }
 }
 
@@ -1569,13 +1585,15 @@ async function sendPostEventNotification(eventId, eventName) {
       throw new Error(result.error || "Unknown error");
     }
 
-    alert(
-      `通知送信完了!\n\n成功: ${result.sent_count}件\n失敗: ${result.failed_count}件`
+    showToast(
+      `通知送信完了! 成功: ${result.sent_count}件 / 失敗: ${result.failed_count}件`,
+      "success",
+      5000
     );
     await loadEvents();
   } catch (error) {
     console.error("Error sending notification:", error);
-    alert("通知送信に失敗しました: " + error.message);
+    showToast("通知送信に失敗しました: " + error.message, "error", 5000);
   }
 }
 
@@ -1701,17 +1719,17 @@ document
     const submitBtn = document.getElementById("eventCreateBtn");
 
     if (!eventName || eventName.length > 100) {
-      alert("Event name must be 1-100 characters.");
+      showToast("Event name must be 1-100 characters.", "warning");
       return;
     }
 
     if (!eventDate) {
-      alert("Event date is required.");
+      showToast("Event date is required.", "warning");
       return;
     }
 
     if (!currentUser) {
-      alert("Please log in first.");
+      showToast("Please log in first.", "warning");
       return;
     }
 
@@ -1748,7 +1766,7 @@ document
       await loadStats();
     } catch (error) {
       console.error("Error creating event:", error);
-      alert("Failed to create event: " + error.message);
+      showToast("Failed to create event: " + error.message, "error", 5000);
     } finally {
       submitBtn.disabled = false;
     }
