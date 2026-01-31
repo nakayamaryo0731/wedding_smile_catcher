@@ -126,78 +126,108 @@
                 class="text-2xl lg:text-3xl font-bold text-center mb-16 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
                 こんなお悩み、解決します！
             </h2>
-            <div class="space-y-14">
-                <!-- Item 1 -->
-                <div class="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-                    <div class="flex-1 text-center md:text-right">
+            <!-- Mobile: Card layout / Desktop: Arrow layout -->
+            <!-- Mobile Cards -->
+            <div class="md:hidden grid grid-cols-1 gap-6">
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-6 rounded-2xl">
+                    <p class="text-lp-text-light mb-1">結婚式で撮った写真が<span class="font-bold text-lp-text-dark">新郎新婦に届かない</span></p>
+                    <div class="flex items-center gap-2 my-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-primary to-lp-secondary"></div>
+                        <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary"></i>
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-secondary to-lp-primary"></div>
+                    </div>
+                    <p class="font-bold text-lp-text-dark">写真は全部もらえる</p>
+                    <p class="text-sm text-lp-text-light">イベント終了後、すべての写真を一括ダウンロード</p>
+                </div>
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-6 rounded-2xl">
+                    <p class="text-lp-text-light mb-1">ゲスト同士の<span class="font-bold text-lp-text-dark">交流を促進したい</span></p>
+                    <div class="flex items-center gap-2 my-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-primary to-lp-secondary"></div>
+                        <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary"></i>
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-secondary to-lp-primary"></div>
+                    </div>
+                    <p class="font-bold text-lp-text-dark">みんなで写真を撮り合う</p>
+                    <p class="text-sm text-lp-text-light">笑顔の人数が多いほど高得点！自然と盛り上がる</p>
+                </div>
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-6 rounded-2xl">
+                    <p class="text-lp-text-light mb-1">余興の<span class="font-bold text-lp-text-dark">ネタに困っている</span></p>
+                    <div class="flex items-center gap-2 my-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-primary to-lp-secondary"></div>
+                        <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary"></i>
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-secondary to-lp-primary"></div>
+                    </div>
+                    <p class="font-bold text-lp-text-dark">ランキング＆スライドショー</p>
+                    <p class="text-sm text-lp-text-light">スクリーンにリアルタイム表示で会場が盛り上がる</p>
+                </div>
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-6 rounded-2xl">
+                    <p class="text-lp-text-light mb-1">写真共有サービスは<span class="font-bold text-lp-text-dark">使いにくい</span></p>
+                    <div class="flex items-center gap-2 my-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-primary to-lp-secondary"></div>
+                        <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary"></i>
+                        <div class="flex-1 h-px bg-gradient-to-r from-lp-secondary to-lp-primary"></div>
+                    </div>
+                    <p class="font-bold text-lp-text-dark">LINEだから誰でも使える</p>
+                    <p class="text-sm text-lp-text-light">アプリ不要、QRコードを読むだけで参加</p>
+                </div>
+            </div>
+            <!-- Desktop: Arrow layout -->
+            <div class="hidden md:block space-y-14">
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
                         <p class="text-lg text-lp-text-light">結婚式で撮った写真が</p>
                         <p class="text-xl font-bold text-lp-text-dark">新郎新婦に届かない</p>
                     </div>
                     <div class="flex-shrink-0">
-                        <div
-                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
-                            <i data-lucide="arrow-right" class="w-6 h-6 hidden md:block"></i>
-                            <i data-lucide="arrow-down" class="w-6 h-6 md:hidden"></i>
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
                         </div>
                     </div>
-                    <div class="flex-1 text-center md:text-left">
+                    <div class="flex-1 text-left">
                         <h3 class="text-xl font-bold text-lp-text-dark">写真は全部もらえる</h3>
                         <p class="text-lp-text-light">イベント終了後、ゲストが投稿した<br>すべての写真を一括ダウンロード</p>
                     </div>
                 </div>
-
-                <!-- Item 2 -->
-                <div class="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-                    <div class="flex-1 text-center md:text-right">
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
                         <p class="text-lg text-lp-text-light">ゲスト同士の</p>
                         <p class="text-xl font-bold text-lp-text-dark">交流を促進したい</p>
                     </div>
                     <div class="flex-shrink-0">
-                        <div
-                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
-                            <i data-lucide="arrow-right" class="w-6 h-6 hidden md:block"></i>
-                            <i data-lucide="arrow-down" class="w-6 h-6 md:hidden"></i>
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
                         </div>
                     </div>
-                    <div class="flex-1 text-center md:text-left">
+                    <div class="flex-1 text-left">
                         <h3 class="text-xl font-bold text-lp-text-dark">みんなで写真を撮り合う</h3>
                         <p class="text-lp-text-light">笑顔の人数が多いほど高得点！<br>自然とゲスト同士で盛り上がる</p>
                     </div>
                 </div>
-
-                <!-- Item 3 -->
-                <div class="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-                    <div class="flex-1 text-center md:text-right">
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
                         <p class="text-lg text-lp-text-light">余興の</p>
                         <p class="text-xl font-bold text-lp-text-dark">ネタに困っている</p>
                     </div>
                     <div class="flex-shrink-0">
-                        <div
-                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
-                            <i data-lucide="arrow-right" class="w-6 h-6 hidden md:block"></i>
-                            <i data-lucide="arrow-down" class="w-6 h-6 md:hidden"></i>
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
                         </div>
                     </div>
-                    <div class="flex-1 text-center md:text-left">
+                    <div class="flex-1 text-left">
                         <h3 class="text-xl font-bold text-lp-text-dark">ランキング＆スライドショー</h3>
                         <p class="text-lp-text-light">スクリーンにリアルタイム表示<br>ゲスト参加型で会場が盛り上がる</p>
                     </div>
                 </div>
-
-                <!-- Item 4 -->
-                <div class="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-                    <div class="flex-1 text-center md:text-right">
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
                         <p class="text-lg text-lp-text-light">写真共有サービスは</p>
                         <p class="text-xl font-bold text-lp-text-dark">使いにくい</p>
                     </div>
                     <div class="flex-shrink-0">
-                        <div
-                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
-                            <i data-lucide="arrow-right" class="w-6 h-6 hidden md:block"></i>
-                            <i data-lucide="arrow-down" class="w-6 h-6 md:hidden"></i>
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
                         </div>
                     </div>
-                    <div class="flex-1 text-center md:text-left">
+                    <div class="flex-1 text-left">
                         <h3 class="text-xl font-bold text-lp-text-dark">LINEだから誰でも使える</h3>
                         <p class="text-lp-text-light">アプリのインストール不要<br>QRコードを読むだけで参加</p>
                     </div>
@@ -218,33 +248,30 @@
             <div class="mb-16">
                 <h3 class="text-xl font-bold text-center mb-8 flex items-center justify-center gap-2"><i
                         data-lucide="heart" class="w-5 h-5 text-lp-primary"></i> 新郎新婦の準備</h3>
-                <div class="flex flex-col md:flex-row items-start justify-center gap-6 md:gap-4">
+                <div class="flex flex-col md:flex-row items-start justify-center gap-4 md:gap-4">
                     <div class="flex-1 max-w-xs text-center mx-auto">
                         <div
-                            class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                            class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xl md:text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-3 md:mb-5 shadow-lg shadow-lp-primary/30">
                             1</div>
-                        <h4 class="text-lg font-bold mb-2">お申し込み</h4>
-                        <p class="text-lp-text-light"><a href="#contact"
-                                class="text-lp-primary hover:text-lp-secondary underline transition-colors">フォーム</a>から必要事項を入力するだけ。
-                        </p>
+                        <h4 class="text-base md:text-lg font-bold mb-1 md:mb-2">お申し込み</h4>
+                        <p class="text-sm md:text-base text-lp-text-light"><a href="#contact"
+                                class="text-lp-primary hover:text-lp-secondary underline transition-colors">フォーム</a>から必要事項を入力</p>
                     </div>
                     <span class="hidden md:block text-3xl text-lp-secondary self-center mt-6">→</span>
-                    <span class="md:hidden text-3xl text-lp-secondary self-center rotate-90">→</span>
                     <div class="flex-1 max-w-xs text-center mx-auto">
                         <div
-                            class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                            class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xl md:text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-3 md:mb-5 shadow-lg shadow-lp-primary/30">
                             2</div>
-                        <h4 class="text-lg font-bold mb-2">URLを受け取る</h4>
-                        <p class="text-lp-text-light">本番1週間前を目安に<br>専用URLをお届けします。</p>
+                        <h4 class="text-base md:text-lg font-bold mb-1 md:mb-2">URLを受け取る</h4>
+                        <p class="text-sm md:text-base text-lp-text-light">本番1週間前を目安にお届け</p>
                     </div>
                     <span class="hidden md:block text-3xl text-lp-secondary self-center mt-6">→</span>
-                    <span class="md:hidden text-3xl text-lp-secondary self-center rotate-90">→</span>
                     <div class="flex-1 max-w-xs text-center mx-auto">
                         <div
-                            class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                            class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xl md:text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-3 md:mb-5 shadow-lg shadow-lp-primary/30">
                             3</div>
-                        <h4 class="text-lg font-bold mb-2">動作確認＆本番</h4>
-                        <p class="text-lp-text-light">事前にテスト。<br>当日はスクリーンに映すだけ！</p>
+                        <h4 class="text-base md:text-lg font-bold mb-1 md:mb-2">動作確認＆本番</h4>
+                        <p class="text-sm md:text-base text-lp-text-light">当日はスクリーンに映すだけ！</p>
                     </div>
                 </div>
             </div>
@@ -253,31 +280,28 @@
             <div>
                 <h3 class="text-xl font-bold text-center mb-8 flex items-center justify-center gap-2"><i
                         data-lucide="smartphone" class="w-5 h-5 text-lp-primary"></i> ゲストの参加方法</h3>
-                <div class="flex flex-col md:flex-row items-start justify-center gap-6 md:gap-4">
+                <div class="flex flex-col md:flex-row items-start justify-center gap-4 md:gap-4">
                     <div class="flex-1 max-w-xs text-center mx-auto">
                         <div
-                            class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                            class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xl md:text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-3 md:mb-5 shadow-lg shadow-lp-primary/30">
                             1</div>
-                        <h4 class="text-lg font-bold mb-2">QRコードを読み取り</h4>
-                        <!-- <p class="text-lp-text-light">スクリーンに表示されたQRコードを<br>スマホで読み取り。</p> -->
+                        <h4 class="text-base md:text-lg font-bold mb-1 md:mb-2">QRコードを読み取り</h4>
                     </div>
                     <span class="hidden md:block text-3xl text-lp-secondary self-center mt-6">→</span>
-                    <span class="md:hidden text-3xl text-lp-secondary self-center rotate-90">→</span>
                     <div class="flex-1 max-w-xs text-center mx-auto">
                         <div
-                            class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                            class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xl md:text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-3 md:mb-5 shadow-lg shadow-lp-primary/30">
                             2</div>
-                        <h4 class="text-lg font-bold mb-2">LINEで名前を登録</h4>
-                        <p class="text-lp-text-light">友だち追加して、お名前を送信。</p>
+                        <h4 class="text-base md:text-lg font-bold mb-1 md:mb-2">LINEで名前を登録</h4>
+                        <p class="text-sm md:text-base text-lp-text-light">友だち追加してお名前を送信</p>
                     </div>
                     <span class="hidden md:block text-3xl text-lp-secondary self-center mt-6">→</span>
-                    <span class="md:hidden text-3xl text-lp-secondary self-center rotate-90">→</span>
                     <div class="flex-1 max-w-xs text-center mx-auto">
                         <div
-                            class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                            class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xl md:text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-3 md:mb-5 shadow-lg shadow-lp-primary/30">
                             3</div>
-                        <h4 class="text-lg font-bold mb-2">写真を送るだけ！</h4>
-                        <p class="text-lp-text-light">笑顔の写真を送ると、AIがスコアを返信</p>
+                        <h4 class="text-base md:text-lg font-bold mb-1 md:mb-2">写真を送るだけ！</h4>
+                        <p class="text-sm md:text-base text-lp-text-light">AIがスコアを返信</p>
                     </div>
                 </div>
             </div>
