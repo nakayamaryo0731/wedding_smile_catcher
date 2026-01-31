@@ -17,3 +17,7 @@ window.FINAL_ANIMATION_TYPE = "envelope";
 
 // LINE Bot ID for deep link QR code generation
 window.LINE_BOT_ID = "@581qtuij";
+
+// LIFF ID for automatic event joining (set after LINE Developers setup)
+// Format: "1234567890-xxxxxxxx"
+window.LIFF_ID = "";

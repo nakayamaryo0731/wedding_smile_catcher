@@ -1576,14 +1576,36 @@ function initThemeSelector() {
 }
 
 /**
+ * Generate join URL for QR code
+ * Uses LIFF URL if LIFF_ID is configured, otherwise falls back to deep link
+ */
+function generateJoinUrl(eventCode, eventName = "") {
+  const liffId = window.LIFF_ID;
+
+  if (liffId) {
+    // Use LIFF for seamless auto-join experience
+    const baseUrl = `https://liff.line.me/${liffId}`;
+    const params = new URLSearchParams({ event: eventCode });
+    if (eventName) {
+      params.append("name", eventName);
+    }
+    return `${baseUrl}?${params.toString()}`;
+  } else {
+    // Fallback to traditional deep link
+    const botId = window.LINE_BOT_ID || "@581qtuij";
+    return `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
+  }
+}
+
+/**
  * Generate QR code for the fixed bottom-right display
  */
 function generateMainQRCode() {
   if (!currentEventData) return;
 
   const eventCode = currentEventData.event_code || "";
-  const botId = window.LINE_BOT_ID || "@581qtuij";
-  const deepLinkUrl = `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
+  const eventName = currentEventData.event_name || "";
+  const joinUrl = generateJoinUrl(eventCode, eventName);
 
   if (typeof QRCode === "undefined") return;
 
@@ -1591,7 +1613,7 @@ function generateMainQRCode() {
   if (container) {
     container.innerHTML = "";
     new QRCode(container, {
-      text: deepLinkUrl,
+      text: joinUrl,
       width: 140,
       height: 140,
       colorDark: "#000000",
@@ -1600,7 +1622,7 @@ function generateMainQRCode() {
     });
   }
 
-  console.log("Main QR code generated");
+  console.log("Main QR code generated:", window.LIFF_ID ? "LIFF mode" : "deep link mode");
 }
 
 /**
@@ -1624,8 +1646,8 @@ function downloadSettingsQRCode() {
   if (!currentEventData) return;
 
   const eventCode = currentEventData.event_code || "";
-  const botId = window.LINE_BOT_ID || "@581qtuij";
-  const deepLinkUrl = `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
+  const eventName = currentEventData.event_name || "";
+  const joinUrl = generateJoinUrl(eventCode, eventName);
 
   // Create a temporary container for high-res QR
   const tempContainer = document.createElement("div");
@@ -1634,7 +1656,7 @@ function downloadSettingsQRCode() {
   document.body.appendChild(tempContainer);
 
   const qr = new QRCode(tempContainer, {
-    text: deepLinkUrl,
+    text: joinUrl,
     width: 512,
     height: 512,
     colorDark: "#000000",

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>イベント参加</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #FF6B9D 0%, #A17FE0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            max-width: 340px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .message {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .event-name {
+            background: linear-gradient(135deg, #FF6B9D20, #A17FE020);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .event-name-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .event-name-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #FF6B9D;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 157, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error {
+            color: #e74c3c;
+        }
+
+        .success {
+            color: #27ae60;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Loading State -->
+        <div id="loading-state">
+            <div class="spinner"></div>
+            <p class="title">参加処理中...</p>
+            <p class="message">しばらくお待ちください</p>
+        </div>
+
+        <!-- Success State -->
+        <div id="success-state" class="hidden">
+            <div class="icon">🎉</div>
+            <p class="title">参加完了！</p>
+            <div class="event-name">
+                <p class="event-name-label">参加イベント</p>
+                <p class="event-name-value" id="event-name-display">-</p>
+            </div>
+            <p class="message">LINEのトーク画面で<br>お名前を送信してください</p>
+            <button class="btn" onclick="closeWindow()">LINEに戻る</button>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden">
+            <div class="icon">😢</div>
+            <p class="title error">エラーが発生しました</p>
+            <p class="message" id="error-message">-</p>
+            <button class="btn" onclick="retry()">再試行</button>
+        </div>
+
+        <!-- Not in LINE State -->
+        <div id="not-line-state" class="hidden">
+            <div class="icon">📱</div>
+            <p class="title">LINEで開いてください</p>
+            <p class="message">このページはLINEアプリ内で<br>開く必要があります</p>
+        </div>
+    </div>
+
+    <script>
+        // LIFF ID will be set from config
+        const LIFF_ID = window.LIFF_ID || "YOUR_LIFF_ID";
+
+        // Get event code from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventCode = urlParams.get('event');
+        const eventName = urlParams.get('name') || '';
+
+        function showState(stateId) {
+            document.querySelectorAll('.container > div').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.getElementById(stateId).classList.remove('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            showState('error-state');
+        }
+
+        function closeWindow() {
+            if (liff.isInClient()) {
+                liff.closeWindow();
+            } else {
+                window.close();
+            }
+        }
+
+        function retry() {
+            window.location.reload();
+        }
+
+        async function initializeLiff() {
+            try {
+                // Check if event code is provided
+                if (!eventCode) {
+                    showError('イベントコードが指定されていません');
+                    return;
+                }
+
+                // Initialize LIFF
+                await liff.init({ liffId: LIFF_ID });
+
+                // Check if running in LINE
+                if (!liff.isInClient()) {
+                    showState('not-line-state');
+                    return;
+                }
+
+                // Check if logged in
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                // Send JOIN message
+                await liff.sendMessages([
+                    {
+                        type: 'text',
+                        text: `JOIN ${eventCode}`
+                    }
+                ]);
+
+                // Show success
+                if (eventName) {
+                    document.getElementById('event-name-display').textContent = decodeURIComponent(eventName);
+                } else {
+                    document.getElementById('event-name-display').textContent = 'イベント';
+                }
+                showState('success-state');
+
+            } catch (error) {
+                console.error('LIFF Error:', error);
+
+                if (error.code === 'FORBIDDEN') {
+                    showError('メッセージの送信権限がありません。LINEで友だち追加してから再度お試しください。');
+                } else if (error.code === 'INVALID_ARGUMENT') {
+                    showError('無効なリクエストです');
+                } else {
+                    showError(error.message || '予期せぬエラーが発生しました');
+                }
+            }
+        }
+
+        // Start initialization
+        initializeLiff();
+    </script>
+</body>
+
+</html>
