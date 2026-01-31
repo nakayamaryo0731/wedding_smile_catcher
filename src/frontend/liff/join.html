@@ -167,10 +167,43 @@
         // LIFF ID from config.js
         const LIFF_ID = window.LIFF_ID;
 
-        // Get event code from URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const eventCode = urlParams.get('event');
-        const eventName = urlParams.get('name') || '';
+        // Event code will be extracted after LIFF init
+        let eventCode = null;
+        let eventName = '';
+
+        function getEventParams() {
+            // Try multiple ways to get parameters (LIFF may encode them differently)
+            const url = new URL(window.location.href);
+
+            // Method 1: Direct query params
+            eventCode = url.searchParams.get('event');
+            eventName = url.searchParams.get('name') || '';
+
+            // Method 2: Check liff.state (LIFF encodes params here sometimes)
+            if (!eventCode) {
+                const liffState = url.searchParams.get('liff.state');
+                if (liffState) {
+                    try {
+                        const stateParams = new URLSearchParams(liffState);
+                        eventCode = stateParams.get('event');
+                        eventName = stateParams.get('name') || '';
+                    } catch (e) {
+                        console.error('Failed to parse liff.state:', e);
+                    }
+                }
+            }
+
+            // Method 3: Check hash
+            if (!eventCode && window.location.hash) {
+                const hashParams = new URLSearchParams(window.location.hash.slice(1));
+                eventCode = hashParams.get('event');
+                eventName = hashParams.get('name') || '';
+            }
+
+            console.log('URL:', window.location.href);
+            console.log('Event code:', eventCode);
+            console.log('Event name:', eventName);
+        }
 
         function showState(stateId) {
             document.querySelectorAll('.container > div').forEach(el => {
@@ -204,14 +237,17 @@
                     return;
                 }
 
+                // Initialize LIFF first (params may only be available after init)
+                await liff.init({ liffId: LIFF_ID });
+
+                // Get event parameters after LIFF init
+                getEventParams();
+
                 // Check if event code is provided
                 if (!eventCode) {
                     showError('イベントコードが指定されていません');
                     return;
                 }
-
-                // Initialize LIFF
-                await liff.init({ liffId: LIFF_ID });
 
                 // Check if running in LINE
                 if (!liff.isInClient()) {
