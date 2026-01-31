@@ -1,5 +1,5 @@
 """
-Wedding Smile Catcher - Scoring Function
+Smile Photo Contest - Scoring Function
 
 Analyzes uploaded images using:
 - Vision API for smile detection (face count + joy likelihood)
