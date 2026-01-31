@@ -732,12 +732,16 @@ async function loadEvents() {
 
     container.innerHTML = "";
     snapshot.docs
-      .filter((docSnap) => docSnap.data().status !== "deleted")
+      .filter((docSnap) => {
+        const data = docSnap.data();
+        // Hide archived events that have sent notifications (completed lifecycle)
+        return !(data.status === "archived" && data.notification_sent_at);
+      })
       .forEach((docSnap) => {
-      const data = docSnap.data();
-      const card = createEventCard(docSnap.id, data);
-      container.appendChild(card);
-    });
+        const data = docSnap.data();
+        const card = createEventCard(docSnap.id, data);
+        container.appendChild(card);
+      });
 
     updateSelectionCount("events");
   } catch (error) {
