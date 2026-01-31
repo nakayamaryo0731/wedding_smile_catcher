@@ -1444,9 +1444,22 @@ function renderCumulativeChart(data) {
 }
 
 // QR Code generation and modal functions
-function getDeepLinkUrl(eventCode) {
-  const botId = window.LINE_BOT_ID || "@581qtuij";
-  return `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
+function getJoinUrl(eventCode, eventName = "") {
+  const liffId = window.LIFF_ID;
+
+  if (liffId) {
+    // Use LIFF for seamless auto-join experience
+    const baseUrl = `https://liff.line.me/${liffId}`;
+    const params = new URLSearchParams({ event: eventCode });
+    if (eventName) {
+      params.append("name", eventName);
+    }
+    return `${baseUrl}?${params.toString()}`;
+  } else {
+    // Fallback to traditional deep link
+    const botId = window.LINE_BOT_ID || "@581qtuij";
+    return `https://line.me/R/oaMessage/${botId}/?JOIN%20${eventCode}`;
+  }
 }
 
 function getRankingUrl(eventId) {
@@ -1464,17 +1477,17 @@ function showQRModal(eventId, eventName, eventCode) {
   const deepLinkEl = document.getElementById("qrDeepLinkUrl");
   const titleEl = document.getElementById("qrModalTitle");
 
-  const deepLinkUrl = getDeepLinkUrl(eventCode);
+  const joinUrl = getJoinUrl(eventCode, eventName);
 
   titleEl.textContent = eventName || "QR Code";
-  deepLinkEl.textContent = deepLinkUrl;
+  deepLinkEl.textContent = joinUrl;
 
   // Clear previous QR code
   container.innerHTML = "";
 
   // Generate new QR code
   new QRCode(container, {
-    text: deepLinkUrl,
+    text: joinUrl,
     width: 256,
     height: 256,
     colorDark: "#000000",
