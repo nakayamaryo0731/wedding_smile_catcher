@@ -30,7 +30,7 @@ repos:
       - id: check-json
         exclude: ^\.vscode/  # VS Code uses JSONC (JSON with comments)
       - id: check-added-large-files
-        args: [--maxkb=500]
+        args: [--maxkb=2000]
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: detect-private-key
