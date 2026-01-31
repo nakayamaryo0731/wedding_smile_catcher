@@ -1995,6 +1995,14 @@ async function init() {
     if (eventDoc.exists()) {
       currentEventData = { id: eventDoc.id, ...eventDoc.data() };
       const status = currentEventData.status;
+      if (status === "deleted") {
+        console.log(`Event ${currentEventId} is deleted, showing not found message`);
+        loadingEl.innerHTML = `
+          <p style="font-size: 1.2rem; color: #666;">このイベントは存在しません</p>
+        `;
+        document.getElementById("fixed-qr-container")?.classList.add("hidden");
+        return;
+      }
       if (status === "archived") {
         console.log(`Event ${currentEventId} is archived, showing ended banner`);
         document.getElementById("event-ended-banner").classList.remove("hidden");
