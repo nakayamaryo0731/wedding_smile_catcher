@@ -1,5 +1,5 @@
 """
-Wedding Smile Catcher - Webhook Function
+Smile Photo Contest - Webhook Function
 Handles LINE Bot webhook events for user registration and image uploads.
 Multi-tenant: users join events via JOIN {event_code} command.
 """
@@ -32,7 +32,6 @@ from linebot.v3.messaging import (
 from linebot.v3.messaging.exceptions import ApiException
 from linebot.v3.webhook import InvalidSignatureError, WebhookHandler
 from linebot.v3.webhooks import (
-    FollowEvent,
     ImageMessageContent,
     MessageEvent,
     TextMessageContent,
@@ -242,24 +241,6 @@ def webhook(request: Request):
         return jsonify({"error": str(e)}), 500
 
     return jsonify({"status": "ok", "request_id": request_id}), 200
-
-
-@handler.add(FollowEvent)
-def handle_follow(event: FollowEvent):
-    """
-    Handle follow event when user adds bot as friend.
-    Sends a simple welcome message with JOIN instructions.
-    """
-    user_id = event.source.user_id
-    logger.info(f"Follow event from user: {user_id}")
-
-    message = TextMessage(
-        text="ようこそ！Wedding Smile Catcherへ\n\n"
-        "イベントに参加するには、主催者から共有された参加コードを使って\n"
-        "「JOIN 参加コード」と送信してください。\n\n"
-        "例: JOIN abc12345-6789-..."
-    )
-    messaging_api.reply_message(ReplyMessageRequest(reply_token=event.reply_token, messages=[message]))
 
 
 def _find_user_by_status(line_user_id: str, join_status: str):
@@ -518,7 +499,7 @@ def handle_command(text: str, reply_token: str):
     """
     if text in ["ヘルプ", "help", "使い方"]:
         message = TextMessage(
-            text="【Wedding Smile Catcher 使い方】\n\n"
+            text="【Smile Photo Contest 使い方】\n\n"
             "📸 写真を送信\n"
             "  → AIが笑顔を分析してスコアをお伝えします\n\n"
             "❓ 「ヘルプ」\n"

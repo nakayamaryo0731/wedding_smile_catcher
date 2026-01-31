@@ -33,11 +33,11 @@ function activateTab(tabId) {
 
   // Update page title
   const titles = {
-    terms: "利用規約 - Wedding Smile Catcher",
-    privacy: "プライバシーポリシー - Wedding Smile Catcher",
-    commerce: "特定商取引法に基づく表記 - Wedding Smile Catcher",
+    terms: "利用規約 - Smile Photo Contest",
+    privacy: "プライバシーポリシー - Smile Photo Contest",
+    commerce: "特定商取引法に基づく表記 - Smile Photo Contest",
   };
-  document.title = titles[tabId] || "Legal - Wedding Smile Catcher";
+  document.title = titles[tabId] || "Legal - Smile Photo Contest";
 }
 
 // Initialize on page load
