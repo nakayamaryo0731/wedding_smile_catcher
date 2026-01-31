@@ -364,59 +364,38 @@
             </h2>
 
             <!-- LINE Bot -->
-            <div class="mb-8 md:mb-12">
-                <h3 class="text-lg md:text-xl font-bold text-center mb-4 md:mb-8 flex items-center justify-center gap-2"><i
+            <div class="mb-10 md:mb-12">
+                <h3 class="text-xl font-bold text-center mb-8 flex items-center justify-center gap-2"><i
                         data-lucide="message-circle" class="w-5 h-5 text-lp-primary"></i> LINE Bot</h3>
-                <div class="max-w-[200px] md:max-w-sm mx-auto">
+                <div class="max-w-sm mx-auto">
                     <div class="text-center">
-                        <img src="images/lp/line-bot.webp" alt="LINE Bot画面" class="w-full mb-3 md:mb-5 rounded-2xl shadow-lg">
-                        <p class="text-sm md:text-base text-lp-text-light">写真を送るとAIがスコアを返信</p>
+                        <img src="images/lp/line-bot.webp" alt="LINE Bot画面" class="w-full mb-5 rounded-2xl shadow-lg">
+                        <h4 class="text-lg font-bold mb-2">写真を送ってスコアをゲット</h4>
+                        <p class="text-lp-text-light">ゲストは友だち追加して写真を送るだけ。<br>すぐにAIがスコアを返信します。</p>
                     </div>
                 </div>
             </div>
 
             <!-- Screen Modes -->
             <div>
-                <h3 class="text-lg md:text-xl font-bold text-center mb-4 md:mb-8 flex items-center justify-center gap-2"><i
+                <h3 class="text-xl font-bold text-center mb-8 flex items-center justify-center gap-2"><i
                         data-lucide="monitor" class="w-5 h-5 text-lp-primary"></i> スクリーン表示（3つのモード）</h3>
-                <!-- Mobile: Horizontal scroll -->
-                <div class="md:hidden overflow-x-auto pb-4 -mx-6 px-6">
-                    <div class="flex gap-4" style="width: max-content;">
-                        <div class="text-center w-48 flex-shrink-0">
-                            <img src="images/lp/ranking.webp" alt="ランキングモード"
-                                class="w-full h-28 object-cover object-top mb-2 rounded-xl shadow-lg">
-                            <h4 class="text-sm font-bold">ランキング</h4>
-                        </div>
-                        <div class="text-center w-48 flex-shrink-0">
-                            <img src="images/lp/slideshow.webp" alt="スライドショーモード"
-                                class="w-full h-28 object-cover object-top mb-2 rounded-xl shadow-lg">
-                            <h4 class="text-sm font-bold">スライドショー</h4>
-                        </div>
-                        <div class="text-center w-48 flex-shrink-0">
-                            <img src="images/lp/final.webp" alt="最終結果発表モード"
-                                class="w-full h-28 object-cover object-top mb-2 rounded-xl shadow-lg">
-                            <h4 class="text-sm font-bold">最終結果発表</h4>
-                        </div>
-                    </div>
-                </div>
-                <p class="md:hidden text-center text-xs text-lp-text-light mt-1">← スワイプで確認 →</p>
-                <!-- Desktop: Grid -->
-                <div class="hidden md:grid grid-cols-3 gap-8 max-w-4xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                     <div class="text-center">
                         <img src="images/lp/ranking.webp" alt="ランキングモード"
-                            class="w-full h-48 object-cover object-top mb-5 rounded-2xl shadow-lg">
+                            class="w-full h-auto md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">ランキングモード</h4>
                         <p class="text-lp-text-light text-sm">直近の投稿からトップ3をリアルタイム表示。新しい写真が来るたび順位が変動！</p>
                     </div>
                     <div class="text-center">
                         <img src="images/lp/slideshow.webp" alt="スライドショーモード"
-                            class="w-full h-48 object-cover object-top mb-5 rounded-2xl shadow-lg">
+                            class="w-full h-auto md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">スライドショーモード</h4>
                         <p class="text-lp-text-light text-sm">投稿された写真を次々と表示。<br>会場全体で思い出を共有できます。</p>
                     </div>
                     <div class="text-center">
                         <img src="images/lp/final.webp" alt="最終結果発表モード"
-                            class="w-full h-48 object-cover object-top mb-5 rounded-2xl shadow-lg">
+                            class="w-full h-auto md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">最終結果発表モード</h4>
                         <p class="text-lp-text-light text-sm">イベント全体のトップ10を発表！<br>紙吹雪の演出で盛り上がります。</p>
                     </div>
@@ -583,91 +562,85 @@
             </h2>
             <div class="space-y-2" id="faq-container">
                 <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="faq-question flex items-center justify-between gap-3 p-4 font-bold">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
-                            <span class="text-sm md:text-base">ゲストはアプリをインストールする必要がありますか？</span>
-                        </div>
-                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1">ゲストはアプリをインストールする必要がありますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0 mt-0.5"></i>
                     </div>
                     <div class="faq-answer">
-                        <div class="px-4 pb-4 pt-0 text-sm text-lp-text-light">
-                            いいえ、LINEだけで利用できます。QRコードを読み取って友だち追加するだけです。
+                        <div class="flex items-start gap-3 px-4 pb-4 pt-0">
+                            <span class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span class="text-sm text-lp-text-light">いいえ、LINEだけで利用できます。QRコードを読み取って友だち追加するだけです。</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="faq-question flex items-center justify-between gap-3 p-4 font-bold">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
-                            <span class="text-sm md:text-base">何人まで参加できますか？</span>
-                        </div>
-                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1">何人まで参加できますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0 mt-0.5"></i>
                     </div>
                     <div class="faq-answer">
-                        <div class="px-4 pb-4 pt-0 text-sm text-lp-text-light">
-                            80名規模の結婚式での運用実績があります。それ以上の規模は未検証ですが、技術的な制限は設けていません。
+                        <div class="flex items-start gap-3 px-4 pb-4 pt-0">
+                            <span class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span class="text-sm text-lp-text-light">80名規模の結婚式での運用実績があります。それ以上の規模は未検証ですが、技術的な制限は設けていません。</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="faq-question flex items-center justify-between gap-3 p-4 font-bold">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
-                            <span class="text-sm md:text-base">当日のサポートはありますか？</span>
-                        </div>
-                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1">当日のサポートはありますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0 mt-0.5"></i>
                     </div>
                     <div class="faq-answer">
-                        <div class="px-4 pb-4 pt-0 text-sm text-lp-text-light">
-                            当日のリアルタイムサポートは提供していません。事前に動作確認をお願いしています。
+                        <div class="flex items-start gap-3 px-4 pb-4 pt-0">
+                            <span class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span class="text-sm text-lp-text-light">当日のリアルタイムサポートは提供していません。事前に動作確認をお願いしています。</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="faq-question flex items-center justify-between gap-3 p-4 font-bold">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
-                            <span class="text-sm md:text-base">写真のデータはもらえますか？</span>
-                        </div>
-                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1">写真のデータはもらえますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0 mt-0.5"></i>
                     </div>
                     <div class="faq-answer">
-                        <div class="px-4 pb-4 pt-0 text-sm text-lp-text-light">
-                            はい、ランキング画面から一括ダウンロードできます（イベント後30日以内）。
+                        <div class="flex items-start gap-3 px-4 pb-4 pt-0">
+                            <span class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span class="text-sm text-lp-text-light">はい、ランキング画面から一括ダウンロードできます（イベント後30日以内）。</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="faq-question flex items-center justify-between gap-3 p-4 font-bold">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
-                            <span class="text-sm md:text-base">スクリーンがなくても使えますか？</span>
-                        </div>
-                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1">スクリーンがなくても使えますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0 mt-0.5"></i>
                     </div>
                     <div class="faq-answer">
-                        <div class="px-4 pb-4 pt-0 text-sm text-lp-text-light">
-                            LINE Botでの写真投稿・スコア返信は使えます。ランキング表示にはスクリーンが必要です。
+                        <div class="flex items-start gap-3 px-4 pb-4 pt-0">
+                            <span class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span class="text-sm text-lp-text-light">LINE Botでの写真投稿・スコア返信は使えます。ランキング表示にはスクリーンが必要です。</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
-                    <div class="faq-question flex items-center justify-between gap-3 p-4 font-bold">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
-                            <span class="text-sm md:text-base">ゲスト用のQRコードを印刷して配布できますか？</span>
-                        </div>
-                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1">ゲスト用のQRコードを印刷して配布できますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0 mt-0.5"></i>
                     </div>
                     <div class="faq-answer">
-                        <div class="px-4 pb-4 pt-0 text-sm text-lp-text-light">
-                            できます。アプリ上でQRコード画像をダウンロードできます。
+                        <div class="flex items-start gap-3 px-4 pb-4 pt-0">
+                            <span class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span class="text-sm text-lp-text-light">できます。アプリ上でQRコード画像をダウンロードできます。</span>
                         </div>
                     </div>
                 </div>
