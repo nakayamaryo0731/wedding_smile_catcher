@@ -1,4 +1,13 @@
 {
+  "hosting": {
+    "target": "production",
+    "public": "src/frontend",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
   "emulators": {
     "firestore": {
       "port": 8080,

@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "wedding-smile-catcher"
+  },
+  "targets": {
+    "wedding-smile-catcher": {
+      "hosting": {
+        "production": [
+          "smile-photo-contest"
+        ]
+      }
+    }
+  }
+}

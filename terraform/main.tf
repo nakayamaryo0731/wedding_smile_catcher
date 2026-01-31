@@ -53,6 +53,8 @@ module "storage" {
 
   # CORS configuration for frontend access (restrict to production domains)
   cors_origins = [
+    "https://smile-photo-contest.web.app",
+    "https://smile-photo-contest.firebaseapp.com",
     "https://wedding-smile-catcher.web.app",
     "https://wedding-smile-catcher.firebaseapp.com"
   ]
