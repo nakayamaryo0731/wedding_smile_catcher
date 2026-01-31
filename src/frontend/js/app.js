@@ -1571,7 +1571,7 @@ function initThemeSelector() {
     applyTheme(currentEventData.theme);
   } else {
     // No theme in Firestore, use default
-    applyTheme("forest-green");
+    applyTheme("classic-ivory");
   }
 }
 

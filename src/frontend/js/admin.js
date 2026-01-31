@@ -1744,6 +1744,7 @@ document
         account_id: currentUser.uid,
         status: "draft",
         created_at: serverTimestamp(),
+        theme: "classic-ivory",
         settings: {
           theme: "笑顔（Smile For You）",
           max_uploads_per_user: 10,
