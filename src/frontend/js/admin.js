@@ -825,19 +825,27 @@ async function deleteSelected(type) {
 
   try {
     const ids = Array.from(selectedItems[type]);
-    const collectionName = type;
 
-    const batchSize = 500;
-    for (let i = 0; i < ids.length; i += batchSize) {
-      const batch = writeBatch(db);
-      const chunk = ids.slice(i, i + batchSize);
+    // Events are soft-deleted along with their images
+    if (type === "events") {
+      for (const eventId of ids) {
+        await softDeleteEvent(eventId);
+      }
+    } else {
+      // Hard delete for other types (images, users)
+      const collectionName = type;
+      const batchSize = 500;
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = ids.slice(i, i + batchSize);
 
-      chunk.forEach((id) => {
-        const docRef = doc(db, collectionName, id);
-        batch.delete(docRef);
-      });
+        chunk.forEach((id) => {
+          const docRef = doc(db, collectionName, id);
+          batch.delete(docRef);
+        });
 
-      await batch.commit();
+        await batch.commit();
+      }
     }
 
     selectedItems[type].clear();
@@ -862,6 +870,47 @@ async function deleteSelected(type) {
     console.error("Error deleting items:", error);
     showToast(`Error deleting ${type}: ${error.message}`, "error", 5000);
   }
+}
+
+/**
+ * Soft delete an event and its associated images
+ */
+async function softDeleteEvent(eventId) {
+  const now = serverTimestamp();
+
+  // Soft delete the event
+  const eventRef = doc(db, "events", eventId);
+  await updateDoc(eventRef, {
+    status: "deleted",
+    deleted_at: now,
+  });
+
+  // Soft delete all images for this event
+  const imagesQuery = query(
+    collection(db, "images"),
+    where("event_id", "==", eventId)
+  );
+  const imagesSnap = await getDocs(imagesQuery);
+
+  const imagesToDelete = imagesSnap.docs.filter(
+    (doc) => !doc.data().deleted_at
+  );
+
+  if (imagesToDelete.length > 0) {
+    const batchSize = 500;
+    for (let i = 0; i < imagesToDelete.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const chunk = imagesToDelete.slice(i, i + batchSize);
+      chunk.forEach((docSnap) => {
+        batch.update(docSnap.ref, { deleted_at: now });
+      });
+      await batch.commit();
+    }
+  }
+
+  console.log(
+    `Soft deleted event ${eventId} and ${imagesToDelete.length} images`
+  );
 }
 
 function switchTab(tabName) {
