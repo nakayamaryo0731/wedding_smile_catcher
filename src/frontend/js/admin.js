@@ -686,9 +686,29 @@ async function loadApplications(forceRefresh = false) {
   }
 }
 
-function showApplicationDetail(applicationId) {
-  const app = applicationsDataCache.find((a) => a.id === applicationId);
-  if (!app) return;
+async function showApplicationDetail(applicationId) {
+  // Try to find in cache first, otherwise fetch from Firestore
+  let app = applicationsDataCache?.find((a) => a.id === applicationId);
+
+  if (!app) {
+    try {
+      const docSnap = await getDoc(doc(db, "applications", applicationId));
+      if (!docSnap.exists()) {
+        showToast("Application not found", "error");
+        return;
+      }
+      const data = docSnap.data();
+      app = {
+        id: applicationId,
+        ...data,
+        created_at: data.created_at?.toDate(),
+      };
+    } catch (error) {
+      console.error("Error fetching application:", error);
+      showToast("Failed to load application", "error");
+      return;
+    }
+  }
 
   currentApplicationId = applicationId;
 
@@ -936,9 +956,16 @@ function createEventCard(docId, data) {
 
   const meta = document.createElement("div");
   meta.className = "event-card-meta";
-  meta.innerHTML =
+  let metaHtml =
     `<span>Date: ${eventDate}</span>` +
     `<span>Code: <code>${eventCode}</code></span>`;
+
+  // Show link to original application if exists
+  if (data.application_id) {
+    metaHtml += `<span class="application-link" onclick="showApplicationDetail('${data.application_id}')">📋 Application</span>`;
+  }
+
+  meta.innerHTML = metaHtml;
 
   info.appendChild(header);
   info.appendChild(meta);

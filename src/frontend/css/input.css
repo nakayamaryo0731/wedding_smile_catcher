@@ -2369,6 +2369,16 @@
     font-size: 0.8rem;
 }
 
+.admin-page .event-card-meta .application-link {
+    color: #3b82f6;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.admin-page .event-card-meta .application-link:hover {
+    color: #2563eb;
+}
+
 .admin-page .event-card-actions {
     display: flex;
     gap: 0.5rem;
