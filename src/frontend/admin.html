@@ -68,6 +68,7 @@
                 <button class="tab-btn active" data-tab="images">Images</button>
                 <button class="tab-btn" data-tab="users">Users</button>
                 <button class="tab-btn" data-tab="events">Events</button>
+                <button class="tab-btn" data-tab="applications">Applications</button>
                 <button class="tab-btn" data-tab="accounts">Accounts</button>
                 <button class="tab-btn" data-tab="statistics">Statistics</button>
             </nav>
@@ -137,6 +138,20 @@
                 <div id="eventsList" class="data-list">
                     <p class="loading">Loading events...</p>
                 </div>
+            </section>
+
+            <section id="applicationsTab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Applications Management</h2>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showProcessedApplications">
+                        Show processed
+                    </label>
+                    <div class="actions">
+                        <button id="refreshApplications" class="btn-secondary">Refresh</button>
+                    </div>
+                </div>
+                <div id="applicationsTable"></div>
             </section>
 
             <section id="accountsTab" class="tab-content">
@@ -313,6 +328,24 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Application Detail Modal -->
+    <div id="applicationModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Application Details</h2>
+                <button class="modal-close-btn" id="closeApplicationModal">&times;</button>
+            </div>
+            <div id="applicationDetail" class="application-detail">
+                <!-- Content populated by JS -->
+            </div>
+            <div class="modal-actions" id="applicationModalActions">
+                <button id="createEventFromApplication" class="btn-primary">Create Event</button>
+                <button id="rejectApplication" class="btn-danger">Reject</button>
+                <button id="closeApplicationModalBtn" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
