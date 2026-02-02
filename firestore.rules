@@ -70,5 +70,15 @@ service cloud.firestore {
         || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted_at']);
       allow delete: if request.auth != null && isAdmin();
     }
+
+    // Applications collection (application form submissions)
+    // Public create for form submission (no auth required)
+    // Admins can read/update (for reviewing and creating events)
+    match /applications/{applicationId} {
+      allow read: if request.auth != null && isAdmin();
+      allow create: if true;
+      allow update: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && isAdmin();
+    }
   }
 }

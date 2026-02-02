@@ -1,0 +1,8 @@
+# Cloud Functions Framework
+functions-framework==3.*
+
+# Google Cloud Libraries
+google-cloud-logging==3.10.0
+
+# HTTP
+requests>=2.32.3

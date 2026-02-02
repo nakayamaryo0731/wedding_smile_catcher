@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お申し込み - AI笑顔写真コンテスト</title>
+    <meta name="description" content="AI笑顔写真コンテストのお申し込みフォーム。結婚式をもっと楽しく！">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="css/output.css">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .gradient-text {
+            background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Form styles */
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #FF6B9D;
+            box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .form-input:invalid:not(:placeholder-shown) {
+            border-color: #ef4444;
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .form-label-required::after {
+            content: " *";
+            color: #ef4444;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .form-input:invalid:not(:placeholder-shown) + .form-error {
+            display: block;
+        }
+
+        /* Success screen */
+        .success-screen {
+            display: none;
+        }
+
+        .success-screen.show {
+            display: block;
+        }
+
+        .form-screen.hide {
+            display: none;
+        }
+
+        /* Loading state */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+        }
+
+        .btn-loading::after {
+            content: "";
+            position: absolute;
+            width: 1.25rem;
+            height: 1.25rem;
+            top: 50%;
+            left: 50%;
+            margin-left: -0.625rem;
+            margin-top: -0.625rem;
+            border: 2px solid white;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="font-sans text-lp-text-dark bg-lp-bg-light antialiased min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="lp.html" class="text-xl font-bold gradient-text">AI笑顔写真コンテスト</a>
+            <a href="lp.html" class="text-lp-text-light hover:text-lp-primary transition-colors text-sm">
+                <i data-lucide="arrow-left" class="inline-block w-4 h-4 mr-1"></i>
+                TOPへ戻る
+            </a>
+        </div>
+    </header>
+
+    <!-- Form Screen -->
+    <main class="form-screen py-8 md:py-12 px-4">
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-10">
+                <h1 class="text-2xl md:text-3xl font-bold text-center mb-2 gradient-text">お申し込み</h1>
+                <p class="text-center text-lp-text-light mb-8">必要事項をご記入ください</p>
+
+                <form id="applicationForm" novalidate>
+                    <!-- Names -->
+                    <div class="form-group">
+                        <label class="form-label form-label-required">新郎新婦のお名前</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <input type="text" id="groomName" name="groomName" class="form-input"
+                                    placeholder="新郎（例: 太郎）" required maxlength="50">
+                            </div>
+                            <div>
+                                <input type="text" id="brideName" name="brideName" class="form-input"
+                                    placeholder="新婦（例: 花子）" required maxlength="50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label for="email" class="form-label form-label-required">メールアドレス</label>
+                        <input type="email" id="email" name="email" class="form-input"
+                            placeholder="example@email.com" required>
+                        <p class="form-error">有効なメールアドレスを入力してください</p>
+                    </div>
+
+                    <!-- Date and Time -->
+                    <div class="form-group">
+                        <label class="form-label form-label-required">ご利用日時</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div class="md:col-span-2 lg:col-span-1">
+                                <input type="date" id="eventDate" name="eventDate" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <select id="startTime" name="startTime" class="form-input form-select flex-1" required>
+                                <option value="">開始時刻</option>
+                            </select>
+                            <span class="text-lp-text-light font-medium">〜</span>
+                            <select id="endTime" name="endTime" class="form-input form-select flex-1" required>
+                                <option value="">終了時刻</option>
+                            </select>
+                        </div>
+                        <p id="timeError" class="text-red-500 text-sm mt-1 hidden">終了時刻は開始時刻より後にしてください</p>
+                    </div>
+
+                    <!-- Guest Count -->
+                    <div class="form-group">
+                        <label for="guestCount" class="form-label form-label-required">ゲスト数</label>
+                        <select id="guestCount" name="guestCount" class="form-input form-select" required>
+                            <option value="">選択してください</option>
+                            <option value="~50人">〜50人</option>
+                            <option value="51~100人">51〜100人</option>
+                            <option value="101~150人">101〜150人</option>
+                            <option value="150人~">150人〜</option>
+                        </select>
+                    </div>
+
+                    <!-- Venue Name (Optional) -->
+                    <div class="form-group">
+                        <label for="venueName" class="form-label">会場名（任意）</label>
+                        <input type="text" id="venueName" name="venueName" class="form-input"
+                            placeholder="例: ○○ホテル" maxlength="100">
+                    </div>
+
+                    <!-- Referral Source (Optional) -->
+                    <div class="form-group">
+                        <label for="referralSource" class="form-label">知ったきっかけ</label>
+                        <select id="referralSource" name="referralSource" class="form-input form-select">
+                            <option value="">選択してください</option>
+                            <option value="ネット検索">ネット検索</option>
+                            <option value="友人の紹介">友人の紹介</option>
+                            <option value="SNS">SNS</option>
+                            <option value="過去に参加した">過去に参加した</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+
+                    <!-- Questions (Optional) -->
+                    <div class="form-group">
+                        <label for="questions" class="form-label">ご質問・ご要望（任意）</label>
+                        <textarea id="questions" name="questions" class="form-input" rows="4"
+                            placeholder="何かありましたらお気軽にどうぞ" maxlength="1000"></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitBtn"
+                        class="w-full bg-gradient-to-r from-lp-primary to-lp-accent-orange text-white py-4 rounded-full text-lg font-bold shadow-lg shadow-lp-primary/40 hover:shadow-xl hover:shadow-lp-primary/50 hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none">
+                        お申し込み
+                    </button>
+
+                    <p class="text-center text-sm text-lp-text-light mt-4">
+                        お申し込み後、担当者よりご連絡いたします
+                    </p>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Success Screen -->
+    <main class="success-screen py-8 md:py-12 px-4">
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-10 text-center">
+                <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="check" class="w-10 h-10 text-green-500"></i>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-bold mb-4 gradient-text">お申し込みありがとうございます</h1>
+                <p class="text-lp-text-light mb-8 leading-relaxed">
+                    お申し込みを受け付けました。<br>
+                    担当者より追ってご連絡いたします。<br>
+                    しばらくお待ちください。
+                </p>
+                <a href="lp.html"
+                    class="inline-block bg-gradient-to-r from-lp-primary to-lp-accent-orange text-white px-8 py-3 rounded-full font-bold shadow-lg shadow-lp-primary/40 hover:shadow-xl hover:shadow-lp-primary/50 hover:-translate-y-0.5 transition-all duration-300">
+                    TOPへ戻る
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-8 px-6 text-center">
+        <p class="text-sm text-lp-text-light">&copy; 2026 AI笑顔写真コンテスト</p>
+    </footer>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/apply.js"></script>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

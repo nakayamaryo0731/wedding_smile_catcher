@@ -209,3 +209,59 @@ jobs:
       - name: Skip notification
         if: steps.changes.outputs.changed == 'false'
         run: echo "No notification changes detected, skipping deploy"
+
+  # Deploy application-notify function (parallel with others)
+  deploy-application-notify:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Check if application-notify changed
+        id: changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | grep -qE "^src/functions/application-notify/|^requirements.*\.txt$|^\.github/workflows/deploy-functions\.yml$"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - id: auth
+        if: steps.changes.outputs.changed == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: steps.changes.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Deploy application-notify function
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          gcloud functions deploy application-notify \
+            --gen2 \
+            --region=asia-northeast1 \
+            --runtime=python311 \
+            --source=./src/functions/application-notify \
+            --entry-point=application_notify \
+            --trigger-http \
+            --allow-unauthenticated \
+            --service-account=webhook-function-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars=GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},ADMIN_LINE_USER_ID=${{ secrets.ADMIN_LINE_USER_ID }} \
+            --set-secrets=LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest \
+            --memory=256M \
+            --timeout=60s \
+            --max-instances=10
+
+      - name: Skip notification
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "No application-notify changes detected, skipping deploy"
