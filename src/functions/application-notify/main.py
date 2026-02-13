@@ -7,6 +7,7 @@ HTTP trigger called from frontend after successful form submission.
 
 import logging
 import os
+import re
 
 import functions_framework
 import google.cloud.logging
@@ -59,6 +60,46 @@ def send_line_push_message(user_id: str, message: str) -> bool:
         return False
 
 
+MAX_NAME_LENGTH = 50
+MAX_FIELD_LENGTH = 30
+DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+TIME_PATTERN = re.compile(r"^\d{2}:\d{2}$")
+GUEST_COUNT_OPTIONS = {"~50人", "51~100人", "101~150人", "150人~"}
+
+
+def sanitize_text(value: str, max_length: int) -> str:
+    """Sanitize user input by removing control characters and truncating."""
+    if not isinstance(value, str):
+        return ""
+    cleaned = re.sub(r"[\x00-\x1f\x7f]", "", value).strip()
+    return cleaned[:max_length]
+
+
+def validate_application_data(data: dict) -> str | None:
+    """Validate application form data. Returns error message or None."""
+    groom = data.get("groom_name", "")
+    bride = data.get("bride_name", "")
+    if not isinstance(groom, str) or not groom.strip():
+        return "groom_name is required"
+    if not isinstance(bride, str) or not bride.strip():
+        return "bride_name is required"
+
+    event_date = data.get("event_date", "")
+    if not isinstance(event_date, str) or not DATE_PATTERN.match(event_date):
+        return "event_date must be YYYY-MM-DD format"
+
+    for field in ("start_time", "end_time"):
+        val = data.get(field, "")
+        if not isinstance(val, str) or not TIME_PATTERN.match(val):
+            return f"{field} must be HH:MM format"
+
+    guest_count = data.get("guest_count", "")
+    if not isinstance(guest_count, str) or guest_count not in GUEST_COUNT_OPTIONS:
+        return "guest_count is invalid"
+
+    return None
+
+
 def format_notification_message(data: dict) -> str:
     """Format the notification message for LINE.
 
@@ -68,12 +109,12 @@ def format_notification_message(data: dict) -> str:
     Returns:
         Formatted message string
     """
-    groom_name = data.get("groom_name", "")
-    bride_name = data.get("bride_name", "")
-    event_date = data.get("event_date", "")
-    start_time = data.get("start_time", "")
-    end_time = data.get("end_time", "")
-    guest_count = data.get("guest_count", "")
+    groom_name = sanitize_text(data.get("groom_name", ""), MAX_NAME_LENGTH)
+    bride_name = sanitize_text(data.get("bride_name", ""), MAX_NAME_LENGTH)
+    event_date = sanitize_text(data.get("event_date", ""), MAX_FIELD_LENGTH)
+    start_time = sanitize_text(data.get("start_time", ""), MAX_FIELD_LENGTH)
+    end_time = sanitize_text(data.get("end_time", ""), MAX_FIELD_LENGTH)
+    guest_count = sanitize_text(data.get("guest_count", ""), MAX_FIELD_LENGTH)
 
     message = f"""📩 新規申し込み
 
@@ -138,6 +179,11 @@ def application_notify(request):
             return (jsonify({"error": "Request body is required"}), 400, cors_headers)
     except Exception:
         return (jsonify({"error": "Invalid JSON"}), 400, cors_headers)
+
+    # Validate input
+    validation_error = validate_application_data(data)
+    if validation_error:
+        return (jsonify({"error": validation_error}), 400, cors_headers)
 
     logger.info("Processing application notification request")
 
