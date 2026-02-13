@@ -35,3 +35,9 @@ variable "line_channel_access_token_name" {
   type        = string
   default     = "line-channel-access-token"
 }
+
+variable "liff_channel_id_name" {
+  description = "Secret Manager secret name for LIFF LINE Login channel ID"
+  type        = string
+  default     = "liff-channel-id"
+}

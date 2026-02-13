@@ -292,6 +292,13 @@ resource "google_cloudfunctions2_function" "liff_join" {
       secret     = var.line_channel_access_token_name
       version    = "latest"
     }
+
+    secret_environment_variables {
+      key        = "LIFF_CHANNEL_ID"
+      project_id = var.project_id
+      secret     = var.liff_channel_id_name
+      version    = "latest"
+    }
   }
 
   labels = {
