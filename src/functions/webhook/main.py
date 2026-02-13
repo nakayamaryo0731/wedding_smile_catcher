@@ -68,6 +68,24 @@ GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 SCORING_FUNCTION_URL = os.environ.get("SCORING_FUNCTION_URL")
 
+LIFF_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "LIFF_ALLOWED_ORIGINS",
+        "https://liff.line.me",
+    ).split(",")
+    if origin.strip()
+]
+
+
+def get_liff_cors_headers(request):
+    """Return CORS headers restricted to LIFF allowed origins."""
+    origin = request.headers.get("Origin", "")
+    if origin in LIFF_ALLOWED_ORIGINS:
+        return {"Access-Control-Allow-Origin": origin, "Vary": "Origin"}
+    return {}
+
+
 # Validate required environment variables at startup
 _REQUIRED_ENV_VARS = ["LINE_CHANNEL_SECRET", "LINE_CHANNEL_ACCESS_TOKEN"]
 _missing_vars = [var for var in _REQUIRED_ENV_VARS if not os.environ.get(var)]
@@ -848,17 +866,15 @@ def liff_join(request: Request):
     }
     """
     # Handle CORS preflight
+    cors_headers = get_liff_cors_headers(request)
     if request.method == "OPTIONS":
         headers = {
-            "Access-Control-Allow-Origin": "*",
+            **cors_headers,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Max-Age": "3600",
         }
         return ("", 204, headers)
-
-    # CORS headers for actual request
-    cors_headers = {"Access-Control-Allow-Origin": "*"}
 
     if request.method != "POST":
         return (jsonify({"error": "Method not allowed"}), 405, cors_headers)

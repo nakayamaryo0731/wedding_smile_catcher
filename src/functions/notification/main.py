@@ -28,6 +28,24 @@ db = firestore.Client()
 # Environment variables
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
 
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "https://smile-photo-contest.web.app,https://wedding-smile-catcher.web.app",
+    ).split(",")
+    if origin.strip()
+]
+
+
+def get_cors_headers(request):
+    """Return CORS headers restricted to allowed origins."""
+    origin = request.headers.get("Origin", "")
+    if origin in ALLOWED_ORIGINS:
+        return {"Access-Control-Allow-Origin": origin, "Vary": "Origin"}
+    return {}
+
+
 # LINE API rate limit: 1000 requests/min, we use conservative batch size
 BATCH_SIZE = 50
 BATCH_DELAY_SECONDS = 3
@@ -112,17 +130,15 @@ def notification(request):
         JSON response with send results
     """
     # Handle CORS preflight
+    cors_headers = get_cors_headers(request)
     if request.method == "OPTIONS":
         headers = {
-            "Access-Control-Allow-Origin": "*",
+            **cors_headers,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Access-Control-Max-Age": "3600",
         }
         return ("", 204, headers)
-
-    # CORS headers for actual request
-    cors_headers = {"Access-Control-Allow-Origin": "*"}
 
     # Verify request
     event_id, error = verify_request(request)
