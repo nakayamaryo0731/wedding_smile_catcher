@@ -2,15 +2,12 @@ import {
   collection,
   doc,
   getDoc,
-  updateDoc,
   query,
   where,
   orderBy,
   limit,
   getDocs,
   onSnapshot,
-  serverTimestamp,
-  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // =========================
@@ -1558,20 +1555,11 @@ function applyTheme(themeName, saveToCache = true) {
 }
 
 /**
- * Save theme to Firestore
+ * Save theme selection (localStorage only, Firestore theme is managed by admin)
  */
-async function saveTheme(themeName) {
-  if (!currentEventData?.id) {
-    console.warn("No event data available to save theme");
-    return;
-  }
-
-  try {
-    const eventRef = doc(window.db, "events", currentEventData.id);
-    await updateDoc(eventRef, { theme: themeName });
+function saveTheme(themeName) {
+  if (currentEventData) {
     currentEventData.theme = themeName;
-  } catch (error) {
-    console.error("Failed to save theme:", error);
   }
 }
 
@@ -1741,69 +1729,6 @@ function showConfirmModal(message) {
 }
 
 /**
- * Soft delete event data (set deleted_at timestamp)
- */
-async function softDeleteEventData() {
-  const eventId = getCurrentEventId();
-
-  const confirmed = await showConfirmModal("投稿画像を全て削除しますか？");
-
-  if (!confirmed) return;
-
-  const deleteBtn = document.getElementById("delete-data-btn");
-  const deleteActionText = deleteBtn?.querySelector(".action-text");
-  if (deleteBtn) {
-    deleteBtn.disabled = true;
-    if (deleteActionText) deleteActionText.textContent = "削除中...";
-  }
-
-  try {
-    // Get all images for this event that are not already deleted
-    const imagesQuery = query(
-      collection(window.db, "images"),
-      where("event_id", "==", eventId)
-    );
-    const imagesSnap = await getDocs(imagesQuery);
-
-    // Filter out already deleted images
-    const imagesToDelete = imagesSnap.docs.filter(
-      (doc) => !doc.data().deleted_at
-    );
-
-    if (imagesToDelete.length === 0) {
-      alert("削除する画像がありません");
-      return;
-    }
-
-    const now = serverTimestamp();
-    const batchSize = 500;
-
-    // Soft delete images in batches
-    for (let i = 0; i < imagesToDelete.length; i += batchSize) {
-      const batch = writeBatch(window.db);
-      const chunk = imagesToDelete.slice(i, i + batchSize);
-      chunk.forEach((docSnap) => {
-        batch.update(docSnap.ref, { deleted_at: now });
-      });
-      await batch.commit();
-    }
-
-    alert(`${imagesToDelete.length}枚の画像データを削除しました`);
-
-    // Refresh ranking display
-    fetchRecentRankings();
-  } catch (error) {
-    console.error("Error soft deleting data:", error);
-    alert("削除に失敗しました: " + error.message);
-  } finally {
-    if (deleteBtn) {
-      deleteBtn.disabled = false;
-      if (deleteActionText) deleteActionText.textContent = "データを削除";
-    }
-  }
-}
-
-/**
  * Download all images as ZIP
  */
 async function downloadAllImages() {
@@ -1949,9 +1874,6 @@ function setupSettingsPanel() {
 
   // Download images
   document.getElementById("download-images-btn")?.addEventListener("click", downloadAllImages);
-
-  // Delete data
-  document.getElementById("delete-data-btn")?.addEventListener("click", softDeleteEventData);
 
   // Rules button click - open rules panel
   const rulesBtn = document.getElementById("rules-btn");
