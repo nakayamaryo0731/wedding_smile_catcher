@@ -21,3 +21,6 @@ window.LINE_BOT_ID = "@581qtuij";
 // LIFF ID for automatic event joining (set after LINE Developers setup)
 // Format: "1234567890-xxxxxxxx"
 window.LIFF_ID = "2009017477-064Ui1a1";
+
+// Application notification function URL
+window.APPLICATION_NOTIFY_URL = "https://asia-northeast1-wedding-smile-catcher.cloudfunctions.net/application-notify";

@@ -2369,6 +2369,16 @@
     font-size: 0.8rem;
 }
 
+.admin-page .event-card-meta .application-link {
+    color: #3b82f6;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.admin-page .event-card-meta .application-link:hover {
+    color: #2563eb;
+}
+
 .admin-page .event-card-actions {
     display: flex;
     gap: 0.5rem;
@@ -2838,6 +2848,83 @@
     background: white;
     border-radius: 8px;
     padding: 10px;
+}
+
+/* Application Detail Modal */
+.admin-page .application-detail-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-page .detail-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 1rem;
+    align-items: center;
+}
+
+.admin-page .detail-row label {
+    font-weight: 600;
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.admin-page .detail-row span {
+    color: #333;
+}
+
+.admin-page .detail-row a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.admin-page .detail-row a:hover {
+    text-decoration: underline;
+}
+
+.admin-page .detail-row-full {
+    grid-template-columns: 1fr;
+}
+
+.admin-page .detail-row-full label {
+    margin-bottom: 0.5rem;
+}
+
+.admin-page .detail-text {
+    display: block;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+}
+
+.admin-page .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-page .modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.admin-page .modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    line-height: 1;
+}
+
+.admin-page .modal-close-btn:hover {
+    color: #333;
 }
 
 /* Responsive Design for Admin Page */
