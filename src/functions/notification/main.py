@@ -10,11 +10,16 @@ import os
 import time
 from datetime import UTC, datetime
 
+import firebase_admin
 import functions_framework
 import google.cloud.logging
 import requests
+from firebase_admin import auth as firebase_auth
 from flask import jsonify
 from google.cloud import firestore
+
+# Initialize Firebase Admin SDK
+firebase_admin.initialize_app()
 
 # Initialize logging
 logging_client = google.cloud.logging.Client()
@@ -90,6 +95,41 @@ def send_line_push_message(user_id: str) -> bool:
         return False
 
 
+def verify_auth(request, event_id: str) -> tuple[str | None, str | None]:
+    """Verify Firebase Auth ID token and check admin/owner permissions.
+
+    Returns:
+        Tuple of (uid, error_message)
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None, "Authorization header with Bearer token is required"
+
+    id_token = auth_header[len("Bearer ") :]
+    try:
+        decoded = firebase_auth.verify_id_token(id_token)
+    except Exception:
+        return None, "Invalid or expired token"
+
+    uid = decoded["uid"]
+
+    # Check if user is admin
+    account_doc = db.collection("accounts").document(uid).get()
+    if account_doc.exists:
+        account_data = account_doc.to_dict()
+        if account_data and account_data.get("is_admin"):
+            return uid, None
+
+    # Check if user is event owner
+    event_doc = db.collection("events").document(event_id).get()
+    if event_doc.exists:
+        event_data = event_doc.to_dict()
+        if event_data and event_data.get("account_id") == uid:
+            return uid, None
+
+    return None, "Insufficient permissions: admin or event owner required"
+
+
 def verify_request(request) -> tuple[str | None, dict | None]:
     """Verify the request and extract event_id.
 
@@ -146,7 +186,12 @@ def notification(request):
         response, status = error
         return (response, status, cors_headers)
 
-    logger.info(f"Processing notification request for event: {event_id}")
+    # Verify authentication and authorization
+    uid, auth_error = verify_auth(request, event_id)
+    if auth_error:
+        return (jsonify({"error": auth_error}), 403, cors_headers)
+
+    logger.info(f"Processing notification request for event: {event_id}, by user: {uid}")
 
     # Get event document
     event_ref = db.collection("events").document(event_id)
