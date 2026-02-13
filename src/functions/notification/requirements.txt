@@ -8,5 +8,8 @@ line-bot-sdk==3.12.0
 google-cloud-firestore==2.16.0
 google-cloud-logging==3.10.0
 
+# Firebase Admin SDK (for ID token verification)
+firebase-admin>=6.2.0
+
 # HTTP
 requests>=2.32.3
