@@ -67,6 +67,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 SCORING_FUNCTION_URL = os.environ.get("SCORING_FUNCTION_URL")
+LIFF_CHANNEL_ID = os.environ.get("LIFF_CHANNEL_ID", "")
 
 # Validate required environment variables at startup
 _REQUIRED_ENV_VARS = ["LINE_CHANNEL_SECRET", "LINE_CHANNEL_ACCESS_TOKEN"]
@@ -833,17 +834,52 @@ def handle_file_message(event: MessageEvent):
     )
 
 
+def verify_line_id_token(id_token_str: str) -> tuple[str | None, str | None, str | None]:
+    """Verify a LINE ID token via LINE's verification API.
+
+    Args:
+        id_token_str: The LIFF ID token to verify
+
+    Returns:
+        Tuple of (user_id, display_name, error_message)
+    """
+    if not LIFF_CHANNEL_ID:
+        logger.error("LIFF_CHANNEL_ID is not set")
+        return None, None, "Server configuration error"
+
+    try:
+        resp = requests.post(
+            "https://api.line.me/oauth2/v2.1/verify",
+            data={"id_token": id_token_str, "client_id": LIFF_CHANNEL_ID},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            logger.warning(f"LINE ID token verification failed: {resp.status_code} {resp.text}")
+            return None, None, "Invalid or expired ID token"
+
+        payload = resp.json()
+        user_id = payload.get("sub")
+        display_name = payload.get("name", "")
+
+        if not user_id:
+            return None, None, "ID token missing user ID"
+
+        return user_id, display_name, None
+    except Exception as e:
+        logger.error(f"LINE ID token verification error: {e}")
+        return None, None, "Token verification failed"
+
+
 @functions_framework.http
 def liff_join(request: Request):
     """
     LIFF endpoint for automatic event joining.
-    Receives LINE user ID, display name, and event code from LIFF app.
+    Verifies LINE ID token server-side to extract user identity.
     Registers user directly to Firestore without requiring message send.
 
     Expected JSON body:
     {
-        "user_id": "LINE user ID",
-        "display_name": "LINE display name",
+        "id_token": "LINE LIFF ID token",
         "event_code": "event code"
     }
     """
@@ -868,16 +904,20 @@ def liff_join(request: Request):
         if not data:
             return (jsonify({"error": "Invalid JSON"}), 400, cors_headers)
 
-        user_id = data.get("user_id")
-        display_name = data.get("display_name")
+        id_token_str = data.get("id_token")
         event_code = data.get("event_code")
 
-        if not user_id or not display_name or not event_code:
+        if not id_token_str or not event_code:
             return (
-                jsonify({"error": "Missing required fields: user_id, display_name, event_code"}),
+                jsonify({"error": "Missing required fields: id_token, event_code"}),
                 400,
                 cors_headers,
             )
+
+        # Verify ID token with LINE API
+        user_id, display_name, token_error = verify_line_id_token(id_token_str)
+        if token_error:
+            return (jsonify({"error": token_error}), 401, cors_headers)
 
         # Validate event code
         is_valid, error_message = validate_event_code(event_code)

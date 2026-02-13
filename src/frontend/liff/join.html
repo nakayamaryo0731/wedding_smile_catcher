@@ -293,15 +293,14 @@
             window.location.reload();
         }
 
-        async function joinEvent(userId, displayName) {
+        async function joinEvent(idToken) {
             const response = await fetch(LIFF_JOIN_API, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    user_id: userId,
-                    display_name: displayName,
+                    id_token: idToken,
                     event_code: eventCode,
                 }),
             });
@@ -346,16 +345,15 @@
                     return;
                 }
 
-                // Get user profile
-                const profile = await liff.getProfile();
-                const userId = profile.userId;
-                const displayName = profile.displayName;
-
-                console.log('User ID:', userId);
-                console.log('Display Name:', displayName);
+                // Get ID token for server-side verification
+                const idToken = liff.getIDToken();
+                if (!idToken) {
+                    showError('IDトークンの取得に失敗しました。再度お試しください。');
+                    return;
+                }
 
                 // Call API to join event
-                const result = await joinEvent(userId, displayName);
+                const result = await joinEvent(idToken);
 
                 console.log('Join result:', result);
 
