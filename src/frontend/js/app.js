@@ -26,6 +26,17 @@ import {
   }
 })();
 
+// Utility: escape HTML special characters to prevent XSS
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // State
 let currentTop3 = [];
 let isFinalMode = false;
@@ -157,10 +168,10 @@ function renderRankingList(images, startRank = 4) {
     itemEl.innerHTML = `
       <div class="list-rank">${rank}位</div>
       <div class="list-image-container">
-        <img src="${imageUrl}" alt="${userName}'s smile" class="list-image">
+        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(userName)}'s smile" class="list-image">
       </div>
       <div class="list-info">
-        <span class="list-name">${userName}</span>
+        <span class="list-name">${escapeHtml(userName)}</span>
         <span class="list-score">${score}</span>
       </div>
     `;
@@ -315,7 +326,7 @@ async function fetchRecentRankings() {
     console.error("Error fetching recent rankings:", error);
     loadingEl.innerHTML = `
       <div class="spinner"></div>
-      <p style="color: #ff6b6b;">Error loading rankings: ${error.message}</p>
+      <p style="color: #ff6b6b;">Error loading rankings: ${escapeHtml(error.message)}</p>
     `;
   }
 }
@@ -884,7 +895,7 @@ function setupRealtimeListener() {
       console.error("Firestore listener error:", error);
       loadingEl.innerHTML = `
         <div class="spinner"></div>
-        <p style="color: #ff6b6b;">Error: ${error.message}</p>
+        <p style="color: #ff6b6b;">Error: ${escapeHtml(error.message)}</p>
       `;
     }
   );

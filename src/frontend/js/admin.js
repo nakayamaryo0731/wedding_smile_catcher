@@ -38,6 +38,17 @@ let selectedItems = {
 let currentTab = "images";
 let pendingDeleteAction = null;
 
+// Utility: escape HTML special characters to prevent XSS
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Tabulator instances
 let imagesTable = null;
 let usersTable = null;
@@ -957,8 +968,8 @@ function createEventCard(docId, data) {
   const meta = document.createElement("div");
   meta.className = "event-card-meta";
   let metaHtml =
-    `<span>Date: ${eventDate}</span>` +
-    `<span>Code: <code>${eventCode}</code></span>`;
+    `<span>Date: ${escapeHtml(eventDate)}</span>` +
+    `<span>Code: <code>${escapeHtml(eventCode)}</code></span>`;
 
   // Show link to original application if exists
   if (data.application_id) {
@@ -1114,17 +1125,17 @@ function showConfirmModal(type, countOrMessage) {
     title.textContent = "Confirm Status Change";
     confirmBtn.textContent = "Confirm";
     confirmBtn.className = "btn-primary";
-    message.innerHTML = countOrMessage.replace(/\n/g, "<br>");
+    message.innerHTML = escapeHtml(countOrMessage).replace(/\n/g, "<br>");
   } else if (type === "test-data") {
     title.textContent = "Confirm Deletion";
     confirmBtn.textContent = "Delete";
     confirmBtn.className = "btn-danger";
-    message.innerHTML = countOrMessage.replace(/\n/g, "<br>");
+    message.innerHTML = escapeHtml(countOrMessage).replace(/\n/g, "<br>");
   } else {
     title.textContent = "Confirm Deletion";
     confirmBtn.textContent = "Delete";
     confirmBtn.className = "btn-danger";
-    message.innerHTML = `Are you sure you want to delete <strong>${countOrMessage}</strong> ${type}?<br><br>This action cannot be undone.`;
+    message.innerHTML = `Are you sure you want to delete <strong>${escapeHtml(countOrMessage)}</strong> ${escapeHtml(type)}?<br><br>This action cannot be undone.`;
   }
 
   modal.classList.add("show");
@@ -1309,7 +1320,7 @@ async function processBatches(items, processor, onProgress) {
  */
 async function downloadSelectedImages() {
   const btn = document.getElementById("downloadSelectedImages");
-  const originalText = btn.innerHTML;
+  const originalText = btn.textContent;
 
   if (selectedItems.images.size === 0) {
     showToast("Please select images to download.", "warning");
@@ -1318,7 +1329,7 @@ async function downloadSelectedImages() {
 
   try {
     btn.disabled = true;
-    btn.innerHTML = "Preparing...";
+    btn.textContent = "Preparing...";
 
     // Get selected images from cache (imagesDataCache is an array)
     // Note: storage_url is stored as 'thumbnail' in the cache
@@ -1358,7 +1369,7 @@ async function downloadSelectedImages() {
       selectedImages,
       downloadImage,
       (completed, total) => {
-        btn.innerHTML = `Downloading ${completed}/${total}...`;
+        btn.textContent = `Downloading ${completed}/${total}...`;
       }
     );
 
@@ -1369,7 +1380,7 @@ async function downloadSelectedImages() {
     }
 
     // Generate ZIP and download
-    btn.innerHTML = "Creating ZIP...";
+    btn.textContent = "Creating ZIP...";
     const content = await zip.generateAsync({ type: "blob" });
 
     const timestamp = new Date()
@@ -1391,7 +1402,7 @@ async function downloadSelectedImages() {
     showToast("Download failed: " + error.message, "error", 5000);
   } finally {
     btn.disabled = selectedItems.images.size === 0;
-    btn.innerHTML = originalText;
+    btn.textContent = originalText;
   }
 }
 
@@ -1769,9 +1780,9 @@ function renderTimelineAnalysis(images) {
       .join("");
 
     document.getElementById("peakTimeInfo").innerHTML = `Peak Time: <strong>${
-      timeline.peakHour.hour
-    }:00-${timeline.peakHour.hour + 1}:00</strong> (${
-      timeline.peakHour.count
+      Number(timeline.peakHour.hour)
+    }:00-${Number(timeline.peakHour.hour) + 1}:00</strong> (${
+      Number(timeline.peakHour.count)
     } uploads)`;
   }
 
