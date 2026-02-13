@@ -36,14 +36,6 @@ resource "google_storage_bucket" "images" {
   labels = var.labels
 }
 
-# Public read access for image objects
-# TODO: Replace with signed URLs (release-todo.md #5.2)
-resource "google_storage_bucket_iam_member" "public_read" {
-  bucket = google_storage_bucket.images.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
-}
-
 # Grant Terraform service account permission to manage objects
 # This is needed for Cloud Functions deployment (uploading source code)
 resource "google_storage_bucket_iam_member" "terraform_object_admin" {
