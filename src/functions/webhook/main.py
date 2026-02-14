@@ -852,11 +852,15 @@ def handle_file_message(event: MessageEvent):
     )
 
 
-def verify_line_id_token(id_token_str: str) -> tuple[str | None, str | None, str | None]:
-    """Verify a LINE ID token via LINE's verification API.
+def verify_line_access_token(access_token: str) -> tuple[str | None, str | None, str | None]:
+    """Verify a LIFF access token and retrieve user profile from LINE API.
+
+    1. Validates the token via LINE's verify endpoint
+    2. Checks client_id matches our LIFF channel
+    3. Fetches user profile using the verified token
 
     Args:
-        id_token_str: The LIFF ID token to verify
+        access_token: The LIFF access token from liff.getAccessToken()
 
     Returns:
         Tuple of (user_id, display_name, error_message)
@@ -866,25 +870,41 @@ def verify_line_id_token(id_token_str: str) -> tuple[str | None, str | None, str
         return None, None, "Server configuration error"
 
     try:
-        resp = requests.post(
+        # Step 1: Verify access token validity and ownership
+        verify_resp = requests.get(
             "https://api.line.me/oauth2/v2.1/verify",
-            data={"id_token": id_token_str, "client_id": LIFF_CHANNEL_ID},
+            params={"access_token": access_token},
             timeout=10,
         )
-        if resp.status_code != 200:
-            logger.warning(f"LINE ID token verification failed: {resp.status_code} {resp.text}")
-            return None, None, "Invalid or expired ID token"
+        if verify_resp.status_code != 200:
+            logger.warning(f"LINE access token verification failed: {verify_resp.status_code}")
+            return None, None, "Invalid or expired access token"
 
-        payload = resp.json()
-        user_id = payload.get("sub")
-        display_name = payload.get("name", "")
+        verify_data = verify_resp.json()
+        if str(verify_data.get("client_id")) != str(LIFF_CHANNEL_ID):
+            logger.warning(f"Access token client_id mismatch: {verify_data.get('client_id')} != {LIFF_CHANNEL_ID}")
+            return None, None, "Access token was not issued for this app"
+
+        # Step 2: Get user profile using the verified access token
+        profile_resp = requests.get(
+            "https://api.line.me/v2/profile",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        if profile_resp.status_code != 200:
+            logger.warning(f"LINE profile API failed: {profile_resp.status_code}")
+            return None, None, "Failed to retrieve user profile"
+
+        profile = profile_resp.json()
+        user_id = profile.get("userId")
+        display_name = profile.get("displayName", "")
 
         if not user_id:
-            return None, None, "ID token missing user ID"
+            return None, None, "Profile missing user ID"
 
         return user_id, display_name, None
     except Exception as e:
-        logger.error(f"LINE ID token verification error: {e}")
+        logger.error(f"LINE access token verification error: {e}")
         return None, None, "Token verification failed"
 
 
@@ -892,14 +912,11 @@ def verify_line_id_token(id_token_str: str) -> tuple[str | None, str | None, str
 def liff_join(request: Request):
     """
     LIFF endpoint for automatic event joining.
-    If id_token is provided, verifies it server-side to extract user identity.
-    Otherwise falls back to client-supplied user_id/display_name.
+    Verifies the LIFF access token server-side to securely extract user identity.
 
     Expected JSON body:
     {
-        "user_id": "LINE user ID",
-        "display_name": "LINE display name",
-        "id_token": "LINE LIFF ID token (optional)",
+        "access_token": "LIFF access token",
         "event_code": "event code"
     }
     """
@@ -930,21 +947,18 @@ def liff_join(request: Request):
                 cors_headers,
             )
 
-        # Prefer ID token verification if available
-        id_token_str = data.get("id_token")
-        if id_token_str:
-            user_id, display_name, token_error = verify_line_id_token(id_token_str)
-            if token_error:
-                return (jsonify({"error": token_error}), 401, cors_headers)
-        else:
-            user_id = data.get("user_id")
-            display_name = data.get("display_name")
-            if not user_id or not display_name:
-                return (
-                    jsonify({"error": "Missing required fields: user_id, display_name"}),
-                    400,
-                    cors_headers,
-                )
+        access_token = data.get("access_token")
+        if not access_token:
+            return (
+                jsonify({"error": "Missing required field: access_token"}),
+                400,
+                cors_headers,
+            )
+
+        # Verify access token and get user profile from LINE
+        user_id, display_name, token_error = verify_line_access_token(access_token)
+        if token_error:
+            return (jsonify({"error": token_error}), 401, cors_headers)
 
         # Validate event code
         is_valid, error_message = validate_event_code(event_code)
