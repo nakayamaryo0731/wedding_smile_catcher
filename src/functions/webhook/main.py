@@ -892,12 +892,14 @@ def verify_line_id_token(id_token_str: str) -> tuple[str | None, str | None, str
 def liff_join(request: Request):
     """
     LIFF endpoint for automatic event joining.
-    Verifies LINE ID token server-side to extract user identity.
-    Registers user directly to Firestore without requiring message send.
+    If id_token is provided, verifies it server-side to extract user identity.
+    Otherwise falls back to client-supplied user_id/display_name.
 
     Expected JSON body:
     {
-        "id_token": "LINE LIFF ID token",
+        "user_id": "LINE user ID",
+        "display_name": "LINE display name",
+        "id_token": "LINE LIFF ID token (optional)",
         "event_code": "event code"
     }
     """
@@ -920,20 +922,29 @@ def liff_join(request: Request):
         if not data:
             return (jsonify({"error": "Invalid JSON"}), 400, cors_headers)
 
-        id_token_str = data.get("id_token")
         event_code = data.get("event_code")
-
-        if not id_token_str or not event_code:
+        if not event_code:
             return (
-                jsonify({"error": "Missing required fields: id_token, event_code"}),
+                jsonify({"error": "Missing required field: event_code"}),
                 400,
                 cors_headers,
             )
 
-        # Verify ID token with LINE API
-        user_id, display_name, token_error = verify_line_id_token(id_token_str)
-        if token_error:
-            return (jsonify({"error": token_error}), 401, cors_headers)
+        # Prefer ID token verification if available
+        id_token_str = data.get("id_token")
+        if id_token_str:
+            user_id, display_name, token_error = verify_line_id_token(id_token_str)
+            if token_error:
+                return (jsonify({"error": token_error}), 401, cors_headers)
+        else:
+            user_id = data.get("user_id")
+            display_name = data.get("display_name")
+            if not user_id or not display_name:
+                return (
+                    jsonify({"error": "Missing required fields: user_id, display_name"}),
+                    400,
+                    cors_headers,
+                )
 
         # Validate event code
         is_valid, error_message = validate_event_code(event_code)
