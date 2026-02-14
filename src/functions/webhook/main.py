@@ -73,7 +73,7 @@ LIFF_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "LIFF_ALLOWED_ORIGINS",
-        "https://liff.line.me",
+        "https://liff.line.me,https://smile-photo-contest.web.app,https://wedding-smile-catcher.web.app",
     ).split(",")
     if origin.strip()
 ]
