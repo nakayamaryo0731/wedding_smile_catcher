@@ -1866,7 +1866,7 @@ function getJoinUrl(eventCode, eventName = "") {
 function getRankingUrl(eventId) {
   // Use the new Firebase Hosting domain
   const baseUrl = "smile-photo-contest.web.app";
-  return `https://${baseUrl}?event_id=${eventId}`;
+  return `https://${baseUrl}/ranking.html?event_id=${eventId}`;
 }
 
 function showQRModal(eventId, eventName, eventCode) {
