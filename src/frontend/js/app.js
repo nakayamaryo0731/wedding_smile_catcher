@@ -21,7 +21,7 @@ import {
   const params = new URLSearchParams(window.location.search);
   const eventId = params.get("event_id");
   if (!eventId) {
-    window.location.href = "lp.html";
+    window.location.href = "/";
     return;
   }
 })();

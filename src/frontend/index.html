@@ -4,369 +4,696 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>笑顔写真コンテスト</title>
+    <title>AI笑顔写真コンテスト - 写真を撮りたくなる結婚式</title>
+    <meta name="description" content="結婚式をもっと楽しく！ゲストがLINEで写真を送るだけでAIが笑顔を採点。リアルタイムランキングで盛り上がる新しい余興サービス。期間限定で無料！">
 
-    <!-- Google Fonts - Optimized loading -->
+    <!-- OGP -->
+    <meta property="og:title" content="AI笑顔写真コンテスト - 写真を撮りたくなる結婚式">
+    <meta property="og:description" content="ゲストがLINEで写真を送るだけでAIが笑顔を採点。リアルタイムランキングで盛り上がる新しい余興サービス。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://smile-photo-contest.web.app/">
+
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Preload critical fonts for faster FCP -->
-    <link rel="preload" as="style"
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript>
-        <link
-            href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap"
-            rel="stylesheet">
-    </noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
 
-    <!-- Tailwind CSS (consolidated) -->
+    <!-- Tailwind CSS -->
     <link rel="stylesheet" href="css/output.css">
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Instant theme application to prevent FOUC -->
-    <script>
-        (function () {
-            try {
-                var eventId = new URLSearchParams(window.location.search).get("event");
-                var cacheKey = eventId ? "theme_" + eventId : "theme_default";
-                var cachedTheme = localStorage.getItem(cacheKey) || "classic-ivory";
-                document.documentElement.setAttribute("data-theme", cachedTheme);
-            } catch (e) { }
-        })();
-    </script>
+    <style>
+        /* Gradient text utility */
+        .gradient-text {
+            background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gradient-text-price {
+            background: linear-gradient(135deg, #FF6B9D, #4ECDC4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Bounce animation for badge */
+        @keyframes bounce-soft {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .animate-bounce-soft {
+            animation: bounce-soft 2s ease-in-out infinite;
+        }
+
+        /* Icon container */
+        .icon-circle {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, #FF6B9D20, #A17FE020);
+        }
+
+        .icon-circle svg {
+            width: 1.75rem;
+            height: 1.75rem;
+            stroke: #FF6B9D;
+            stroke-width: 1.5;
+        }
+
+        .icon-circle-primary {
+            background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+        }
+
+        .icon-circle-primary svg {
+            stroke: white;
+        }
+
+        /* FAQ Accordion */
+        .faq-item {
+            cursor: pointer;
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .faq-item.open .faq-answer {
+            max-height: 200px;
+        }
+
+        .faq-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.open .faq-icon {
+            transform: rotate(180deg);
+        }
+    </style>
 </head>
 
-<body class="ranking-page">
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-top">
-                <div class="header-title" id="header-title-link" style="cursor: pointer;">
-                    <h1 class="title">笑顔写真コンテスト</h1>
-                </div>
-                <div class="header-buttons">
-                    <button id="slideshow-btn" class="header-btn slideshow-btn">スライドショー</button>
-                    <button id="ranking-btn" class="header-btn ranking-btn hidden">ランキング</button>
-                    <button id="final-btn" class="header-btn final-btn">最終結果</button>
-                    <button id="rules-btn" class="header-btn settings-btn"><i data-lucide="help-circle"></i></button>
-                    <button id="settings-btn" class="header-btn settings-btn"><i data-lucide="settings"></i></button>
-                </div>
-            </div>
-        </header>
+<body class="font-sans text-lp-text-dark bg-lp-bg-light antialiased">
 
-        <div id="event-ended-banner" class="event-ended-banner hidden">
-            <p>このイベントは終了しました</p>
+    <!-- Hero Section -->
+    <section
+        class="min-h-screen flex flex-col lg:flex-row items-center justify-center px-6 py-20 lg:py-0 bg-gradient-to-br from-lp-bg-light to-blue-50 relative overflow-hidden">
+        <!-- Background decoration -->
+        <div
+            class="absolute -top-1/2 -right-1/4 w-3/4 h-[150%] bg-gradient-radial from-lp-primary/10 to-transparent pointer-events-none">
         </div>
 
-        <!-- Ranking Content -->
-        <div id="ranking-content" class="ranking-content">
-            <!-- Ranking Label -->
-            <div class="ranking-label">
-                <span class="ranking-label-icon">📸</span>
-                <span id="ranking-label-text">直近15枚のランキング</span>
-            </div>
+        <div class="flex-1 max-w-lg z-10 text-center lg:text-left mb-10 lg:mb-0">
+            <p
+                class="inline-block bg-gradient-to-r from-lp-accent-yellow to-lp-accent-orange text-lp-text-dark px-5 py-2 rounded-full text-sm font-bold mb-6 animate-bounce-soft">
+                期間限定で無料！
+            </p>
+            <h1 class="text-4xl lg:text-5xl font-black leading-tight mb-6 gradient-text">
+                写真を撮りたくなる<br>結婚式
+            </h1>
+            <p class="text-lg text-lp-text-light mb-8 leading-relaxed">
+                <span class="font-bold text-lp-primary">AIが笑顔を採点する</span>新しい余興で<br>ゲスト全員が盛り上がる
+            </p>
+            <a href="#contact"
+                class="inline-block bg-gradient-to-r from-lp-primary to-lp-accent-orange text-white px-10 py-4 rounded-full text-lg font-bold shadow-lg shadow-lp-primary/40 hover:shadow-xl hover:shadow-lp-primary/50 hover:-translate-y-0.5 transition-all duration-300">
+                申し込む
+            </a>
+        </div>
 
-            <main class="ranking-container">
-                <!-- Top 1 - Large Display -->
-                <div class="rank-1-container">
-                    <div id="rank-1" class="ranking-card rank-1">
-                        <div class="rank-badge">
-                            <span class="crown">👑</span>
-                            <span class="rank-number">1st</span>
+        <div class="flex-1 max-w-lg z-10">
+            <img src="images/lp/ranking.webp" alt="ランキング画面" class="w-full rounded-2xl shadow-xl">
+        </div>
+    </section>
+
+    <!-- Problem & Solution Section -->
+    <section class="py-12 md:py-16 px-6 bg-white">
+        <div class="max-w-4xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold text-center mb-10 md:mb-10 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                こんなお悩み、解決します！
+            </h2>
+            <!-- Mobile: 2x2 Grid / Desktop: Arrow layout -->
+            <!-- Mobile Cards -->
+            <div class="md:hidden grid grid-cols-2 gap-3">
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-4 rounded-xl text-center">
+                    <p class="text-xs text-lp-text-light">結婚式で撮った写真が</p>
+                    <p class="text-sm font-bold text-lp-text-dark mb-2">新郎新婦に届かない</p>
+                    <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary mx-auto block mb-2"></i>
+                    <p class="text-sm font-bold text-lp-primary">写真は全部もらえる</p>
+                </div>
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-4 rounded-xl text-center">
+                    <p class="text-xs text-lp-text-light">ゲスト同士の</p>
+                    <p class="text-sm font-bold text-lp-text-dark mb-2">交流を促進したい</p>
+                    <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary mx-auto block mb-2"></i>
+                    <p class="text-sm font-bold text-lp-primary">みんなで撮影し合う</p>
+                </div>
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-4 rounded-xl text-center">
+                    <p class="text-xs text-lp-text-light">余興の</p>
+                    <p class="text-sm font-bold text-lp-text-dark mb-2">ネタに困っている</p>
+                    <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary mx-auto block mb-2"></i>
+                    <p class="text-sm font-bold text-lp-primary">ランキング＆スライドショー</p>
+                </div>
+                <div class="bg-gradient-to-br from-lp-bg-light to-pink-50 p-4 rounded-xl text-center">
+                    <p class="text-xs text-lp-text-light">写真共有サービスは</p>
+                    <p class="text-sm font-bold text-lp-text-dark mb-2">使いにくい</p>
+                    <i data-lucide="arrow-down" class="w-4 h-4 text-lp-primary mx-auto block mb-2"></i>
+                    <p class="text-sm font-bold text-lp-primary">LINEで誰でも参加</p>
+                </div>
+            </div>
+            <!-- Desktop: Arrow layout -->
+            <div class="hidden md:block space-y-14">
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
+                        <p class="text-lg text-lp-text-light">結婚式で撮った写真が</p>
+                        <p class="text-xl font-bold text-lp-text-dark">新郎新婦に届かない</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <div
+                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
                         </div>
-                        <div class="image-container">
-                            <img id="rank-1-image" src="" alt="Top 1" class="ranking-image">
+                    </div>
+                    <div class="flex-1 text-left">
+                        <h3 class="text-xl font-bold text-lp-text-dark">写真は全部もらえる</h3>
+                        <p class="text-lp-text-light">イベント終了後、ゲストが投稿した<br>すべての写真を一括ダウンロード</p>
+                    </div>
+                </div>
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
+                        <p class="text-lg text-lp-text-light">ゲスト同士の</p>
+                        <p class="text-xl font-bold text-lp-text-dark">交流を促進したい</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <div
+                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
                         </div>
-                        <div class="ranking-info">
-                            <div class="user-score-row">
-                                <span class="label">投稿者：</span>
-                                <span id="rank-1-name" class="user-name">-</span>
-                                <span class="label">スコア：</span>
-                                <span id="rank-1-score" class="score">0</span>
+                    </div>
+                    <div class="flex-1 text-left">
+                        <h3 class="text-xl font-bold text-lp-text-dark">みんなで写真を撮り合う</h3>
+                        <p class="text-lp-text-light">笑顔の人数が多いほど高得点！<br>自然とゲスト同士で盛り上がる</p>
+                    </div>
+                </div>
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
+                        <p class="text-lg text-lp-text-light">余興の</p>
+                        <p class="text-xl font-bold text-lp-text-dark">ネタに困っている</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <div
+                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 text-left">
+                        <h3 class="text-xl font-bold text-lp-text-dark">ランキング＆スライドショー</h3>
+                        <p class="text-lp-text-light">スクリーンにリアルタイム表示<br>ゲスト参加型で会場が盛り上がる</p>
+                    </div>
+                </div>
+                <div class="flex flex-row items-center gap-8">
+                    <div class="flex-1 text-right">
+                        <p class="text-lg text-lp-text-light">写真共有サービスは</p>
+                        <p class="text-xl font-bold text-lp-text-dark">使いにくい</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <div
+                            class="w-12 h-12 rounded-full bg-gradient-to-r from-lp-primary to-lp-secondary flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="arrow-right" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 text-left">
+                        <h3 class="text-xl font-bold text-lp-text-dark">LINEだから誰でも使える</h3>
+                        <p class="text-lp-text-light">アプリのインストール不要<br>QRコードを読むだけで参加</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="py-12 md:py-16 px-6 bg-white">
+        <div class="max-w-5xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold text-center mb-8 md:mb-10 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                使い方はとってもカンタン
+            </h2>
+
+            <!-- Mobile: 2 columns side by side -->
+            <div class="md:hidden grid grid-cols-2 gap-4 items-stretch">
+                <!-- For Couple (Mobile) -->
+                <div class="bg-gradient-to-br from-pink-50 to-lp-bg-light p-4 rounded-xl h-full">
+                    <h3 class="text-sm font-bold text-center mb-4 flex items-center justify-center gap-1"><i
+                            data-lucide="heart" class="w-4 h-4 text-lp-primary"></i> 新郎新婦</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-2">
+                            <div
+                                class="w-6 h-6 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                                1</div>
+                            <div>
+                                <p class="text-xs font-bold">お申し込み</p>
                             </div>
-                            <h3 class="ai-comment-title">AI評価</h3>
-                            <p id="rank-1-comment" class="ai-comment">-</p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Top 2 & 3 - Smaller Side by Side -->
-                <div class="rank-2-3-container">
-                    <!-- Rank 2 -->
-                    <div id="rank-2" class="ranking-card rank-2">
-                        <div class="rank-badge">
-                            <span class="rank-number">2nd</span>
-                        </div>
-                        <div class="image-container">
-                            <img id="rank-2-image" src="" alt="Top 2" class="ranking-image">
-                        </div>
-                        <div class="ranking-info">
-                            <div class="user-score-row">
-                                <span class="label">投稿者：</span>
-                                <span id="rank-2-name" class="user-name">-</span>
-                                <span class="label">スコア：</span>
-                                <span id="rank-2-score" class="score">0</span>
+                        <div class="flex items-start gap-2">
+                            <div
+                                class="w-6 h-6 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                                2</div>
+                            <div>
+                                <p class="text-xs font-bold">URLを受け取り動作確認</p>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Rank 3 -->
-                    <div id="rank-3" class="ranking-card rank-3">
-                        <div class="rank-badge">
-                            <span class="rank-number">3rd</span>
-                        </div>
-                        <div class="image-container">
-                            <img id="rank-3-image" src="" alt="Top 3" class="ranking-image">
-                        </div>
-                        <div class="ranking-info">
-                            <div class="user-score-row">
-                                <span class="label">投稿者：</span>
-                                <span id="rank-3-name" class="user-name">-</span>
-                                <span class="label">スコア：</span>
-                                <span id="rank-3-score" class="score">0</span>
+                        <div class="flex items-start gap-2">
+                            <div
+                                class="w-6 h-6 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                                3</div>
+                            <div>
+                                <p class="text-xs font-bold">当日スクリーンに投影</p>
                             </div>
                         </div>
                     </div>
                 </div>
-            </main>
-
-            <!-- Ranking List (4-10位) - shown only in final mode -->
-            <section id="ranking-list" class="ranking-list hidden">
-                <h2 class="ranking-list-title">4位〜10位</h2>
-                <div id="ranking-list-items" class="ranking-list-items">
-                    <!-- Items will be dynamically inserted here -->
+                <!-- For Guests (Mobile) -->
+                <div class="bg-gradient-to-br from-blue-50 to-lp-bg-light p-4 rounded-xl h-full">
+                    <h3 class="text-sm font-bold text-center mb-4 flex items-center justify-center gap-1"><i
+                            data-lucide="smartphone" class="w-4 h-4 text-lp-primary"></i> ゲスト</h3>
+                    <div class="flex items-start gap-2">
+                        <div
+                            class="w-6 h-6 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                            1</div>
+                        <p class="text-xs font-bold">QRを読み取って写真を送るだけ！</p>
+                    </div>
                 </div>
-            </section>
-        </div>
-
-        <!-- Slideshow Content (Photo Wall) -->
-        <div id="slideshow-content" class="slideshow-content hidden">
-            <!-- Photo Wall Container -->
-            <div id="photo-wall" class="photo-wall">
-                <!-- Photo items will be dynamically inserted here -->
             </div>
 
-            <!-- Empty State -->
-            <div id="slideshow-empty" class="slideshow-empty hidden">
-                <span class="empty-icon">📸</span>
-                <p class="empty-text">まだ写真がありません</p>
-            </div>
-        </div>
-
-        <!-- Final Presentation Overlay -->
-        <div id="final-overlay" class="final-overlay hidden">
-            <button id="reveal-btn" class="reveal-button">結果を見る</button>
-        </div>
-
-        <!-- Final Loading Animation -->
-        <div id="final-loading" class="final-loading hidden">
-            <!-- Envelope Animation -->
-            <div id="envelope-animation" class="envelope-container hidden">
-                <div class="envelope">
-                    <div class="envelope-flap"></div>
-                    <div class="envelope-body">
-                        <div class="envelope-letter">
-                            <span class="letter-text">Top Smiles</span>
+            <!-- Desktop: Original layout -->
+            <div class="hidden md:block">
+                <!-- For Couple -->
+                <div class="mb-10 md:mb-12">
+                    <h3 class="text-xl font-bold text-center mb-8 flex items-center justify-center gap-2"><i
+                            data-lucide="heart" class="w-5 h-5 text-lp-primary"></i> 新郎新婦の準備</h3>
+                    <div class="flex flex-row items-start justify-center gap-4">
+                        <div class="flex-1 max-w-xs text-center">
+                            <div
+                                class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                                1</div>
+                            <h4 class="text-lg font-bold mb-2">お申し込み</h4>
+                            <p class="text-lp-text-light"><a href="#contact"
+                                    class="text-lp-primary hover:text-lp-secondary underline transition-colors">フォーム</a>から必要事項を入力
+                            </p>
+                        </div>
+                        <span class="text-3xl text-lp-secondary self-center mt-6">→</span>
+                        <div class="flex-1 max-w-xs text-center">
+                            <div
+                                class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                                2</div>
+                            <h4 class="text-lg font-bold mb-2">URLを受け取る</h4>
+                            <p class="text-lp-text-light">本番1週間前を目安にお届け</p>
+                        </div>
+                        <span class="text-3xl text-lp-secondary self-center mt-6">→</span>
+                        <div class="flex-1 max-w-xs text-center">
+                            <div
+                                class="w-16 h-16 bg-gradient-to-br from-lp-primary to-lp-secondary text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-lp-primary/30">
+                                3</div>
+                            <h4 class="text-lg font-bold mb-2">動作確認＆本番</h4>
+                            <p class="text-lp-text-light">当日はスクリーンに映すだけ！</p>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Particles Animation -->
-            <div id="particles-animation" class="particles-container hidden">
-                <div class="particles-center-glow"></div>
-                <canvas id="particles-canvas"></canvas>
-            </div>
-        </div>
-
-        <!-- Loading State -->
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Loading rankings...</p>
-        </div>
-
-        <!-- Fixed QR Code (Bottom Right) -->
-        <div id="fixed-qr-container" class="fixed-qr-container">
-            <div id="main-qr-code" class="fixed-qr-code"></div>
-            <span class="fixed-qr-label">参加はこちら</span>
-        </div>
-
-        <!-- Rules Modal -->
-        <div id="rules-panel" class="settings-modal hidden">
-            <div class="settings-modal-content">
-                <button class="settings-close-btn" id="close-rules-panel">&times;</button>
-                <h2 class="rules-title"><i data-lucide="trophy" class="rules-title-icon"></i> 遊び方・ルール</h2>
-
-                <div class="rules-section">
-                    <h3><i data-lucide="camera"></i> スコアの決まり方</h3>
-                    <ul class="rules-list">
-                        <li><strong>笑顔の人数</strong>が多いほど高得点！みんなで撮ろう</li>
-                        <li>AIが<strong>結婚式らしさ</strong>も判定しています</li>
-                        <li>顔が小さすぎると減点されるので、近くで撮ろう</li>
-                    </ul>
-                </div>
-
-                <div class="rules-section">
-                    <h3><i data-lucide="copy-x"></i> 類似判定について</h3>
-                    <ul class="rules-list">
-                        <li>同じような写真を連続で送ると<strong>減点</strong>されます</li>
-                        <li>いろんなシーンで撮影すると高得点を狙えます</li>
-                    </ul>
-                </div>
-
-                <div class="rules-section">
-                    <h3><i data-lucide="monitor"></i> 画面に表示されるランキング</h3>
-                    <ul class="rules-list">
-                        <li>直近<strong>15枚</strong>の中でのランキングです</li>
-                        <li>常に変動するので、何度でもチャレンジ！</li>
-                    </ul>
-                </div>
-
-                <div class="rules-section">
-                    <h3><i data-lucide="award"></i> 最終結果について</h3>
-                    <ul class="rules-list">
-                        <li>各参加者の<strong>ベストスコア</strong>でランキング</li>
-                        <li>同じ人が1位・2位・3位を独占することはありません</li>
-                    </ul>
+                <!-- For Guests -->
+                <div>
+                    <h3 class="text-xl font-bold text-center mb-6 flex items-center justify-center gap-2"><i
+                            data-lucide="smartphone" class="w-5 h-5 text-lp-primary"></i> ゲストの参加方法</h3>
+                    <p class="text-center text-lg font-bold">QRを読み取って写真を送るだけ！</p>
+                    <p class="text-center text-lp-text-light mt-2">AIがスコアを返信します</p>
                 </div>
             </div>
         </div>
+    </section>
 
-        <!-- Settings Panel Modal -->
-        <div id="settings-panel" class="settings-modal hidden">
-            <div class="settings-modal-content">
-                <button class="settings-close-btn" id="close-settings-panel">&times;</button>
+    <!-- Demo Section -->
+    <section class="py-12 md:py-16 px-6 bg-gradient-to-br from-lp-bg-light to-purple-50">
+        <div class="max-w-5xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold text-center mb-8 md:mb-10 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                実際の画面をチェック
+            </h2>
 
-                <!-- Theme Selection -->
-                <div class="settings-section">
-                    <h3 class="settings-section-title">カラーテーマ</h3>
-                    <div class="theme-selector">
-                        <!-- Light themes (row 1) -->
-                        <button class="theme-option selected" data-theme="classic-ivory" title="Classic Ivory">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #faf7f2, #ebe4d6); border: 1px solid #d4c5b0;"></span>
-                            <span class="theme-name">Ivory</span>
-                        </button>
-                        <button class="theme-option" data-theme="soft-blush" title="Soft Blush">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #fdf2f8, #fbcfe8); border: 1px solid #f9a8d4;"></span>
-                            <span class="theme-name">Blush</span>
-                        </button>
-                        <button class="theme-option" data-theme="soft-peach" title="Soft Peach">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #fff7ed, #fed7aa); border: 1px solid #fdba74;"></span>
-                            <span class="theme-name">Peach</span>
-                        </button>
-                        <button class="theme-option" data-theme="sage-green" title="Sage Green">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #f0fdf4, #bbf7d0); border: 1px solid #86efac;"></span>
-                            <span class="theme-name">Sage</span>
-                        </button>
-                        <button class="theme-option" data-theme="sky-blue" title="Sky Blue">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #f0f9ff, #bae6fd); border: 1px solid #7dd3fc;"></span>
-                            <span class="theme-name">Sky</span>
-                        </button>
-                        <button class="theme-option" data-theme="lavender" title="Lavender">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #faf5ff, #e9d5ff); border: 1px solid #d8b4fe;"></span>
-                            <span class="theme-name">Lavender</span>
-                        </button>
-                        <!-- Dark themes (row 2) -->
-                        <button class="theme-option" data-theme="chocolate" title="Chocolate">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #44281d, #5d3a2e)"></span>
-                            <span class="theme-name">Chocolate</span>
-                        </button>
-                        <button class="theme-option" data-theme="rose-pink" title="Rose Pink">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #be185d, #db2777)"></span>
-                            <span class="theme-name">Rose</span>
-                        </button>
-                        <button class="theme-option" data-theme="sunset-orange" title="Sunset Orange">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #c2410c, #ea580c)"></span>
-                            <span class="theme-name">Sunset</span>
-                        </button>
-                        <button class="theme-option" data-theme="forest-green" title="Forest Green">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #1a472a, #2d5a27)"></span>
-                            <span class="theme-name">Forest</span>
-                        </button>
-                        <button class="theme-option" data-theme="ocean-blue" title="Ocean Blue">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #1e40af, #2563eb)"></span>
-                            <span class="theme-name">Ocean</span>
-                        </button>
-                        <button class="theme-option" data-theme="elegant-purple" title="Elegant Purple">
-                            <span class="theme-preview"
-                                style="background: linear-gradient(135deg, #581c87, #7c3aed)"></span>
-                            <span class="theme-name">Purple</span>
-                        </button>
+            <!-- LINE Bot -->
+            <div class="mb-10 md:mb-12">
+                <h3 class="text-xl font-bold text-center mb-8 flex items-center justify-center gap-2"><i
+                        data-lucide="message-circle" class="w-5 h-5 text-lp-primary"></i> LINE Bot</h3>
+                <div class="max-w-sm mx-auto">
+                    <div class="text-center">
+                        <img src="images/lp/line-bot.webp" alt="LINE Bot画面" class="w-full mb-5 rounded-2xl shadow-lg">
+                        <h4 class="text-lg font-bold mb-2">写真を送ってスコアをゲット</h4>
+                        <p class="text-lp-text-light">ゲストは友だち追加して写真を送るだけ。<br>すぐにAIがスコアを返信します。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen Modes -->
+            <div>
+                <h3 class="text-xl font-bold text-center mb-8 flex items-center justify-center gap-2"><i
+                        data-lucide="monitor" class="w-5 h-5 text-lp-primary"></i> スクリーン表示（3つのモード）</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                    <div class="text-center">
+                        <img src="images/lp/ranking.webp" alt="ランキングモード"
+                            class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
+                        <h4 class="text-lg font-bold mb-2">ランキングモード</h4>
+                        <p class="text-lp-text-light text-sm">直近の投稿からトップ3をリアルタイム表示。<br>新しい写真が来るたび順位が変動！</p>
+                    </div>
+                    <div class="text-center">
+                        <img src="images/lp/slideshow.webp" alt="スライドショーモード"
+                            class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
+                        <h4 class="text-lg font-bold mb-2">スライドショーモード</h4>
+                        <p class="text-lp-text-light text-sm">投稿された写真を次々と表示。<br>会場全体で思い出を共有できます。</p>
+                    </div>
+                    <div class="text-center">
+                        <img src="images/lp/final.webp" alt="最終結果発表モード"
+                            class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
+                        <h4 class="text-lg font-bold mb-2">最終結果発表モード</h4>
+                        <p class="text-lp-text-light text-sm">イベント全体のトップ10を発表！<br>紙吹雪の演出で盛り上がります。</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Theme Showcase Section -->
+    <section class="py-12 md:py-16 px-6 bg-white">
+        <div class="max-w-5xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold text-center mb-4 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                結婚式の雰囲気に合わせて
+            </h2>
+            <p class="text-center text-lp-text-light mb-12">12種類のカラーテーマから、お二人の結婚式にぴったりの色を選べます</p>
+
+            <!-- Settings Panel Style Card -->
+            <div
+                class="max-w-md mx-auto bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl p-6 shadow-xl border border-stone-200 mb-8">
+                <h3 class="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-4">カラーテーマ</h3>
+                <div class="grid grid-cols-6 gap-1">
+                    <!-- Light themes -->
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #faf7f2, #ebe4d6); border: 1px solid #d4c5b0;">
+                        </div>
+                        <span class="text-[10px] font-medium text-stone-600">Ivory</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #fdf2f8, #fbcfe8); border: 1px solid #f9a8d4;">
+                        </div>
+                        <span class="text-[10px] font-medium text-stone-600">Blush</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #fff7ed, #fed7aa); border: 1px solid #fdba74;">
+                        </div>
+                        <span class="text-[10px] font-medium text-stone-600">Peach</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #f0fdf4, #bbf7d0); border: 1px solid #86efac;">
+                        </div>
+                        <span class="text-[10px] font-medium text-stone-600">Sage</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #f0f9ff, #bae6fd); border: 1px solid #7dd3fc;">
+                        </div>
+                        <span class="text-[10px] font-medium text-stone-600">Sky</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #faf5ff, #e9d5ff); border: 1px solid #d8b4fe;">
+                        </div>
+                        <span class="text-[10px] font-medium text-stone-600">Lavender</span>
+                    </div>
+                    <!-- Dark themes -->
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #44281d, #5d3a2e);"></div>
+                        <span class="text-[10px] font-medium text-stone-600">Chocolate</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #be185d, #db2777);"></div>
+                        <span class="text-[10px] font-medium text-stone-600">Rose</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #c2410c, #ea580c);"></div>
+                        <span class="text-[10px] font-medium text-stone-600">Sunset</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #1a472a, #2d5a27);"></div>
+                        <span class="text-[10px] font-medium text-stone-600">Forest</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #1e40af, #2563eb);"></div>
+                        <span class="text-[10px] font-medium text-stone-600">Ocean</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 p-1.5 rounded-lg">
+                        <div class="w-10 h-10 rounded-full shadow-md"
+                            style="background: linear-gradient(135deg, #581c87, #7c3aed);"></div>
+                        <span class="text-[10px] font-medium text-stone-600">Purple</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Video Section -->
+    <section class="py-12 md:py-16 px-6 bg-gradient-to-br from-lp-bg-light to-purple-50">
+        <div class="max-w-5xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold text-center mb-8 md:mb-10 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                動作デモ
+            </h2>
+            <div class="max-w-3xl mx-auto">
+                <video class="w-full rounded-2xl shadow-2xl" autoplay loop muted playsinline>
+                    <source src="images/lp/demo.webm" type="video/webm">
+                </video>
+                <p class="text-center text-lp-text-light text-sm mt-4">※ ランキングとスライドショーが自動で切り替わります</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="py-12 md:py-16 px-6 bg-gradient-to-br from-blue-50 to-lp-bg-light">
+        <div class="max-w-5xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold text-center mb-8 md:mb-10 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                料金
+            </h2>
+            <div
+                class="max-w-sm mx-auto bg-gradient-to-br from-lp-bg-light to-blue-50 p-6 md:p-8 rounded-2xl shadow-lg relative overflow-hidden">
+                <!-- Badge -->
+                <div
+                    class="absolute top-4 -right-8 bg-gradient-to-r from-lp-accent-yellow to-lp-accent-orange text-lp-text-dark px-10 py-1 text-xs font-bold rotate-45">
+                    期間限定
+                </div>
+
+                <div class="text-center mb-4">
+                    <span class="text-6xl font-black gradient-text-price">無料</span>
+                    <span class="text-lp-text-light text-sm ml-1">/ 1イベント</span>
+                </div>
+
+                <p class="text-center text-lp-text-light text-sm mb-6">
+                    サービス改善のため、初期は無料で提供中！<br>
+                    ご利用後にアンケートへのご協力お願いします。
+                </p>
+
+                <a href="#contact"
+                    class="block text-center bg-gradient-to-r from-lp-primary to-lp-accent-orange text-white px-10 py-4 rounded-full text-lg font-bold shadow-lg shadow-lp-primary/40 hover:shadow-xl hover:shadow-lp-primary/50 hover:-translate-y-0.5 transition-all duration-300">
+                    申し込む
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-12 md:py-16 px-6 bg-gradient-to-br from-blue-50 to-lp-bg-light">
+        <div class="max-w-3xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold text-center mb-8 md:mb-10 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                よくある質問
+            </h2>
+            <div class="space-y-3" id="faq-container">
+                <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span
+                            class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1 leading-6">ゲストはアプリをインストールする必要がありますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="flex items-start gap-3 p-4 pt-0">
+                            <span
+                                class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span
+                                class="text-sm text-lp-text-light leading-6">いいえ、LINEだけで利用できます。QRコードを読み取って友だち追加するだけです。</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="settings-actions">
-                    <button class="settings-action-btn primary" id="download-images-btn">
-                        <span class="action-icon"><i data-lucide="download"></i></span>
-                        <span class="action-text">投稿画像を一括ダウンロード</span>
-                    </button>
+                <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span
+                            class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1 leading-6">何人まで参加できますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="flex items-start gap-3 p-4 pt-0">
+                            <span
+                                class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span
+                                class="text-sm text-lp-text-light leading-6">80名規模の結婚式での運用実績があります。それ以上の規模は未検証ですが、技術的な制限は設けていません。</span>
+                        </div>
+                    </div>
+                </div>
 
-                    <button class="settings-action-btn secondary" id="download-qr-btn">
-                        <span class="action-icon"><i data-lucide="qr-code"></i></span>
-                        <span class="action-text">参加用QRコードをダウンロード</span>
-                    </button>
+                <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span
+                            class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1 leading-6">当日のサポートはありますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="flex items-start gap-3 p-4 pt-0">
+                            <span
+                                class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span
+                                class="text-sm text-lp-text-light leading-6">当日のリアルタイムサポートは提供していません。事前に動作確認をお願いしています。</span>
+                        </div>
+                    </div>
+                </div>
 
-                    <button class="settings-action-btn danger" id="delete-data-btn">
-                        <span class="action-icon"><i data-lucide="trash-2"></i></span>
-                        <span class="action-text">データを削除</span>
-                    </button>
+                <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span
+                            class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1 leading-6">写真のデータはもらえますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="flex items-start gap-3 p-4 pt-0">
+                            <span
+                                class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span
+                                class="text-sm text-lp-text-light leading-6">はい、ランキング画面から一括ダウンロードできます（イベント後30日以内）。</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span
+                            class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1 leading-6">スクリーンがなくても使えますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="flex items-start gap-3 p-4 pt-0">
+                            <span
+                                class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span class="text-sm text-lp-text-light leading-6">LINE
+                                Botでの写真投稿・スコア返信は使えます。ランキング表示にはスクリーンが必要です。</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="faq-question flex items-start gap-3 p-4 font-bold">
+                        <span
+                            class="w-6 h-6 bg-lp-primary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">Q</span>
+                        <span class="text-sm md:text-base flex-1 leading-6">ゲスト用のQRコードを印刷して配布できますか？</span>
+                        <i data-lucide="chevron-down" class="faq-icon w-5 h-5 text-lp-text-light flex-shrink-0"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <div class="flex items-start gap-3 p-4 pt-0">
+                            <span
+                                class="w-6 h-6 bg-lp-secondary text-white rounded-full flex items-center justify-center text-xs flex-shrink-0">A</span>
+                            <span
+                                class="text-sm text-lp-text-light leading-6">できます。アプリ上でQRコード画像をダウンロードできるのでユーザー自身で印刷して配布してください。</span>
+                        </div>
+                    </div>
                 </div>
 
             </div>
         </div>
+    </section>
 
-        <!-- Confirm Modal -->
-        <div id="confirm-modal" class="settings-modal hidden">
-            <div class="settings-modal-content confirm-modal-content">
-                <h2>確認</h2>
-                <p id="confirm-message"></p>
-                <div class="confirm-actions">
-                    <button class="btn-danger" id="confirm-yes">削除する</button>
-                    <button class="btn-secondary" id="confirm-no">キャンセル</button>
-                </div>
-            </div>
+    <!-- Contact Section -->
+    <section class="py-12 md:py-16 px-6 bg-white text-center" id="contact">
+        <div class="max-w-3xl mx-auto">
+            <h2
+                class="text-2xl lg:text-3xl font-bold mb-8 md:mb-10 relative after:content-[''] after:block after:w-16 after:h-1 after:bg-gradient-to-r after:from-lp-primary after:to-lp-secondary after:mx-auto after:mt-4 after:rounded-full">
+                お問い合わせ
+            </h2>
+            <p class="text-lg text-lp-text-light mb-8 leading-relaxed">
+                ご覧いただきありがとうございます。<br>
+                以下のフォームからお申し込みください。
+            </p>
+            <a href="apply.html"
+                class="inline-block bg-gradient-to-r from-lp-primary to-lp-accent-orange text-white px-12 py-5 rounded-full text-lg font-bold shadow-lg shadow-lp-primary/40 hover:shadow-xl hover:shadow-lp-primary/50 hover:-translate-y-0.5 transition-all duration-300">
+                お申し込みフォームへ
+            </a>
         </div>
-    </div>
+    </section>
 
-    <!-- Canvas Confetti Library -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <!-- Footer -->
+    <footer class="py-12 px-6 bg-lp-text-dark text-white text-center">
+        <div class="max-w-3xl mx-auto">
+            <p class="text-xl font-bold mb-4">AI笑顔写真コンテスト</p>
+            <nav class="mb-4">
+                <a href="legal.html"
+                    class="text-white/70 hover:text-white transition-colors text-sm">プライバシーポリシー・利用規約</a>
+            </nav>
+            <p class="text-sm text-white/50">&copy; 2026 AI笑顔写真コンテスト</p>
+        </div>
+    </footer>
 
-    <!-- QR Code Library -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Initialize Lucide Icons -->
+    <script>
+        lucide.createIcons();
 
-    <!-- JSZip for image download -->
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        // Firebase configuration will be loaded from config
-        window.firebaseApp = initializeApp(window.FIREBASE_CONFIG);
-        window.db = getFirestore(window.firebaseApp);
+        // FAQ Accordion
+        document.querySelectorAll('.faq-item').forEach(item => {
+            item.querySelector('.faq-question').addEventListener('click', () => {
+                const wasOpen = item.classList.contains('open');
+                // Close all items
+                document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+                // Open clicked item if it was closed
+                if (!wasOpen) {
+                    item.classList.add('open');
+                }
+            });
+        });
     </script>
-
-    <!-- Firebase Config (will be populated) -->
-    <script src="js/config.js"></script>
-
-    <!-- Main Application Logic -->
-    <script type="module" src="js/app.js"></script>
 </body>
 
 </html>

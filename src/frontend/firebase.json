@@ -29,6 +29,10 @@
         "destination": "/legal.html"
       },
       {
+        "source": "/ranking",
+        "destination": "/ranking.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
