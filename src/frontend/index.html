@@ -69,17 +69,17 @@
     }
     </script>
 
-    <!-- Google Fonts -->
+    <!-- Google Fonts (non-render-blocking) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
-        rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" media="print" onload="this.media='all'">
 
     <!-- Tailwind CSS -->
     <link rel="stylesheet" href="css/output.css">
 
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons (deferred) -->
+    <script defer src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         /* Gradient text utility */
@@ -194,7 +194,7 @@
         </div>
 
         <div class="flex-1 max-w-lg z-10">
-            <img src="images/lp/ranking.webp" alt="ランキング画面" class="w-full rounded-2xl shadow-xl">
+            <img src="images/lp/ranking.webp" alt="ランキング画面" width="1487" height="915" class="w-full rounded-2xl shadow-xl">
         </div>
     </section>
 
@@ -417,7 +417,7 @@
                         data-lucide="message-circle" class="w-5 h-5 text-lp-primary"></i> LINE Bot</h3>
                 <div class="max-w-sm mx-auto">
                     <div class="text-center">
-                        <img src="images/lp/line-bot.webp" alt="LINE Bot画面" class="w-full mb-5 rounded-2xl shadow-lg">
+                        <img src="images/lp/line-bot.webp" alt="LINE Bot画面" width="1218" height="1220" class="w-full mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">写真を送ってスコアをゲット</h4>
                         <p class="text-lp-text-light">ゲストは友だち追加して写真を送るだけ。<br>すぐにAIがスコアを返信します。</p>
                     </div>
@@ -430,19 +430,19 @@
                         data-lucide="monitor" class="w-5 h-5 text-lp-primary"></i> スクリーン表示（3つのモード）</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                     <div class="text-center">
-                        <img src="images/lp/ranking.webp" alt="ランキングモード"
+                        <img src="images/lp/ranking.webp" alt="ランキングモード" width="1487" height="915"
                             class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">ランキングモード</h4>
                         <p class="text-lp-text-light text-sm">直近の投稿からトップ3をリアルタイム表示。<br>新しい写真が来るたび順位が変動！</p>
                     </div>
                     <div class="text-center">
-                        <img src="images/lp/slideshow.webp" alt="スライドショーモード"
+                        <img src="images/lp/slideshow.webp" alt="スライドショーモード" width="1869" height="905"
                             class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">スライドショーモード</h4>
                         <p class="text-lp-text-light text-sm">投稿された写真を次々と表示。<br>会場全体で思い出を共有できます。</p>
                     </div>
                     <div class="text-center">
-                        <img src="images/lp/final.webp" alt="最終結果発表モード"
+                        <img src="images/lp/final.webp" alt="最終結果発表モード" width="1750" height="936"
                             class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">最終結果発表モード</h4>
                         <p class="text-lp-text-light text-sm">イベント全体のトップ10を発表！<br>紙吹雪の演出で盛り上がります。</p>
@@ -761,20 +761,20 @@
         </div>
     </footer>
 
-    <!-- Initialize Lucide Icons -->
+    <!-- Initialize Lucide Icons + FAQ Accordion -->
     <script>
-        lucide.createIcons();
-
-        // FAQ Accordion
-        document.querySelectorAll('.faq-item').forEach(item => {
-            item.querySelector('.faq-question').addEventListener('click', () => {
-                const wasOpen = item.classList.contains('open');
-                // Close all items
-                document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
-                // Open clicked item if it was closed
-                if (!wasOpen) {
-                    item.classList.add('open');
-                }
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.querySelector('.faq-question').addEventListener('click', () => {
+                    const wasOpen = item.classList.contains('open');
+                    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+                    if (!wasOpen) {
+                        item.classList.add('open');
+                    }
+                });
             });
         });
     </script>
