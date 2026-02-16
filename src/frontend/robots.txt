@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://smile-photo-contest.web.app/sitemap.xml
