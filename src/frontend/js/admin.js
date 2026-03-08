@@ -111,7 +111,6 @@ async function checkAdminStatus() {
     } else {
       isAdminUser = false;
     }
-    console.log(`Admin status: ${isAdminUser}`);
     return isAdminUser;
   } catch (error) {
     console.error("Error checking admin status:", error);
@@ -827,7 +826,6 @@ async function createEventFromApplication(applicationId) {
     };
 
     const eventRef = await addDoc(collection(db, "events"), eventData);
-    console.log("Event created:", eventRef.id);
 
     // Update application status
     await updateDoc(doc(db, "applications", applicationId), {
@@ -1234,9 +1232,6 @@ async function hardDeleteEvent(eventId) {
   const eventRef = doc(db, "events", eventId);
   await deleteDoc(eventRef);
 
-  console.log(
-    `Deleted event ${eventId} and ${imagesSnap.docs.length} images`
-  );
 }
 
 function switchTab(tabName) {
@@ -1603,9 +1598,6 @@ async function loadStatistics() {
     images = enrichImagesWithUserNames(images);
 
     const filterLabel = eventId || "all events";
-    console.log(
-      `Loaded ${images.length} images for statistics (event_id: ${filterLabel})`
-    );
 
     renderBasicStats(images);
     renderRankings(images);
@@ -2072,7 +2064,6 @@ document
         status: "active",
       });
 
-      console.log("Account created:", user.uid);
       // onAuthStateChanged will handle navigation
     } catch (error) {
       console.error("Registration failed:", error);
@@ -2144,7 +2135,6 @@ document
       };
 
       const docRef = await addDoc(collection(db, "events"), eventData);
-      console.log("Event created:", docRef.id);
 
       // Clear form and collapse
       document.getElementById("newEventName").value = "";
@@ -2343,7 +2333,6 @@ document.addEventListener("click", (e) => {
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
-    console.log("Authenticated as:", user.email);
 
     // Check if user is admin (operator)
     const isAdmin = await checkAdminStatus();

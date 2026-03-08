@@ -98,7 +98,6 @@ function getFormData() {
 async function submitApplication(data) {
   try {
     const docRef = await db.collection("applications").add(data);
-    console.log("Application submitted with ID:", docRef.id);
 
     // Send notification to admin (fire and forget - don't block on failure)
     sendAdminNotification(data).catch((err) => {
@@ -115,7 +114,6 @@ async function submitApplication(data) {
 // Send LINE notification to admin
 async function sendAdminNotification(data) {
   if (!window.APPLICATION_NOTIFY_URL) {
-    console.log("APPLICATION_NOTIFY_URL not configured, skipping notification");
     return;
   }
 
@@ -138,7 +136,6 @@ async function sendAdminNotification(data) {
     throw new Error(`Notification failed: ${response.status}`);
   }
 
-  console.log("Admin notification sent successfully");
 }
 
 // Show success screen

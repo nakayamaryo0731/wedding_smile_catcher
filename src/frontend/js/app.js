@@ -83,7 +83,6 @@ let slideshowState = {
 function getCurrentEventId() {
   const params = new URLSearchParams(window.location.search);
   const eventId = params.get("event_id") || "test";
-  console.log(`Using event_id: ${eventId}`);
   return eventId;
 }
 
@@ -261,11 +260,9 @@ function updateRankCard(rank, imageData, useDecimal = false) {
  * Update the ranking display
  */
 async function updateRankings(images, useDecimal = false) {
-  console.log(`Received ${images.length} images, getting top 3...`);
 
   // Get top 3 images (no filtering by user)
   const topImages = getTopImages(images, 3);
-  console.log(`Top 3 images:`, topImages);
 
   // Resolve user names (prefer denormalized user_name from image doc)
   topImages.forEach((img) => {
@@ -290,9 +287,6 @@ async function updateRankings(images, useDecimal = false) {
 async function fetchRecentRankings() {
   try {
     const currentEventId = getCurrentEventId();
-    console.log(
-      `Fetching recent rankings (last 15 images) for event: ${currentEventId}`
-    );
 
     const imagesRef = collection(window.db, "images");
     const q = query(
@@ -303,7 +297,6 @@ async function fetchRecentRankings() {
     );
 
     const snapshot = await getDocs(q);
-    console.log(`Fetched ${snapshot.docs.length} recent documents`);
 
     let images = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -339,9 +332,6 @@ async function fetchRecentRankings() {
 async function fetchAllTimeRankings() {
   try {
     const currentEventId = getCurrentEventId();
-    console.log(
-      `Fetching all-time top 10 rankings for event: ${currentEventId}`
-    );
 
     const imagesRef = collection(window.db, "images");
     const q = query(
@@ -352,9 +342,6 @@ async function fetchAllTimeRankings() {
     );
 
     const snapshot = await getDocs(q);
-    console.log(
-      `Fetched ${snapshot.docs.length} documents for all-time ranking`
-    );
 
     let images = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -410,7 +397,6 @@ async function fetchAllTimeRankings() {
       rankingListSection.classList.remove("hidden");
     }
 
-    console.log(`Updated all-time top 10 rankings`);
   } catch (error) {
     console.error("Error fetching all-time rankings:", error);
   }
@@ -467,7 +453,6 @@ function fireConfetti() {
  * Show final presentation overlay
  */
 function showFinalOverlay() {
-  console.log("Showing final presentation overlay");
 
   // Stop real-time listener
   stopRealtimeListener();
@@ -487,7 +472,6 @@ function showFinalOverlay() {
  * Go back to recent rankings from final mode
  */
 function backToRecent() {
-  console.log("Going back to recent rankings");
 
   // Reset final mode flag
   isFinalMode = false;
@@ -526,7 +510,6 @@ function backToRecent() {
  * Start final presentation - triggered by reveal button
  */
 async function startFinalPresentation() {
-  console.log("Starting final presentation...");
 
   // Hide overlay
   const overlay = document.getElementById("final-overlay");
@@ -562,7 +545,6 @@ async function startFinalPresentation() {
   await fetchAllTimeRankings();
   fireConfetti();
 
-  console.log("Final presentation complete");
 }
 
 // =========================
@@ -791,7 +773,6 @@ function setupModeButtons() {
       // Reset the auto mode switch timer
       startAutoModeSwitch();
     });
-    console.log("Slideshow button listener set up");
   }
 
   const rankingBtn = document.getElementById("ranking-btn");
@@ -801,7 +782,6 @@ function setupModeButtons() {
       // Reset the auto mode switch timer so ranking mode stays for full interval
       startAutoModeSwitch();
     });
-    console.log("Ranking button listener set up");
   }
 
   // Header title click to reload page
@@ -820,13 +800,11 @@ function setupFinalButton() {
   const finalBtn = document.getElementById("final-btn");
   if (finalBtn) {
     finalBtn.addEventListener("click", showFinalOverlay);
-    console.log("Final button listener set up");
   }
 
   const revealBtn = document.getElementById("reveal-btn");
   if (revealBtn) {
     revealBtn.addEventListener("click", startFinalPresentation);
-    console.log("Reveal button listener set up");
   }
 }
 
@@ -841,8 +819,6 @@ function processSnapshotData(snapshot) {
 
   // Debounce: wait for UPDATE_DEBOUNCE_MS before processing
   pendingUpdate = setTimeout(async () => {
-    console.log(`Processing ${snapshot.docs.length} documents (debounced)`);
-
     let images = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -869,7 +845,6 @@ function processSnapshotData(snapshot) {
  * Replaces periodic polling for more efficient updates
  */
 function setupRealtimeListener() {
-  console.log("Setting up real-time Firestore listener...");
 
   const currentEventId = getCurrentEventId();
 
@@ -888,7 +863,6 @@ function setupRealtimeListener() {
       // Don't update in final mode
       if (isFinalMode) return;
 
-      console.log(`Snapshot received: ${snapshot.docs.length} documents`);
       processSnapshotData(snapshot);
     },
     (error) => {
@@ -900,7 +874,6 @@ function setupRealtimeListener() {
     }
   );
 
-  console.log("Real-time listener set up successfully");
 }
 
 /**
@@ -910,7 +883,6 @@ function stopRealtimeListener() {
   if (unsubscribeSnapshot) {
     unsubscribeSnapshot();
     unsubscribeSnapshot = null;
-    console.log("Real-time listener stopped");
   }
   if (pendingUpdate) {
     clearTimeout(pendingUpdate);
@@ -939,7 +911,6 @@ function shuffleArray(array) {
 async function fetchSlideshowImages() {
   try {
     const currentEventId = getCurrentEventId();
-    console.log(`Fetching slideshow images for event: ${currentEventId}`);
 
     const imagesRef = collection(window.db, "images");
     const q = query(
@@ -950,7 +921,6 @@ async function fetchSlideshowImages() {
     );
 
     const snapshot = await getDocs(q);
-    console.log(`Fetched ${snapshot.docs.length} images for slideshow`);
 
     let images = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -987,7 +957,6 @@ async function fetchSlideshowImages() {
 async function refreshSlideshowImages() {
   try {
     const currentEventId = getCurrentEventId();
-    console.log(`Refreshing slideshow images for event: ${currentEventId}`);
 
     const imagesRef = collection(window.db, "images");
     const q = query(
@@ -1023,9 +992,6 @@ async function refreshSlideshowImages() {
 
       // Add new images to the queue
       slideshowState.imageQueue.push(...addedImages);
-      console.log(
-        `Added ${addedImages.length} new images to slideshow queue (total: ${slideshowState.imageQueue.length})`
-      );
 
       // If display has room, add new images directly
       const photoWall = document.getElementById("photo-wall");
@@ -1057,7 +1023,6 @@ async function refreshSlideshowImages() {
             photoElement.classList.add("visible");
           }, i * 150);
         }
-        console.log(`Added ${imagesToAdd.length} images to display directly`);
       }
 
       // Start rotation if not already running and we have enough images
@@ -1212,7 +1177,6 @@ function initializeSlideshowDisplay() {
     displayCount % slideshowState.imageQueue.length;
   slideshowState.nextReplaceIndex = 0;
 
-  console.log(`Initialized slideshow with ${displayCount} images`);
 }
 
 /**
@@ -1292,7 +1256,6 @@ function startImageRotation() {
     replaceNextImage();
   }, SLIDESHOW_CONFIG.IMAGE_SWITCH_INTERVAL);
 
-  console.log("Image rotation started");
 }
 
 /**
@@ -1302,7 +1265,6 @@ function stopImageRotation() {
   if (slideshowState.imageTimerId) {
     clearInterval(slideshowState.imageTimerId);
     slideshowState.imageTimerId = null;
-    console.log("Image rotation stopped");
   }
 }
 
@@ -1310,7 +1272,6 @@ function stopImageRotation() {
  * Switch to slideshow mode
  */
 async function switchToSlideshow() {
-  console.log("Switching to slideshow mode...");
 
   slideshowState.currentMode = "slideshow";
 
@@ -1356,14 +1317,12 @@ async function switchToSlideshow() {
     refreshSlideshowImages();
   }, SLIDESHOW_CONFIG.REFRESH_INTERVAL);
 
-  console.log("Switched to slideshow mode");
 }
 
 /**
  * Switch to ranking mode
  */
 function switchToRanking() {
-  console.log("Switching to ranking mode...");
 
   slideshowState.currentMode = "ranking";
 
@@ -1408,7 +1367,6 @@ function switchToRanking() {
   // Refresh ranking data
   fetchRecentRankings();
 
-  console.log("Switched to ranking mode");
 }
 
 /**
@@ -1440,11 +1398,6 @@ function startAutoModeSwitch() {
     }
   }, SLIDESHOW_CONFIG.MODE_SWITCH_INTERVAL);
 
-  console.log(
-    `Auto mode switch started (interval: ${
-      SLIDESHOW_CONFIG.MODE_SWITCH_INTERVAL / 1000
-    }s)`
-  );
 }
 
 /**
@@ -1456,7 +1409,6 @@ function stopAutoModeSwitch() {
     slideshowState.modeTimerId = null;
   }
   slideshowState.autoModeSwitch = false;
-  console.log("Auto mode switch stopped");
 }
 
 /**
@@ -1663,7 +1615,6 @@ function generateMainQRCode() {
     });
   }
 
-  console.log("Main QR code generated:", window.LIFF_ID ? "LIFF mode" : "deep link mode");
 }
 
 /**
@@ -1988,11 +1939,9 @@ function setupSettingsPanel() {
  * Initialize the app
  */
 async function init() {
-  console.log("Initializing Wedding Smile Ranking app...");
 
   // Get event ID from URL or config
   const currentEventId = getCurrentEventId();
-  console.log(`Current Event ID: ${currentEventId}`);
 
   // Check if Firebase is initialized
   if (!window.db) {
@@ -2013,7 +1962,6 @@ async function init() {
       currentEventData = { id: eventDoc.id, ...eventDoc.data() };
       const status = currentEventData.status;
       if (status === "deleted") {
-        console.log(`Event ${currentEventId} is deleted, showing not found message`);
         loadingEl.innerHTML = `
           <p style="font-size: 1.2rem; color: #666;">このイベントは存在しません</p>
         `;
@@ -2021,7 +1969,6 @@ async function init() {
         return;
       }
       if (status === "archived") {
-        console.log(`Event ${currentEventId} is archived, showing ended banner`);
         document.getElementById("event-ended-banner").classList.remove("hidden");
         // Hide everything except header and banner
         document.getElementById("slideshow-btn")?.classList.add("hidden");
