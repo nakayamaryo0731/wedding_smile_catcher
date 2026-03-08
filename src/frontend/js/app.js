@@ -1478,6 +1478,12 @@ function showSettingsPanel() {
   const panel = document.getElementById("settings-panel");
   if (!panel) return;
 
+  // Populate event info
+  const nameEl = document.getElementById("settings-event-name");
+  const dateEl = document.getElementById("settings-event-date");
+  if (nameEl) nameEl.textContent = currentEventData?.event_name || "-";
+  if (dateEl) dateEl.textContent = currentEventData?.event_date || "-";
+
   panel.classList.remove("hidden");
 }
 
