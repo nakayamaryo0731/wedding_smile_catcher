@@ -112,6 +112,9 @@ EVENT_CODE_MAX_LENGTH = 100
 # Signed URL configuration (7 days - sufficient for wedding event + post-event viewing)
 SIGNED_URL_EXPIRATION_HOURS = 168
 
+# Draft event upload limit per user
+DRAFT_UPLOAD_LIMIT = 5
+
 
 def validate_user_name(name: str) -> tuple[bool, str | None]:
     """
@@ -382,7 +385,7 @@ def handle_join_event(event_code: str, user_id: str, reply_token: str):
     events_ref = db.collection("events")
     q = (
         events_ref.where(filter=firestore.FieldFilter("event_code", "==", event_code))
-        .where(filter=firestore.FieldFilter("status", "==", "active"))
+        .where(filter=firestore.FieldFilter("status", "in", ["active", "draft"]))
         .limit(1)
     )
     event_docs = list(q.stream())
@@ -402,6 +405,7 @@ def handle_join_event(event_code: str, user_id: str, reply_token: str):
     event_data = event_doc.to_dict()
     event_id = event_doc.id
     event_name = event_data.get("event_name", "イベント")
+    event_status = event_data.get("status")
 
     # 2. Deactivate registrations in other events (outside transaction — idempotent)
     _deactivate_other_registrations(user_id, event_id)
@@ -411,6 +415,10 @@ def handle_join_event(event_code: str, user_id: str, reply_token: str):
     user_ref = db.collection("users").document(composite_key)
     transaction = db.transaction()
     message = _join_event_transaction(transaction, user_ref, user_id, event_id, event_name)
+
+    # Append draft trial notice
+    if event_status == "draft":
+        message = TextMessage(text=message.text + f"\n\n📌 お試し版です（最大{DRAFT_UPLOAD_LIMIT}枚まで投稿可能）")
 
     # 4. Reply outside transaction (executed once, retry-safe)
     messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
@@ -535,6 +543,27 @@ def handle_command(text: str, reply_token: str):
     messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
 
 
+def _count_user_images(user_id: str, event_id: str) -> int:
+    """Count active (non-deleted) images for a user in an event.
+
+    Accounts for both hard deletes (document removed) and soft deletes
+    (deleted_at timestamp set) by fetching only the deleted_at field
+    and excluding documents where it is set.
+    """
+    images_ref = db.collection("images")
+    query = (
+        images_ref.where(filter=firestore.FieldFilter("user_id", "==", user_id))
+        .where(filter=firestore.FieldFilter("event_id", "==", event_id))
+        .select(["deleted_at"])
+    )
+
+    count = 0
+    for doc in query.stream():
+        if not doc.to_dict().get("deleted_at"):
+            count += 1
+    return count
+
+
 @handler.add(MessageEvent, message=ImageMessageContent)
 def handle_image_message(event: MessageEvent):
     """
@@ -580,7 +609,20 @@ def handle_image_message(event: MessageEvent):
         return
 
     event_status = event_doc.to_dict().get("status")
-    if event_status != "active":
+    if event_status == "draft":
+        current_count = _count_user_images(user_id, event_id)
+        if current_count >= DRAFT_UPLOAD_LIMIT:
+            logger.info(
+                f"Draft upload limit reached: user {user_id} event {event_id} ({current_count}/{DRAFT_UPLOAD_LIMIT})"
+            )
+            message = TextMessage(
+                text=f"📸 お試し版では{DRAFT_UPLOAD_LIMIT}枚まで投稿できます。\n\n"
+                f"現在 {current_count}/{DRAFT_UPLOAD_LIMIT} 枚です。\n"
+                "画像を削除すると、再度投稿できます。"
+            )
+            messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
+            return
+    elif event_status != "active":
         logger.info(f"Image rejected: event {event_id} status is {event_status}")
         message = TextMessage(text="このイベントは終了しました。\n\n写真の投稿は受け付けていません。")
         messaging_api.reply_message(ReplyMessageRequest(reply_token=reply_token, messages=[message]))
@@ -971,7 +1013,7 @@ def liff_join(request: Request):
         events_ref = db.collection("events")
         q = (
             events_ref.where(filter=firestore.FieldFilter("event_code", "==", event_code))
-            .where(filter=firestore.FieldFilter("status", "==", "active"))
+            .where(filter=firestore.FieldFilter("status", "in", ["active", "draft"]))
             .limit(1)
         )
         event_docs = list(q.stream())
@@ -983,6 +1025,7 @@ def liff_join(request: Request):
         event_data = event_doc.to_dict()
         event_id = event_doc.id
         event_name = event_data.get("event_name", "イベント")
+        event_status = event_data.get("status")
 
         # Deactivate registrations in other events
         _deactivate_other_registrations(user_id, event_id)
@@ -1034,15 +1077,18 @@ def liff_join(request: Request):
 
         logger.info(f"LIFF JOIN result for {user_id}: {result['status']}")
 
+        response_data = {
+            "success": True,
+            "status": result["status"],
+            "event_name": event_name,
+            "user_name": result["name"],
+        }
+        if event_status == "draft":
+            response_data["is_draft"] = True
+            response_data["upload_limit"] = DRAFT_UPLOAD_LIMIT
+
         return (
-            jsonify(
-                {
-                    "success": True,
-                    "status": result["status"],
-                    "event_name": event_name,
-                    "user_name": result["name"],
-                }
-            ),
+            jsonify(response_data),
             200,
             cors_headers,
         )

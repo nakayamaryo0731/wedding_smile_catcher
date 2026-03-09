@@ -12,7 +12,9 @@ src_path = Path(__file__).parent.parent.parent / "src" / "functions" / "webhook"
 sys.path.insert(0, str(src_path.parent))
 
 from webhook.main import (  # noqa: E402
+    DRAFT_UPLOAD_LIMIT,
     JOIN_PATTERN,
+    _count_user_images,
     _find_user_by_status,
     _join_event_transaction,
     _register_name,
@@ -291,18 +293,38 @@ class TestHandleJoinEvent:
 
     @patch("webhook.main.messaging_api")
     @patch("webhook.main.db")
-    def test_join_event_draft_status_rejected(self, mock_db, mock_messaging_api):
-        """Test joining event with 'draft' status is rejected (not found)."""
-        mock_query = MagicMock()
-        mock_query.stream.return_value = iter([])
-        mock_events_ref = MagicMock()
-        mock_events_ref.where.return_value.where.return_value.limit.return_value = mock_query
-        mock_db.collection.return_value = mock_events_ref
+    @patch("webhook.main.firestore.transactional", lambda f: f)
+    def test_join_event_draft_status_success(self, mock_db, mock_messaging_api):
+        """Test joining event with 'draft' status succeeds with trial notice."""
+        mock_events_ref = _setup_event_mock(mock_db, "event_draft", "テスト結婚式", "draft-code", status="draft")
+
+        mock_user_ref = MagicMock()
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = False
+        mock_user_ref.get.return_value = mock_user_doc
+
+        mock_transaction = MagicMock()
+
+        mock_users_ref = MagicMock()
+        mock_users_ref.document.return_value = mock_user_ref
+        mock_users_ref.where.return_value.where.return_value.stream.return_value = []
+
+        def collection_side_effect(name):
+            if name == "events":
+                return mock_events_ref
+            elif name == "users":
+                return mock_users_ref
+            return MagicMock()
+
+        mock_db.collection.side_effect = collection_side_effect
+        mock_db.transaction.return_value = mock_transaction
 
         handle_join_event("draft-code", "user_789", "reply_token_3")
 
-        mock_messaging_api.reply_message.assert_called_once()
-        assert "見つかりません" in _get_reply_text(mock_messaging_api)
+        mock_transaction.set.assert_called_once()
+        reply_text = _get_reply_text(mock_messaging_api)
+        assert "お試し版" in reply_text
+        assert str(DRAFT_UPLOAD_LIMIT) in reply_text
 
     @patch("webhook.main.messaging_api")
     @patch("webhook.main.db")
@@ -757,3 +779,223 @@ class TestHandleImageMessage:
         # First reply should be the loading message (containing "分析中")
         reply_text = _get_reply_text(mock_messaging_api)
         assert "分析中" in reply_text
+
+    @patch("webhook.main.messaging_api")
+    @patch("webhook.main.db")
+    def test_image_rejected_when_draft_limit_reached(self, mock_db, mock_messaging_api):
+        """Draft event with upload limit reached returns limit message."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.to_dict.return_value = {
+            "event_id": "event_draft",
+            "name": "テスト太郎",
+        }
+        mock_user_ref = MagicMock()
+
+        mock_event_doc = MagicMock()
+        mock_event_doc.exists = True
+        mock_event_doc.to_dict.return_value = {"status": "draft"}
+
+        mock_events_ref = MagicMock()
+        mock_events_ref.document.return_value.get.return_value = mock_event_doc
+
+        mock_users_ref = MagicMock()
+        mock_query = MagicMock()
+        mock_query.stream.return_value = iter([mock_user_doc])
+        mock_users_ref.where.return_value.where.return_value.order_by.return_value.limit.return_value = mock_query
+        mock_users_ref.document.return_value = mock_user_ref
+
+        # Mock images: 5 active images (no deleted_at)
+        mock_image_docs = []
+        for i in range(DRAFT_UPLOAD_LIMIT):
+            img_doc = MagicMock()
+            img_doc.to_dict.return_value = {}  # no deleted_at
+            mock_image_docs.append(img_doc)
+
+        mock_images_ref = MagicMock()
+        mock_images_query = MagicMock()
+        mock_images_query.stream.return_value = iter(mock_image_docs)
+        mock_images_ref.where.return_value.where.return_value.select.return_value = mock_images_query
+
+        def collection_side_effect(name):
+            if name == "events":
+                return mock_events_ref
+            elif name == "users":
+                return mock_users_ref
+            elif name == "images":
+                return mock_images_ref
+            return MagicMock()
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        event = _make_image_event()
+        handle_image_message(event)
+
+        reply_text = _get_reply_text(mock_messaging_api)
+        assert "お試し版" in reply_text
+        assert str(DRAFT_UPLOAD_LIMIT) in reply_text
+        mock_messaging_api.reply_message.assert_called_once()
+
+    @patch("webhook.main.messaging_api_blob")
+    @patch("webhook.main.messaging_api")
+    @patch("webhook.main.db")
+    @patch("webhook.main.storage_client")
+    def test_image_accepted_when_draft_under_limit(self, mock_storage, mock_db, mock_messaging_api, mock_blob_api):
+        """Draft event under upload limit proceeds to loading message."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.to_dict.return_value = {
+            "event_id": "event_draft",
+            "name": "テスト太郎",
+        }
+        mock_user_ref = MagicMock()
+
+        mock_event_doc = MagicMock()
+        mock_event_doc.exists = True
+        mock_event_doc.to_dict.return_value = {"status": "draft"}
+
+        mock_events_ref = MagicMock()
+        mock_events_ref.document.return_value.get.return_value = mock_event_doc
+
+        mock_users_ref = MagicMock()
+        mock_query = MagicMock()
+        mock_query.stream.return_value = iter([mock_user_doc])
+        mock_users_ref.where.return_value.where.return_value.order_by.return_value.limit.return_value = mock_query
+        mock_users_ref.document.return_value = mock_user_ref
+
+        # Mock images: 3 active images (under limit)
+        mock_image_docs = []
+        for i in range(3):
+            img_doc = MagicMock()
+            img_doc.to_dict.return_value = {}
+            mock_image_docs.append(img_doc)
+
+        mock_images_ref = MagicMock()
+        mock_images_query = MagicMock()
+        mock_images_query.stream.return_value = iter(mock_image_docs)
+        mock_images_ref.where.return_value.where.return_value.select.return_value = mock_images_query
+
+        def collection_side_effect(name):
+            if name == "events":
+                return mock_events_ref
+            elif name == "users":
+                return mock_users_ref
+            elif name == "images":
+                return mock_images_ref
+            return MagicMock()
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        mock_blob_api.get_message_content.return_value = b"fake_image_data"
+        mock_bucket = MagicMock()
+        mock_storage.bucket.return_value = mock_bucket
+
+        event = _make_image_event()
+        handle_image_message(event)
+
+        reply_text = _get_reply_text(mock_messaging_api)
+        assert "分析中" in reply_text
+
+    @patch("webhook.main.messaging_api")
+    @patch("webhook.main.db")
+    def test_image_accepted_when_draft_soft_deleted_images(self, mock_db, mock_messaging_api):
+        """Draft event: soft-deleted images don't count toward limit."""
+        mock_user_doc = MagicMock()
+        mock_user_doc.to_dict.return_value = {
+            "event_id": "event_draft",
+            "name": "テスト太郎",
+        }
+        mock_user_ref = MagicMock()
+
+        mock_event_doc = MagicMock()
+        mock_event_doc.exists = True
+        mock_event_doc.to_dict.return_value = {"status": "draft"}
+
+        mock_events_ref = MagicMock()
+        mock_events_ref.document.return_value.get.return_value = mock_event_doc
+
+        mock_users_ref = MagicMock()
+        mock_query = MagicMock()
+        mock_query.stream.return_value = iter([mock_user_doc])
+        mock_users_ref.where.return_value.where.return_value.order_by.return_value.limit.return_value = mock_query
+        mock_users_ref.document.return_value = mock_user_ref
+
+        # 5 total docs but 3 soft-deleted → only 2 active
+        mock_image_docs = []
+        for i in range(5):
+            img_doc = MagicMock()
+            if i < 3:
+                img_doc.to_dict.return_value = {"deleted_at": "2025-01-01T00:00:00Z"}
+            else:
+                img_doc.to_dict.return_value = {}
+            mock_image_docs.append(img_doc)
+
+        mock_images_ref = MagicMock()
+        mock_images_query = MagicMock()
+        mock_images_query.stream.return_value = iter(mock_image_docs)
+        mock_images_ref.where.return_value.where.return_value.select.return_value = mock_images_query
+
+        def collection_side_effect(name):
+            if name == "events":
+                return mock_events_ref
+            elif name == "users":
+                return mock_users_ref
+            elif name == "images":
+                return mock_images_ref
+            return MagicMock()
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        event = _make_image_event()
+        # Should not raise / should not return limit message
+        # Need storage mock since it will proceed to upload
+        with patch("webhook.main.storage_client"), patch("webhook.main.messaging_api_blob") as mock_blob:
+            mock_blob.get_message_content.return_value = b"fake_image_data"
+            handle_image_message(event)
+
+        reply_text = _get_reply_text(mock_messaging_api)
+        assert "分析中" in reply_text
+
+
+class TestCountUserImages:
+    """Tests for _count_user_images helper."""
+
+    @patch("webhook.main.db")
+    def test_count_excludes_soft_deleted(self, mock_db):
+        """Soft-deleted images (with deleted_at) are not counted."""
+        mock_image_docs = [
+            MagicMock(**{"to_dict.return_value": {}}),
+            MagicMock(**{"to_dict.return_value": {"deleted_at": "2025-01-01"}}),
+            MagicMock(**{"to_dict.return_value": {}}),
+        ]
+        mock_images_ref = MagicMock()
+        mock_images_query = MagicMock()
+        mock_images_query.stream.return_value = iter(mock_image_docs)
+        mock_images_ref.where.return_value.where.return_value.select.return_value = mock_images_query
+        mock_db.collection.return_value = mock_images_ref
+
+        assert _count_user_images("user_1", "event_1") == 2
+
+    @patch("webhook.main.db")
+    def test_count_zero_when_all_deleted(self, mock_db):
+        """Returns 0 when all images are soft-deleted."""
+        mock_image_docs = [
+            MagicMock(**{"to_dict.return_value": {"deleted_at": "2025-01-01"}}),
+            MagicMock(**{"to_dict.return_value": {"deleted_at": "2025-01-02"}}),
+        ]
+        mock_images_ref = MagicMock()
+        mock_images_query = MagicMock()
+        mock_images_query.stream.return_value = iter(mock_image_docs)
+        mock_images_ref.where.return_value.where.return_value.select.return_value = mock_images_query
+        mock_db.collection.return_value = mock_images_ref
+
+        assert _count_user_images("user_1", "event_1") == 0
+
+    @patch("webhook.main.db")
+    def test_count_zero_when_no_images(self, mock_db):
+        """Returns 0 when no image documents exist (hard-deleted or never uploaded)."""
+        mock_images_ref = MagicMock()
+        mock_images_query = MagicMock()
+        mock_images_query.stream.return_value = iter([])
+        mock_images_ref.where.return_value.where.return_value.select.return_value = mock_images_query
+        mock_db.collection.return_value = mock_images_ref
+
+        assert _count_user_images("user_1", "event_1") == 0
