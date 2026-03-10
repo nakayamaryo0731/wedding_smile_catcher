@@ -570,6 +570,8 @@ def get_existing_hashes_for_user(user_id: str, event_id: str) -> list[str]:
         hashes = []
         for doc in images_query:
             data = doc.to_dict()
+            if data.get("deleted_at"):
+                continue
             if "average_hash" in data:
                 hashes.append(data["average_hash"])
 
