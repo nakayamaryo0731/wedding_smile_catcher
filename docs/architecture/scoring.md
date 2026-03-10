@@ -99,61 +99,40 @@ def calculate_smile_score(image_bytes):
 
 ### 目的
 
-結婚式と無関係な画像（例: 料理の写真、風景など）を除外し、テーマに沿った写真を評価します。
+人物が写っていない画像（料理、風景など）を除外し、笑顔の質・創造性・ストーリー性を評価します。
+イベント種別に依存しない汎用的な評価基準です。
 
 ### 実装
 
-Vertex AI (Gemini) のマルチモーダル機能を使用し、画像とプロンプトを送信して評価を取得します。
+Vertex AI (Gemini) のマルチモーダル機能を使用し、画像と英語プロンプト（出力のみ日本語指定）を送信して評価を取得します。
 
 ```python
 def evaluate_theme(image_bytes):
     """
-    画像のテーマ関連性を評価
+    画像のAI評価
 
     Returns:
         dict: {"score": int (0-100), "comment": str}
     """
     prompt = """
-あなたは結婚式写真の専門家です。提供された写真を分析し、以下の基準に従って笑顔の評価を行ってください：
+You are an AI photo judge for a smile photo contest at a party/event.
+Guests submit photos via LINE, and you score them and write a fun, unique comment.
 
-## 分析対象
-- 新郎新婦を中心に、写真に写っている全ての人物の表情を評価
-- グループショットの場合は、全体的な雰囲気も考慮
+## Scoring Criteria (100 points total)
+1. Smile Quality (60 points) - genuine, natural, Duchenne smiles
+2. Creativity & Originality (25 points) - unique poses, compositions, ideas
+3. Story & Emotion (15 points) - captures a moment, conveys energy
 
-## 評価基準（100点満点）
-1. 自然さ（30点）
-   - 作り笑いではなく、自然な表情かどうか
-   - 緊張が感じられず、リラックスしているか
-   - 目元の表情が自然か
+## Gate Rule
+- If NO people are visible, return score: 0.
 
-2. 幸福度（40点）
-   - 純粋な喜びが表現されているか
-   - 目が笑っているか（クローズドスマイル）
-   - 歯が見える程度の適度な笑顔か
+## Comment Rules
+- Output in Japanese, 80 characters or fewer
+- Reference specific visible elements in the photo
+- BANNED phrases: 「自然な笑顔」「幸福感」「一体感」「印象的」「素晴らしい瞬間」「溢れる」
 
-3. 周囲との調和（30点）
-   - 周りの人々と笑顔が調和しているか
-   - 場面に相応しい表情の大きさか
-   - グループ全体で統一感のある雰囲気が出ているか
-
-## 採点方法
-コメントについて：
-- 具体的な改善点があれば提案
-- 特に優れている点は強調
-
-## 注意事項
-- 文化的背景や結婚式のスタイルを考慮
-- 否定的な表現は避け、建設的なフィードバックを心がける
-- プライバシーに配慮した表現を使用
-
-## 出力
-JSON形式でscoreとcommentのキーで返却する。JSONのみを出力すること。
-
-例:
-{
-  "score": 85,
-  "comment": "新郎新婦の目元から溢れる自然な喜びが印象的で、周囲の参列者との一体感も素晴らしい"
-}
+## Output
+JSON only: {"score": 88, "comment": "..."}
 """
 
     model = GenerativeModel("gemini-2.5-flash")
@@ -170,11 +149,11 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 
 | スコア範囲 | 意味 | 例 |
 |-----------|------|-----|
-| 0点 | 結婚式と無関係 | 料理の写真、風景、物 |
-| 1-50点 | テーマから外れている | 表情が硬い、テーマ不一致 |
-| 51-75点 | まあまあ良い | 普通の笑顔、雰囲気良好 |
-| 76-90点 | 素晴らしい | 自然な笑顔、調和が取れている |
-| 91-100点 | 完璧 | 満面の笑み、全体的に幸福感溢れる |
+| 0点 | 人物が写っていない | 料理の写真、風景、物 |
+| 1-50点 | 笑顔が少ない・創造性に欠ける | 表情が硬い、棒立ち |
+| 51-75点 | まあまあ良い | 普通の笑顔、標準的な構図 |
+| 76-90点 | 高品質 | 生き生きとした笑顔、工夫ある構図 |
+| 91-100点 | 最高 | 本気の笑い、独創的で感動的な一枚 |
 
 ### モデル選択の重要性
 

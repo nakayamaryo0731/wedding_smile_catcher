@@ -325,19 +325,19 @@ def get_face_size_multiplier(face, image_width: int, image_height: int) -> float
 
 def format_face_count(smiling_faces: int, face_count: int) -> str:
     """
-    Format face count for display. Shows "大勢" for 10+ people.
+    Format face count for display. Shows "大勢が笑顔！" for 10+ people.
 
     Args:
         smiling_faces: Number of smiling faces detected
         face_count: Total number of faces detected
 
     Returns:
-        Formatted string like "5人/6人" or "大勢"
+        Formatted string like "5人が笑顔！" or "大勢が笑顔！"
     """
     if face_count >= 10:
-        return "大勢"
+        return "大勢が笑顔！"
     else:
-        return f"{smiling_faces}人/{face_count}人"
+        return f"{smiling_faces}人が笑顔！"
 
 
 def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
@@ -594,48 +594,53 @@ def evaluate_theme(image_bytes: bytes) -> dict[str, Any]:
         Dictionary with score (0-100) and comment
     """
     prompt = """
-あなたは結婚式写真の専門家です。提供された写真を分析し、以下の基準に従って笑顔の評価を行ってください：
+You are an AI photo judge for a smile photo contest at a party/event.
+Guests submit photos via LINE, and you score them and write a fun, unique comment.
 
-## 分析対象
-- 写真に写っている全ての人物の表情を評価
-- グループショットの場合は、全体的な雰囲気も考慮
+## Your Personality
+- Energetic, witty, and entertaining — like a party MC
+- Praise effort and creativity generously
+- Never use cliché phrases. Every comment must be different and specific to what you see.
 
-## 評価基準（100点満点）
-1. 自然さ（30点）
-   - 作り笑いではなく、自然な表情かどうか
-   - 緊張が感じられず、リラックスしているか
-   - 目元の表情が自然か
+## Scoring Criteria (100 points total)
 
-2. 幸福度（40点）
-   - 純粋な喜びが表現されているか
-   - 目が笑っているか（クローズドスマイル）
-   - 歯が見える程度の適度な笑顔か
+### Primary: Smile Quality (60 points)
+- Are the smiles genuine and natural (not forced)?
+- Are the eyes smiling too (Duchenne smile)?
+- How expressive and joyful are the faces?
+- Rate the QUALITY of smiles, not the quantity of people.
 
-3. 周囲との調和（30点）
-   - 周りの人々と笑顔が調和しているか
-   - 場面に相応しい表情の大きさか
-   - グループ全体で統一感のある雰囲気が出ているか
+### Secondary: Creativity & Originality (25 points)
+- Unique poses, interesting compositions, or creative ideas?
+- Is there action, movement, or a fun moment captured?
+- Goes beyond a standard "stand and smile" photo?
 
-## 採点方法
-コメントについて：
-- 具体的な改善点があれば提案
-- 特に優れている点は強調
+### Secondary: Story & Emotion (15 points)
+- Does the photo tell a story or capture a moment?
+- Can you feel the energy/emotion of the scene?
+- Would someone looking at this photo say "I love this!"?
 
-## 注意事項
-- 文化的背景や結婚式のスタイルを考慮
-- 否定的な表現は避け、建設的なフィードバックを心がける
-- プライバシーに配慮した表現を使用
-- 特定の人物を「新郎新婦」と呼ばない（誤認識の可能性があるため）
+## Gate Rule
+- If NO people are visible in the photo (e.g., food only, scenery only, objects only),
+  return score: 0 regardless of other criteria.
 
-## 出力
-JSON形式でscoreとcommentのキーで返却する。JSONのみを出力すること。
-commentは100文字以内で簡潔に記述すること。
+## Comment Rules
+- Output the comment in **Japanese** (日本語で出力すること)
+- **80 characters or fewer** in Japanese
+- Reference **specific visible elements** in the photo (number of people, poses, setting, props, clothing, etc.)
+- Start with a **different opening phrase each time** (avoid repeating the same first word/phrase)
+- Maintain a **positive, playful tone** even for low scores
+- **BANNED phrases** (never use these): 「自然な笑顔」「幸福感」「一体感」「印象的」「素晴らしい瞬間」「溢れる」
 
-例:
-{
-  "score": 85,
-  "comment": "全員の目元から溢れる自然な喜びが印象的です。グループ全体の一体感も素晴らしく、幸せな瞬間が伝わってきます"
-}
+## Output
+Output JSON only. Comment must be in Japanese, 80 chars or fewer.
+
+Example outputs (showing variety):
+{"score": 88, "comment": "ピースサインの角度が全員バラバラなのがリアルで最高！目元のシワが本気の笑い"}
+{"score": 52, "comment": "おっ、ちょっと緊張気味？カメラ慣れしてないのも逆に味がある一枚"}
+{"score": 91, "comment": "この爆笑の瞬間、何があったか気になる！全員つられ笑いしてるのがツボ"}
+{"score": 35, "comment": "クールな表情もカッコいいけど、このコンテストは笑顔が命！もう一枚いってみよう"}
+{"score": 0, "comment": "美味しそう！でも笑顔写真コンテストなので、お料理と一緒にニッコリお願いします"}
 """
 
     # Retry configuration - generous settings for handling burst traffic
@@ -1130,27 +1135,22 @@ def send_result_to_line(user_id: str, scores: dict[str, Any]):
         logger.error(f"LINE user ID not found in scores for user: {user_id}")
         return
 
-    # Build message with face count display (show "大勢" for 10+ people)
-    face_count = scores["face_count"]
-    if face_count >= 10:
-        face_count_display = "大勢"
-    else:
-        face_count_display = f"{face_count}人"
+    # Build message with face count display
+    face_count_display = format_face_count(scores["smiling_faces"], scores["face_count"])
 
     if scores["is_similar"]:
         message_text = (
-            f"📸 スコア: {scores['total_score']}点\n\n"
-            f"⚠️ この写真は、以前の投稿と似ています。\n"
-            f"違う構図で撮影してみましょう！\n\n"
-            f"😊 笑顔スコア: {scores['smile_score']}点（{face_count_display}）\n"
-            f"🤖 AIテーマ評価: {scores['ai_score']}点"
+            f"📸 {scores['total_score']}点（類似写真ペナルティ）\n"
+            f"前の写真と似てるかも！違う構図で撮ってみよう💡\n\n"
+            f"😊 笑顔: {scores['smile_score']}点（{face_count_display}）\n"
+            f"🎨 AI評価: {scores['ai_score']}点\n"
+            f"💬 {scores['comment']}"
         )
     else:
         message_text = (
-            f"🎉 採点完了！\n\n"
-            f"【最終スコア】{scores['total_score']}点\n\n"
-            f"😊 笑顔スコア: {scores['smile_score']}点（{face_count_display}）\n"
-            f"🤖 AIテーマ評価: {scores['ai_score']}点\n"
+            f"🎉 {scores['total_score']}点！\n\n"
+            f"😊 笑顔: {scores['smile_score']}点（{face_count_display}）\n"
+            f"🎨 AI評価: {scores['ai_score']}点\n"
             f"💬 {scores['comment']}"
         )
 
