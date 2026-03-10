@@ -869,15 +869,13 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
         logger.warning(f"Vertex AI error occurred: {ai_error}")
         error_warnings.append("⚠️ AI評価でエラーが発生しました。デフォルト値を使用しています。")
 
-    # Format face count (show "大勢" for 10+ people)
     smiling_faces = vision_result.get("smiling_faces", face_count)
-    face_count_display = format_face_count(smiling_faces, face_count)
 
     if error_warnings:
         warning_text = "\n".join(error_warnings)
-        comment = f"{warning_text}\n\n{ai_comment}\n\n笑顔検出: {face_count_display}が笑顔です！"
+        comment = f"{warning_text}\n\n{ai_comment}"
     else:
-        comment = f"{ai_comment}\n\n笑顔検出: {face_count_display}が笑顔です！"
+        comment = ai_comment
 
     result = {
         "smile_score": smile_score,
@@ -885,6 +883,7 @@ def generate_scores_with_vision_api(image_id: str, request_id: str) -> dict[str,
         "total_score": total_score,
         "comment": comment,
         "face_count": face_count,
+        "smiling_faces": smiling_faces,
         "is_similar": is_similar,
         "average_hash": average_hash,
         "line_user_id": line_user_id,  # Cache LINE user ID to avoid duplicate Firestore read
