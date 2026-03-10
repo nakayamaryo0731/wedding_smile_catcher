@@ -235,22 +235,22 @@ class TestFormatFaceCount:
     def test_small_group(self):
         """Test with less than 10 people."""
         result = format_face_count(5, 6)
-        assert result == "5人/6人"
+        assert result == "5人が笑顔！"
 
     def test_exactly_nine(self):
         """Test with exactly 9 people."""
         result = format_face_count(9, 9)
-        assert result == "9人/9人"
+        assert result == "9人が笑顔！"
 
     def test_ten_or_more(self):
-        """Test with 10+ people shows 大勢."""
+        """Test with 10+ people shows 大勢が笑顔！."""
         result = format_face_count(10, 12)
-        assert result == "大勢"
+        assert result == "大勢が笑顔！"
 
     def test_large_group(self):
         """Test with large group."""
         result = format_face_count(20, 25)
-        assert result == "大勢"
+        assert result == "大勢が笑顔！"
 
 
 class TestEvaluateTheme:
