@@ -312,8 +312,8 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --service-account=webhook-function-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},ADMIN_LINE_USER_ID=${{ secrets.ADMIN_LINE_USER_ID }} \
-            --set-secrets=LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest \
+            --set-env-vars=GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},ADMIN_LINE_USER_ID=${{ secrets.ADMIN_LINE_USER_ID }},ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }},SMTP_EMAIL=${{ secrets.SMTP_EMAIL }} \
+            --set-secrets=LINE_CHANNEL_ACCESS_TOKEN=line-channel-access-token:latest,SMTP_PASSWORD=smtp-password:latest \
             --memory=256M \
             --timeout=60s \
             --max-instances=10
