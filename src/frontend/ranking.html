@@ -374,19 +374,10 @@
     <!-- JSZip for image download -->
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        // Firebase configuration will be loaded from config
-        window.firebaseApp = initializeApp(window.FIREBASE_CONFIG);
-        window.db = getFirestore(window.firebaseApp);
-    </script>
-
-    <!-- Firebase Config (will be populated) -->
+    <!-- Firebase Config -->
     <script src="js/config.js"></script>
 
-    <!-- Main Application Logic -->
+    <!-- Main Application Logic (Firebase init handled by js/firebase-init.js) -->
     <script type="module" src="js/app.js"></script>
 </body>
 

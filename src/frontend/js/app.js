@@ -12,6 +12,8 @@ import {
   serverTimestamp,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { db } from "./firebase-init.js";
+import { escapeHtml } from "./utils.js";
 
 // =========================
 // LP Redirect Check
@@ -25,17 +27,6 @@ import {
     return;
   }
 })();
-
-// Utility: escape HTML special characters to prevent XSS
-function escapeHtml(str) {
-  if (str == null) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
 // State
 let currentTop3 = [];
@@ -288,7 +279,7 @@ async function fetchRecentRankings() {
   try {
     const currentEventId = getCurrentEventId();
 
-    const imagesRef = collection(window.db, "images");
+    const imagesRef = collection(db, "images");
     const q = query(
       imagesRef,
       where("event_id", "==", currentEventId),
@@ -333,7 +324,7 @@ async function fetchAllTimeRankings() {
   try {
     const currentEventId = getCurrentEventId();
 
-    const imagesRef = collection(window.db, "images");
+    const imagesRef = collection(db, "images");
     const q = query(
       imagesRef,
       where("event_id", "==", currentEventId),
@@ -848,7 +839,7 @@ function setupRealtimeListener() {
 
   const currentEventId = getCurrentEventId();
 
-  const imagesRef = collection(window.db, "images");
+  const imagesRef = collection(db, "images");
   const q = query(
     imagesRef,
     where("event_id", "==", currentEventId),
@@ -912,7 +903,7 @@ async function fetchSlideshowImages() {
   try {
     const currentEventId = getCurrentEventId();
 
-    const imagesRef = collection(window.db, "images");
+    const imagesRef = collection(db, "images");
     const q = query(
       imagesRef,
       where("event_id", "==", currentEventId),
@@ -958,7 +949,7 @@ async function refreshSlideshowImages() {
   try {
     const currentEventId = getCurrentEventId();
 
-    const imagesRef = collection(window.db, "images");
+    const imagesRef = collection(db, "images");
     const q = query(
       imagesRef,
       where("event_id", "==", currentEventId),
@@ -1536,7 +1527,7 @@ async function saveTheme(themeName) {
   }
 
   try {
-    const eventRef = doc(window.db, "events", currentEventData.id);
+    const eventRef = doc(db, "events", currentEventData.id);
     await updateDoc(eventRef, { theme: themeName });
     currentEventData.theme = themeName;
   } catch (error) {
@@ -1728,7 +1719,7 @@ async function softDeleteEventData() {
   try {
     // Get all images for this event that are not already deleted
     const imagesQuery = query(
-      collection(window.db, "images"),
+      collection(db, "images"),
       where("event_id", "==", eventId)
     );
     const imagesSnap = await getDocs(imagesQuery);
@@ -1748,7 +1739,7 @@ async function softDeleteEventData() {
 
     // Soft delete images in batches
     for (let i = 0; i < imagesToDelete.length; i += batchSize) {
-      const batch = writeBatch(window.db);
+      const batch = writeBatch(db);
       const chunk = imagesToDelete.slice(i, i + batchSize);
       chunk.forEach((docSnap) => {
         batch.update(docSnap.ref, { deleted_at: now });
@@ -1789,7 +1780,7 @@ async function downloadAllImages() {
   try {
     // Fetch all images for this event
     const imagesQuery = query(
-      collection(window.db, "images"),
+      collection(db, "images"),
       where("event_id", "==", eventId),
       orderBy("total_score", "desc"),
       limit(500)
@@ -1944,7 +1935,7 @@ async function init() {
   const currentEventId = getCurrentEventId();
 
   // Check if Firebase is initialized
-  if (!window.db) {
+  if (!db) {
     console.error("Firestore not initialized. Check config.js");
     loadingEl.innerHTML = `
       <div class="spinner"></div>
@@ -1956,7 +1947,7 @@ async function init() {
 
   // Check event status and store event data
   try {
-    const eventDocRef = doc(window.db, "events", currentEventId);
+    const eventDocRef = doc(db, "events", currentEventId);
     const eventDoc = await getDoc(eventDocRef);
     if (eventDoc.exists()) {
       currentEventData = { id: eventDoc.id, ...eventDoc.data() };
