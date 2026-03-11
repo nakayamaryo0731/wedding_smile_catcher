@@ -1,13 +1,15 @@
 """
 Application notification Cloud Function
 
-Sends LINE notification to admin when a new application is submitted.
+Sends LINE and email notifications to admin when a new application is submitted.
 HTTP trigger called from frontend after successful form submission.
 """
 
 import logging
 import os
 import re
+import smtplib
+from email.mime.text import MIMEText
 
 import functions_framework
 import google.cloud.logging
@@ -24,6 +26,9 @@ logger = logging.getLogger(__name__)
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
 ADMIN_LINE_USER_ID = os.environ.get("ADMIN_LINE_USER_ID", "")
 ADMIN_PANEL_URL = os.environ.get("ADMIN_PANEL_URL", "https://smile-photo-contest.web.app/admin.html")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+SMTP_EMAIL = os.environ.get("SMTP_EMAIL", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 
 
 def send_line_push_message(user_id: str, message: str) -> bool:
@@ -129,6 +134,40 @@ def format_notification_message(data: dict) -> str:
     return message
 
 
+def send_email_notification(data: dict) -> bool:
+    """Send email notification about new application via Gmail SMTP.
+
+    Args:
+        data: Application data from request
+
+    Returns:
+        True if successful, False otherwise
+    """
+    if not all([ADMIN_EMAIL, SMTP_EMAIL, SMTP_PASSWORD]):
+        logger.info("Email notification skipped (ADMIN_EMAIL/SMTP_EMAIL/SMTP_PASSWORD not configured)")
+        return False
+
+    groom_name = sanitize_text(data.get("groom_name", ""), MAX_NAME_LENGTH)
+    bride_name = sanitize_text(data.get("bride_name", ""), MAX_NAME_LENGTH)
+    subject = f"📩 新規申し込み: {groom_name} & {bride_name}"
+    body = format_notification_message(data)
+
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = ADMIN_EMAIL
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, ADMIN_EMAIL, msg.as_string())
+        logger.info(f"Successfully sent email notification to {ADMIN_EMAIL}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email notification: {e}")
+        return False
+
+
 @functions_framework.http
 def application_notify(request):
     """Send notification to admin about new application.
@@ -163,9 +202,9 @@ def application_notify(request):
     if request.method != "POST":
         return (jsonify({"error": "Method not allowed"}), 405, cors_headers)
 
-    # Check if admin notification is configured
-    if not ADMIN_LINE_USER_ID:
-        logger.warning("ADMIN_LINE_USER_ID is not set, notification skipped")
+    # Check if any notification channel is configured
+    if not ADMIN_LINE_USER_ID and not ADMIN_EMAIL:
+        logger.warning("No notification channels configured, notification skipped")
         return (
             jsonify({"success": True, "message": "Notification skipped (not configured)"}),
             200,
@@ -187,15 +226,16 @@ def application_notify(request):
 
     logger.info("Processing application notification request")
 
-    # Format and send notification
+    # Format and send notifications
     message = format_notification_message(data)
-    success = send_line_push_message(ADMIN_LINE_USER_ID, message)
+    line_success = send_line_push_message(ADMIN_LINE_USER_ID, message)
+    email_success = send_email_notification(data)
 
-    if success:
-        logger.info("Application notification sent successfully")
+    if line_success or email_success:
+        logger.info("Application notification sent successfully (LINE=%s, email=%s)", line_success, email_success)
         return (jsonify({"success": True}), 200, cors_headers)
     else:
-        logger.error("Failed to send application notification")
+        logger.error("Failed to send application notification via all channels")
         return (
             jsonify({"success": False, "error": "Failed to send notification"}),
             500,
