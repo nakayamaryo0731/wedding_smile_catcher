@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .slide-label {
+    font-size: 20px;
+    font-weight: 700;
+    color: #d4a853;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .slide-title {
+    font-size: 38px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .screenshot-container {
+    width: 480px;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    margin-bottom: 32px;
+  }
+
+  .screenshot-container img {
+    width: 100%;
+    display: block;
+  }
+
+  .caption-box {
+    background: white;
+    border-radius: 16px;
+    padding: 28px 36px;
+    max-width: 780px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  .caption-box p {
+    font-size: 24px;
+    color: #555;
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  .caption-box .highlight {
+    color: #d4a853;
+    font-weight: 700;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="slide-label">STEP 2</div>
+  <div class="slide-title">写真を送ると<br>AIがすぐに採点</div>
+
+  <div class="screenshot-container">
+    <img src="../../../src/frontend/images/lp/line-bot.png" alt="LINE Bot response">
+  </div>
+
+  <div class="caption-box">
+    <p>
+      スコアと<span class="highlight">AIからのコメント</span>が<br>
+      数秒で届きます。<br>
+      何枚でも投稿OK！
+    </p>
+  </div>
+
+  <div class="page-indicator">○ ● ○</div>
+</div>
+</body>
+</html>

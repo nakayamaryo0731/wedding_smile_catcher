@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .badge {
+    background: #d4a853;
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 8px 28px;
+    border-radius: 30px;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+  }
+
+  .main-title {
+    font-size: 56px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 20px;
+  }
+
+  .sub-title {
+    font-size: 26px;
+    color: #888;
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .steps {
+    width: 100%;
+    max-width: 780px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-bottom: 36px;
+  }
+
+  .step-num {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #d4a853;
+    color: white;
+    font-size: 36px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-content {
+    background: white;
+    border-radius: 16px;
+    padding: 28px 32px;
+    flex: 1;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  .step-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin-bottom: 8px;
+  }
+
+  .step-desc {
+    font-size: 22px;
+    color: #888;
+    line-height: 1.5;
+  }
+
+  .arrow {
+    text-align: center;
+    font-size: 28px;
+    color: #d4a853;
+    margin: -12px 0 -12px 36px;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="badge">HOW TO USE</div>
+  <div class="main-title">参加方法は<br>たった2ステップ</div>
+  <div class="sub-title">アプリ不要。LINEだけでOK</div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">QRコードを読み取る</div>
+        <div class="step-desc">スマホのカメラで読み取るだけ。<br>LINEが自動で開きます。</div>
+      </div>
+    </div>
+    <div class="arrow">▼</div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">笑顔の写真を送る</div>
+        <div class="step-desc">LINEのトークで写真を送ると<br>AIが自動で採点してくれます。</div>
+      </div>
+    </div>
+    <div class="arrow">▼</div>
+    <div class="step">
+      <div class="step-num">✨</div>
+      <div class="step-content">
+        <div class="step-title">スクリーンにランキング表示！</div>
+        <div class="step-desc">リアルタイムで順位が更新。<br>会場が盛り上がります。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-indicator">● ○ ○</div>
+</div>
+</body>
+</html>

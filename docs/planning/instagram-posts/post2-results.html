@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #f5f0eb;
+  }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+  }
+
+  .badge {
+    background: #d4a853;
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 8px 28px;
+    border-radius: 30px;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+  }
+
+  .main-title {
+    font-size: 52px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 48px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    width: 100%;
+    max-width: 820px;
+    margin-bottom: 48px;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: 20px;
+    padding: 36px 24px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+
+  .stat-card.wide {
+    grid-column: 1 / -1;
+  }
+
+  .stat-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    font-size: 22px;
+    color: #888;
+    margin-bottom: 8px;
+    font-weight: 400;
+  }
+
+  .stat-value {
+    font-size: 72px;
+    font-weight: 900;
+    color: #d4a853;
+    line-height: 1.1;
+  }
+
+  .stat-value .unit {
+    font-size: 32px;
+    font-weight: 700;
+    color: #aaa;
+  }
+
+  .stat-value.green { color: #5aab6e; }
+  .stat-value.blue { color: #5a8eab; }
+
+  .footer-text {
+    font-size: 22px;
+    color: #999;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .accent-line {
+    width: 60px;
+    height: 4px;
+    background: #d4a853;
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="badge">ACTUAL RESULT</div>
+  <div class="main-title">80名規模の結婚式で<br>実際に使った結果</div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">📸</div>
+      <div class="stat-label">投稿された写真</div>
+      <div class="stat-value">200<span class="unit">枚</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🎉</div>
+      <div class="stat-label">ゲスト参加率</div>
+      <div class="stat-value green">60<span class="unit">%超</span></div>
+    </div>
+    <div class="stat-card wide">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-label">システムダウンタイム</div>
+      <div class="stat-value blue">ゼロ</div>
+    </div>
+  </div>
+
+  <div class="accent-line"></div>
+  <div class="footer-text">
+    ゲストの半数以上が自発的に参加し<br>
+    たくさんの笑顔の写真が集まりました
+  </div>
+</div>
+</body>
+</html>
