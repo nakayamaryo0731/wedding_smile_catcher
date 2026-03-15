@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .badge {
+    background: #d4a853;
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 8px 28px;
+    border-radius: 30px;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+  }
+
+  .main-title {
+    font-size: 50px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 48px;
+  }
+
+  .main-title .accent {
+    color: #d4a853;
+  }
+
+  .formula-box {
+    background: white;
+    border-radius: 20px;
+    padding: 40px 48px;
+    max-width: 820px;
+    width: 100%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    margin-bottom: 40px;
+  }
+
+  .formula {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .formula-text {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2d2d2d;
+    background: #f9f5ef;
+    display: inline-block;
+    padding: 16px 32px;
+    border-radius: 12px;
+    border: 2px solid #d4a853;
+  }
+
+  .components {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .component {
+    text-align: center;
+    flex: 1;
+  }
+
+  .component-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+
+  .component-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin-bottom: 4px;
+  }
+
+  .component-desc {
+    font-size: 17px;
+    color: #999;
+    line-height: 1.4;
+  }
+
+  .times {
+    font-size: 32px;
+    color: #d4a853;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+  }
+
+  .bottom-message {
+    background: #d4a853;
+    color: white;
+    border-radius: 16px;
+    padding: 24px 40px;
+    max-width: 820px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .bottom-message p {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="badge">AI SCORING</div>
+  <div class="main-title">なぜゲストが<br><span class="accent">写真を撮りたくなる</span>のか？</div>
+
+  <div class="formula-box">
+    <div class="formula">
+      <span class="formula-text">笑顔スコア × AI評価 × 類似チェック</span>
+    </div>
+    <div class="components">
+      <div class="component">
+        <div class="component-icon">😁</div>
+        <div class="component-name">笑顔スコア</div>
+        <div class="component-desc">笑顔の大きさ<br>× 人数の合計</div>
+      </div>
+      <div class="times">×</div>
+      <div class="component">
+        <div class="component-icon">🤖</div>
+        <div class="component-name">AIテーマ評価</div>
+        <div class="component-desc">結婚式の雰囲気に<br>合っているか</div>
+      </div>
+      <div class="times">×</div>
+      <div class="component">
+        <div class="component-icon">🔄</div>
+        <div class="component-name">類似チェック</div>
+        <div class="component-desc">似た写真は減点<br>→多様な写真を促進</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-message">
+    <p>大人数で笑うほど高得点！<br>自然とグループが生まれます</p>
+  </div>
+
+  <div class="page-indicator">● ○ ○</div>
+</div>
+</body>
+</html>

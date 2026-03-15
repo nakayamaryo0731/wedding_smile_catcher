@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .slide-label {
+    font-size: 20px;
+    font-weight: 700;
+    color: #d4a853;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .slide-title {
+    font-size: 38px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .slide-subtitle {
+    font-size: 22px;
+    color: #999;
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .screens {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    max-width: 900px;
+    margin-bottom: 32px;
+  }
+
+  .screen-card {
+    flex: 1;
+    text-align: center;
+  }
+
+  .screen-img {
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    margin-bottom: 12px;
+  }
+
+  .screen-img img {
+    width: 100%;
+    display: block;
+  }
+
+  .screen-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d2d2d;
+  }
+
+  .screen-desc {
+    font-size: 16px;
+    color: #999;
+    margin-top: 4px;
+  }
+
+  .bottom-note {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 36px;
+    max-width: 900px;
+    width: 100%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    text-align: center;
+  }
+
+  .bottom-note p {
+    font-size: 22px;
+    color: #555;
+    line-height: 1.7;
+  }
+
+  .bottom-note .highlight {
+    color: #d4a853;
+    font-weight: 700;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="slide-label">3 DISPLAY MODES</div>
+  <div class="slide-title">3つの表示モードを搭載</div>
+  <div class="slide-subtitle">イベントの進行に合わせて自動で切り替わります</div>
+
+  <div class="screens">
+    <div class="screen-card">
+      <div class="screen-img">
+        <img src="../../../src/frontend/images/lp/ranking.png" alt="Ranking">
+      </div>
+      <div class="screen-name">ランキング</div>
+      <div class="screen-desc">上位3名を表示</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-img">
+        <img src="../../../src/frontend/images/lp/slideshow.png" alt="Slideshow">
+      </div>
+      <div class="screen-name">スライドショー</div>
+      <div class="screen-desc">投稿写真を自動表示</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-img">
+        <img src="../../../src/frontend/images/lp/final.png" alt="Final">
+      </div>
+      <div class="screen-name">最終結果</div>
+      <div class="screen-desc">封筒演出でTOP10発表</div>
+    </div>
+  </div>
+
+  <div class="bottom-note">
+    <p>
+      ランキングとスライドショーは<span class="highlight">約60秒ごとに自動切替</span>。<br>
+      結果発表のタイミングだけボタンを押すだけです。
+    </p>
+  </div>
+
+  <div class="page-indicator">○ ● ○</div>
+</div>
+</body>
+</html>

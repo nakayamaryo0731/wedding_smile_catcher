@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .main-title {
+    font-size: 48px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 48px;
+  }
+
+  .main-title .accent {
+    color: #d4a853;
+  }
+
+  .cta-box {
+    background: white;
+    border-radius: 24px;
+    padding: 48px;
+    max-width: 780px;
+    width: 100%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .free-badge {
+    display: inline-block;
+    background: #e74c3c;
+    color: white;
+    font-size: 22px;
+    font-weight: 700;
+    padding: 8px 24px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+
+  .cta-title {
+    font-size: 36px;
+    font-weight: 900;
+    color: #2d2d2d;
+    margin-bottom: 16px;
+  }
+
+  .cta-desc {
+    font-size: 24px;
+    color: #888;
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+
+  .cta-button {
+    display: inline-block;
+    background: #d4a853;
+    color: white;
+    font-size: 28px;
+    font-weight: 700;
+    padding: 18px 48px;
+    border-radius: 50px;
+    text-decoration: none;
+  }
+
+  .features-row {
+    display: flex;
+    gap: 32px;
+    max-width: 780px;
+    width: 100%;
+  }
+
+  .mini-feature {
+    flex: 1;
+    text-align: center;
+  }
+
+  .mini-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+
+  .mini-text {
+    font-size: 20px;
+    color: #888;
+    line-height: 1.4;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="main-title">余興に悩んでいる方<br><span class="accent">お気軽にDMください</span></div>
+
+  <div class="cta-box">
+    <div class="free-badge">初期キャンペーン</div>
+    <div class="cta-title">現在、無料で提供中です</div>
+    <div class="cta-desc">
+      サービス改善のため<br>
+      先着でモニター利用を募集しています
+    </div>
+    <div class="cta-button">DMでお問い合わせ</div>
+  </div>
+
+  <div class="features-row">
+    <div class="mini-feature">
+      <div class="mini-icon">💰</div>
+      <div class="mini-text">完全無料<br>費用ゼロ</div>
+    </div>
+    <div class="mini-feature">
+      <div class="mini-icon">⏱️</div>
+      <div class="mini-text">準備5分<br>運営不要</div>
+    </div>
+    <div class="mini-feature">
+      <div class="mini-icon">📱</div>
+      <div class="mini-text">LINE対応<br>アプリ不要</div>
+    </div>
+    <div class="mini-feature">
+      <div class="mini-icon">🏆</div>
+      <div class="mini-text">実績あり<br>80名規模で運用済</div>
+    </div>
+  </div>
+
+  <div class="page-indicator">○ ○ ●</div>
+</div>
+</body>
+</html>

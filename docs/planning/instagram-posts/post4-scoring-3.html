@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .slide-label {
+    font-size: 20px;
+    font-weight: 700;
+    color: #d4a853;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .slide-title {
+    font-size: 38px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .example-container {
+    display: flex;
+    gap: 28px;
+    width: 100%;
+    max-width: 880px;
+    margin-bottom: 36px;
+  }
+
+  .example-card {
+    flex: 1;
+    background: white;
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+
+  .example-icon {
+    font-size: 56px;
+    margin-bottom: 12px;
+  }
+
+  .example-label {
+    font-size: 20px;
+    color: #aaa;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .example-people {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin-bottom: 16px;
+  }
+
+  .example-score {
+    font-size: 56px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .example-score .unit {
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .score-low { color: #aaa; }
+  .score-mid { color: #5aab6e; }
+  .score-high { color: #d4a853; }
+
+  .arrow-right {
+    display: flex;
+    align-items: center;
+    font-size: 40px;
+    color: #d4a853;
+  }
+
+  .message-box {
+    background: #d4a853;
+    color: white;
+    border-radius: 16px;
+    padding: 28px 40px;
+    max-width: 880px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .message-box p {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.6;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="slide-label">SCORE EXAMPLE</div>
+  <div class="slide-title">人数が増えるほど<br>スコアが上がる！</div>
+
+  <div class="example-container">
+    <div class="example-card">
+      <div class="example-icon">🧑</div>
+      <div class="example-label">ソロ</div>
+      <div class="example-people">1人</div>
+      <div class="example-score score-low">~100<span class="unit">点</span></div>
+    </div>
+    <div class="arrow-right">→</div>
+    <div class="example-card">
+      <div class="example-icon">👥</div>
+      <div class="example-label">グループ</div>
+      <div class="example-people">3人</div>
+      <div class="example-score score-mid">~300<span class="unit">点</span></div>
+    </div>
+    <div class="arrow-right">→</div>
+    <div class="example-card">
+      <div class="example-icon">👨‍👩‍👧‍👦</div>
+      <div class="example-label">大人数</div>
+      <div class="example-people">6人</div>
+      <div class="example-score score-high">~600<span class="unit">点</span></div>
+    </div>
+  </div>
+
+  <div class="message-box">
+    <p>高スコアを狙うゲストが<br>自分からグループを組み始めます。<br>新郎側×新婦側の交流が自然に生まれます！</p>
+  </div>
+
+  <div class="page-indicator">○ ○ ●</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .badge {
+    background: #d4a853;
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 8px 28px;
+    border-radius: 30px;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+  }
+
+  .main-title {
+    font-size: 52px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 16px;
+  }
+
+  .main-title .accent {
+    color: #d4a853;
+  }
+
+  .sub-text {
+    font-size: 26px;
+    color: #888;
+    margin-bottom: 48px;
+  }
+
+  .feature-list {
+    width: 100%;
+    max-width: 780px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: white;
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  .feature-icon {
+    font-size: 44px;
+    flex-shrink: 0;
+  }
+
+  .feature-text {
+    flex: 1;
+  }
+
+  .feature-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin-bottom: 4px;
+  }
+
+  .feature-desc {
+    font-size: 20px;
+    color: #999;
+  }
+
+  .feature-check {
+    color: #d4a853;
+    font-size: 32px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="badge">FOR ORGANIZERS</div>
+  <div class="main-title">準備は<span class="accent">5分</span>。<br>当日の運営は<span class="accent">不要</span>。</div>
+  <div class="sub-text">主催者さまの手間を最小限に</div>
+
+  <div class="feature-list">
+    <div class="feature-item">
+      <div class="feature-icon">📱</div>
+      <div class="feature-text">
+        <div class="feature-title">QRコードを配布するだけ</div>
+        <div class="feature-desc">席札やメニュー表に印刷でOK</div>
+      </div>
+      <div class="feature-check">✓</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🖥️</div>
+      <div class="feature-text">
+        <div class="feature-title">スクリーンに表示するだけ</div>
+        <div class="feature-desc">ランキングは自動で更新されます</div>
+      </div>
+      <div class="feature-check">✓</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🎬</div>
+      <div class="feature-text">
+        <div class="feature-title">結果発表はボタン1つ</div>
+        <div class="feature-desc">封筒演出付きでTOP10を発表</div>
+      </div>
+      <div class="feature-check">✓</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">💾</div>
+      <div class="feature-text">
+        <div class="feature-title">全写真を一括ダウンロード</div>
+        <div class="feature-desc">式後に思い出の写真をまとめて取得</div>
+      </div>
+      <div class="feature-check">✓</div>
+    </div>
+  </div>
+
+  <div class="page-indicator">● ○ ○</div>
+</div>
+</body>
+</html>

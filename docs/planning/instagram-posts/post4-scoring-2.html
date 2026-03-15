@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+  body { font-family: 'Noto Sans JP', sans-serif; }
+
+  .slide {
+    width: 1080px;
+    height: 1080px;
+    background: linear-gradient(135deg, #fdfcfb 0%, #f5f0eb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    position: relative;
+  }
+
+  .slide-label {
+    font-size: 20px;
+    font-weight: 700;
+    color: #d4a853;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+
+  .slide-title {
+    font-size: 40px;
+    font-weight: 900;
+    color: #2d2d2d;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 40px;
+  }
+
+  .comparison {
+    display: flex;
+    gap: 32px;
+    width: 100%;
+    max-width: 860px;
+    margin-bottom: 40px;
+  }
+
+  .comparison-card {
+    flex: 1;
+    border-radius: 20px;
+    padding: 36px 28px;
+    text-align: center;
+  }
+
+  .comparison-card.before {
+    background: #e8e8e8;
+  }
+
+  .comparison-card.after {
+    background: white;
+    box-shadow: 0 4px 20px rgba(212, 168, 83, 0.2);
+    border: 3px solid #d4a853;
+  }
+
+  .card-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #aaa;
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+  }
+
+  .after .card-label {
+    color: #d4a853;
+  }
+
+  .card-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin-bottom: 16px;
+  }
+
+  .card-points {
+    text-align: left;
+    padding: 0 8px;
+  }
+
+  .card-points li {
+    font-size: 21px;
+    color: #666;
+    margin-bottom: 12px;
+    list-style: none;
+    line-height: 1.5;
+  }
+
+  .card-points li::before {
+    content: "•";
+    color: #ccc;
+    margin-right: 8px;
+  }
+
+  .after .card-points li::before {
+    content: "✓";
+    color: #d4a853;
+  }
+
+  .bottom-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 36px;
+    max-width: 860px;
+    width: 100%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    text-align: center;
+  }
+
+  .bottom-box p {
+    font-size: 24px;
+    color: #555;
+    line-height: 1.7;
+  }
+
+  .bottom-box .highlight {
+    color: #d4a853;
+    font-weight: 700;
+  }
+
+  .page-indicator {
+    position: absolute;
+    bottom: 40px;
+    font-size: 18px;
+    color: #ccc;
+    letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="slide-label">VS</div>
+  <div class="slide-title">「写真共有」と<br>「笑顔コンテスト」の違い</div>
+
+  <div class="comparison">
+    <div class="comparison-card before">
+      <div class="card-label">BEFORE</div>
+      <div class="card-icon">📷</div>
+      <div class="card-title">写真共有サービス</div>
+      <div class="card-points">
+        <ul>
+          <li>写真をアップロード</li>
+          <li>スクリーンに投影</li>
+          <li>手動で投票</li>
+          <li>受動的な参加</li>
+        </ul>
+      </div>
+    </div>
+    <div class="comparison-card after">
+      <div class="card-label">AFTER</div>
+      <div class="card-icon">🏆</div>
+      <div class="card-title">AI笑顔コンテスト</div>
+      <div class="card-points">
+        <ul>
+          <li>AIが自動で採点</li>
+          <li>リアルタイムランキング</li>
+          <li>ゲーム感覚で盛り上がる</li>
+          <li>ゲスト同士が交流</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-box">
+    <p>
+      ただの写真共有ではなく<br>
+      <span class="highlight">「写真を撮りたくなる」仕掛け</span>があります
+    </p>
+  </div>
+
+  <div class="page-indicator">○ ● ○</div>
+</div>
+</body>
+</html>
