@@ -466,21 +466,21 @@
 /* Header Layout */
 .ranking-page .header-top {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    position: relative;
+    gap: 1rem;
 }
 
 .ranking-page .header-title {
-    text-align: center;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 /* Header Buttons */
 .ranking-page .header-buttons {
-    position: absolute;
-    right: 0;
     display: flex;
     gap: 0.8rem;
+    flex-shrink: 0;
 }
 
 .ranking-page .header-btn {
@@ -1770,10 +1770,10 @@
 @media (max-width: 768px) {
     .ranking-page .container { padding: 0.5rem; }
     .ranking-page .header { margin-bottom: 0.3rem; }
-    .ranking-page .header-top { flex-direction: column; gap: 0.5rem; }
+    .ranking-page .header-top { flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
     .ranking-page .title { font-size: 1.8rem; }
     .ranking-page .subtitle { font-size: 1rem; }
-    .ranking-page .header-buttons { position: static; gap: 0.5rem; }
+    .ranking-page .header-buttons { gap: 0.5rem; }
     .ranking-page .header-btn { padding: 0.4rem 1rem; font-size: 0.9rem; }
     .ranking-page .ranking-label { padding: 0.3rem 0.8rem; margin-bottom: 0.3rem; }
     .ranking-page .ranking-label-icon { font-size: 1rem; }
