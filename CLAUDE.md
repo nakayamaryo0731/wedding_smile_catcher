@@ -231,7 +231,7 @@ According to `TODO.md`, the next tasks are:
 
 ## Support
 
-This is a personal project inspired by エムスリーテックブック8 第2章. Original system was created by 中村伊吹 for their March 2025 wedding, collecting 368 photos from ~60% of guests with zero downtime.
+This is a personal project inspired by エムスリーテックブック8 第2章. Original system was created by 中村伊吹 for their March 2025 wedding, collecting 200 photos from ~60% of guests with zero downtime.
 
 ## Important Notes
 When tackling a task, design and implement with the overall optimal solution in mind, not just a local optimum.
