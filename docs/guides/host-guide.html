@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+    font-size: 12px;
+  }
+
+  .page {
+    width: 210mm;
+    margin: 0 auto;
+    padding: 24px 32px;
+    background: linear-gradient(160deg, #fff9fb 0%, #f8f4ff 40%, #fff7f0 100%);
+  }
+
+  .page + .page {
+    margin-top: 20px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f0f0;
+  }
+
+  .header h1 {
+    font-size: 22px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 2px;
+  }
+
+  .header .subtitle {
+    font-size: 11px;
+    color: #bbb;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 18px;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: #333;
+    margin-bottom: 10px;
+    padding-left: 12px;
+    border-left: 3px solid;
+    border-image: linear-gradient(135deg, #FF6B9D, #A17FE0) 1;
+  }
+
+  .section-desc {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 8px;
+    line-height: 1.7;
+  }
+
+  /* Step header */
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .step-badge {
+    background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  .step-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  /* Content blocks */
+  .info-box {
+    background: white;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .info-box h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  .info-box p, .info-box li {
+    font-size: 11.5px;
+    color: #555;
+    line-height: 1.6;
+  }
+
+  .info-box ul, .info-box ol {
+    padding-left: 18px;
+  }
+
+  .info-box li {
+    margin-bottom: 2px;
+  }
+
+  /* Screenshot */
+  .screenshot.has-image {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .screenshot.has-image img {
+    width: 100%;
+    display: block;
+    border-radius: 10px;
+  }
+
+  /* Callout */
+  .callout {
+    background: white;
+    border: 1px solid #FF6B9D30;
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin: 8px 0;
+    box-shadow: 0 2px 6px rgba(255, 107, 157, 0.08);
+  }
+
+  .callout p {
+    font-size: 12px;
+    color: #555;
+  }
+
+  .callout strong {
+    color: #FF6B9D;
+  }
+
+  /* Ordered steps */
+  .ordered-steps {
+    counter-reset: step-counter;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ordered-steps li {
+    counter-increment: step-counter;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 11.5px;
+    color: #555;
+  }
+
+  .ordered-steps li::before {
+    content: counter(step-counter);
+    background: linear-gradient(135deg, #FF6B9D, #A17FE0);
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* FAQ */
+  .faq-item {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 8px 0;
+  }
+
+  .faq-q {
+    font-size: 12px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 2px;
+  }
+
+  .faq-q::before {
+    content: 'Q. ';
+    color: #FF6B9D;
+    font-weight: 700;
+  }
+
+  .faq-a {
+    font-size: 11.5px;
+    color: #666;
+    padding-left: 22px;
+  }
+
+  .faq-a::before {
+    content: 'A. ';
+    color: #A17FE0;
+    font-weight: 700;
+    margin-left: -22px;
+  }
+
+  /* Contact */
+  .contact {
+    text-align: center;
+    padding: 16px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .contact p {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 4px;
+  }
+
+  .contact a {
+    color: #FF6B9D;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  /* Page break for print */
+  .page-break {
+    page-break-before: always;
+  }
+
+  @media print {
+    body { background: linear-gradient(160deg, #fff9fb 0%, #f8f4ff 40%, #fff7f0 100%); }
+    .page { margin: 0; padding: 14mm 18mm; box-shadow: none; }
+    .page + .page { margin-top: 0; }
+    .info-box { break-inside: avoid; }
+    .screenshot { break-inside: avoid; }
+    .faq-item { break-inside: avoid; }
+    .header h1 {
+      background: none;
+      -webkit-background-clip: unset;
+      -webkit-text-fill-color: #FF6B9D;
+      background-clip: unset;
+    }
+    @page { margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Page 1: サービス概要 + STEP 1 + STEP 2 -->
+<div class="page">
+  <div class="header">
+    <h1>AI笑顔写真コンテスト ご利用ガイド</h1>
+    <div class="subtitle">主催者さま向け</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">サービス概要</div>
+    <div class="section-desc">
+      ゲストがLINEで写真を送ると、AIが自動で採点＆コメント。<br>会場スクリーンにリアルタイムでランキングが表示され、イベントが盛り上がります！
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="step-header">
+      <span class="step-badge">STEP 1</span>
+      <span class="step-title">お申し込み〜イベント作成</span>
+    </div>
+    <div class="info-box">
+      <p>お申し込み後、<strong>ランキング表示URL</strong>をお送りします。届きましたら、まずご自身で動作確認をお願いします。</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="step-header">
+      <span class="step-badge">STEP 2</span>
+      <span class="step-title">事前テスト（イベント1週間前まで推奨）</span>
+    </div>
+
+    <div class="callout">
+      <p><strong>本番前に必ず一度お試しください。</strong></p>
+    </div>
+
+    <div class="info-box">
+      <h4>1. ランキング画面を開く</h4>
+      <p>お送りしたURLをブラウザで開き、画面右下のQRコードをスマホで読み取ります。</p>
+      <p style="margin-top: 6px;">画面右上の設定（⚙️）からは、QRコードのダウンロード・テーマカラー変更・データ削除・画像の一括ダウンロードが行えます。</p>
+      <div class="screenshot has-image" style="max-width: 40%; margin: 8px auto;">
+        <img src="images/settings-menu.png" alt="設定メニュー">
+      </div>
+    </div>
+
+    <div class="info-box">
+      <h4>2. QRコードを読み取り → テスト写真を送る</h4>
+      <ul>
+        <li>QRコードを読み取るとLINEが開きます。友だち追加画面で「追加」してください</li>
+        <li>参加完了画面で「写真を投稿する →」をタップ → トーク画面に移動</li>
+        <li>笑顔の写真を1枚送ると、数秒後にスコアとAIコメントが返信されます</li>
+        <li>※ 初回は少し時間がかかる場合があります</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <h4>3. ランキング画面を確認する</h4>
+      <ul>
+        <li>送った写真がランキングに表示されていればOKです</li>
+        <li>テストデータは設定（⚙️）→「データを削除」から削除できます</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- Page 2: STEP 3 + STEP 4 + STEP 5 -->
+<div class="page page-break">
+  <div class="section">
+    <div class="step-header">
+      <span class="step-badge">STEP 3</span>
+      <span class="step-title">当日の準備</span>
+    </div>
+
+    <div class="info-box">
+      <h4>QRコードについて</h4>
+      <p>ランキング画面の右下にQRコードが常時表示されるので、スクリーンから直接読み取れます。席札やメニュー表に印刷しておくとさらにスムーズです。</p>
+      <div class="screenshot has-image" style="max-width: 80%; margin: 8px auto;">
+        <img src="images/ranking-screen.png" alt="ランキング画面">
+      </div>
+    </div>
+
+    <div class="info-box">
+      <h4>ランキング画面の表示</h4>
+      <ol class="ordered-steps">
+        <li>会場のPC/タブレットでランキングURLを開く</li>
+        <li>プロジェクターまたは大型モニターに接続し、ブラウザを全画面表示にする</li>
+        <li>PCのスリープ設定をオフにしておく</li>
+      </ol>
+      <p style="margin-top: 4px; font-size: 11px; color: #888;">ランキングとスライドショーが60秒ごとに自動切替。テーマカラーは設定（⚙️）から変更できます。<br>
+      推奨ブラウザは<strong style="color: #555;">Google Chrome</strong>です。解像度によってレイアウトが崩れる場合は、ブラウザの拡大縮小（Ctrl +/-）で調整してください。</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="step-header">
+      <span class="step-badge">STEP 4</span>
+      <span class="step-title">イベント当日の進行</span>
+    </div>
+
+    <div class="info-box">
+      <h4>イベント中</h4>
+      <ul>
+        <li><strong>特に操作は不要です。</strong>ランキングは自動更新されます</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <h4>結果発表（PCの操作が必要です）</h4>
+      <ol class="ordered-steps">
+        <li>画面上部の「最終結果」ボタンをクリック</li>
+        <li>「結果を見る」をクリック → 全体ランキングのトップ10が表示されます（同じ人が複数回登場しません）</li>
+        <li>MCから順位を発表！</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="step-header">
+      <span class="step-badge">STEP 5</span>
+      <span class="step-title">イベント後</span>
+    </div>
+
+    <div class="info-box">
+      <p>設定（⚙️）→「投稿画像を一括ダウンロード」から、全写真をZIPでダウンロードできます。<br>
+      <strong style="color: #FF6B9D;">※ イベント終了後30日でデータが自動削除されます。</strong>それまでにダウンロードをお願いします。</p>
+    </div>
+  </div>
+</div>
+
+<!-- Page 3: FAQ + お問い合わせ -->
+<div class="page page-break">
+  <div class="section">
+    <div class="section-title">よくあるご質問</div>
+
+    <div class="faq-item">
+      <div class="faq-q">ゲストはLINEアプリが必要ですか？</div>
+      <div class="faq-a">はい、LINEアプリが必要です。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">ゲストの名前登録は必要ですか？</div>
+      <div class="faq-a">QRコードから参加する場合、LINEの表示名が自動で使用されるため、名前登録は不要です。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">ゲストの写真は他のイベントから見えますか？</div>
+      <div class="faq-a">いいえ、イベントごとに完全に分離されています。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">同時にどれくらいの人が参加できますか？</div>
+      <div class="faq-a">100名規模のイベントでも問題なくご利用いただけます。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">採点にはどれくらい時間がかかりますか？</div>
+      <div class="faq-a">通常5〜15秒程度です。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">不適切な写真が投稿された場合は？</div>
+      <div class="faq-a">人物が写っていない写真（料理・風景等）はAIが自動で0点をつけます。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Wi-Fi環境は必要ですか？</div>
+      <div class="faq-a">ゲストは各自のスマホ通信で参加できます。ランキング表示用のPC/タブレットはインターネット接続が必要です。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">推奨ブラウザはありますか？</div>
+      <div class="faq-a">Google Chromeを推奨しています。レイアウトが崩れる場合は、ブラウザの拡大縮小で調整してください。</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="contact">
+      <p>ご不明な点がございましたらお気軽にご連絡ください。</p>
+      <a href="mailto:nicosnap.contact@gmail.com">nicosnap.contact@gmail.com</a>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
