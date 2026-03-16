@@ -325,3 +325,89 @@ resource "google_cloud_run_service_iam_member" "liff_join_run_invoker" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# Application Notify Cloud Function (Gen2)
+# Sends LINE and email notifications to admin when a new application is submitted
+
+data "archive_file" "application_notify_source" {
+  type        = "zip"
+  source_dir  = "${path.root}/../src/functions/application-notify"
+  output_path = "${path.root}/.terraform/tmp/application-notify-${local.timestamp}.zip"
+  excludes    = [".env", "__pycache__", "*.pyc", ".DS_Store"]
+}
+
+resource "google_storage_bucket_object" "application_notify_source" {
+  name   = "functions/application-notify-${data.archive_file.application_notify_source.output_md5}.zip"
+  bucket = var.storage_bucket_name
+  source = data.archive_file.application_notify_source.output_path
+}
+
+resource "google_cloudfunctions2_function" "application_notify" {
+  name        = "application-notify"
+  location    = var.region
+  description = "Application form notification sender"
+  project     = var.project_id
+
+  build_config {
+    runtime     = "python311"
+    entry_point = "application_notify"
+
+    source {
+      storage_source {
+        bucket = var.storage_bucket_name
+        object = google_storage_bucket_object.application_notify_source.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 10
+    min_instance_count    = 0
+    available_memory      = "256M"
+    timeout_seconds       = 60
+    service_account_email = var.webhook_service_account_email
+
+    environment_variables = {
+      GCP_PROJECT_ID     = var.project_id
+      ADMIN_LINE_USER_ID = var.admin_line_user_id
+      ADMIN_EMAIL        = var.admin_email
+      SMTP_EMAIL         = var.smtp_email
+    }
+
+    secret_environment_variables {
+      key        = "LINE_CHANNEL_ACCESS_TOKEN"
+      project_id = var.project_id
+      secret     = var.line_channel_access_token_name
+      version    = "latest"
+    }
+
+    secret_environment_variables {
+      key        = "SMTP_PASSWORD"
+      project_id = var.project_id
+      secret     = var.smtp_password_secret_name
+      version    = "latest"
+    }
+  }
+
+  labels = {
+    environment = "production"
+    managed_by  = "terraform"
+    function    = "application-notify"
+  }
+}
+
+resource "google_cloudfunctions2_function_iam_member" "application_notify_invoker" {
+  project        = var.project_id
+  location       = var.region
+  cloud_function = google_cloudfunctions2_function.application_notify.name
+  role           = "roles/cloudfunctions.invoker"
+  member         = "allUsers"
+}
+
+resource "google_cloud_run_service_iam_member" "application_notify_run_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.application_notify.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}

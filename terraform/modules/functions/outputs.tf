@@ -37,3 +37,13 @@ output "liff_join_function_name" {
   description = "Name of the LIFF join Cloud Function"
   value       = google_cloudfunctions2_function.liff_join.name
 }
+
+output "application_notify_function_url" {
+  description = "URL of the application notify Cloud Function"
+  value       = google_cloudfunctions2_function.application_notify.service_config[0].uri
+}
+
+output "application_notify_function_name" {
+  description = "Name of the application notify Cloud Function"
+  value       = google_cloudfunctions2_function.application_notify.name
+}

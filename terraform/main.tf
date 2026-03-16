@@ -115,6 +115,11 @@ module "functions" {
   line_channel_secret_name       = "line-channel-secret"
   line_channel_access_token_name = "line-channel-access-token"
 
+  # Application notify settings
+  admin_line_user_id = var.admin_line_user_id
+  admin_email        = var.admin_email
+  smtp_email         = var.smtp_email
+
   depends_on = [
     google_project_service.required_apis,
     module.iam,
