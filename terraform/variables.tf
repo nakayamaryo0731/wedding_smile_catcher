@@ -56,6 +56,13 @@ variable "data_retention_days" {
   default     = 3 # 3 days for testing, change to 30 for production
 }
 
+# Function Configuration
+variable "current_event_id" {
+  description = "Current event ID for webhook and scoring functions"
+  type        = string
+  default     = ""
+}
+
 # Application Notify Configuration
 variable "admin_line_user_id" {
   description = "LINE user ID for admin notifications"

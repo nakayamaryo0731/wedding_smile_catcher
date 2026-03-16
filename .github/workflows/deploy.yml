@@ -44,6 +44,7 @@ jobs:
       - name: Terraform Plan
         run: >
           terraform plan -no-color -input=false
+          -var="current_event_id=${{ secrets.CURRENT_EVENT_ID }}"
           -var="admin_line_user_id=${{ secrets.ADMIN_LINE_USER_ID }}"
           -var="admin_email=${{ secrets.ADMIN_EMAIL }}"
           -var="smtp_email=${{ secrets.SMTP_EMAIL }}"
@@ -51,6 +52,7 @@ jobs:
       - name: Terraform Apply
         run: >
           terraform apply -auto-approve -input=false
+          -var="current_event_id=${{ secrets.CURRENT_EVENT_ID }}"
           -var="admin_line_user_id=${{ secrets.ADMIN_LINE_USER_ID }}"
           -var="admin_email=${{ secrets.ADMIN_EMAIL }}"
           -var="smtp_email=${{ secrets.SMTP_EMAIL }}"

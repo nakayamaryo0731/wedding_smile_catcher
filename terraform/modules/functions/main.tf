@@ -79,6 +79,7 @@ resource "google_cloudfunctions2_function" "webhook" {
       GCP_PROJECT_ID       = var.project_id
       STORAGE_BUCKET       = var.storage_bucket_name
       SCORING_FUNCTION_URL = "https://${var.region}-${var.project_id}.cloudfunctions.net/scoring"
+      CURRENT_EVENT_ID     = var.current_event_id
     }
 
     secret_environment_variables {
@@ -130,8 +131,9 @@ resource "google_cloudfunctions2_function" "scoring" {
     service_account_email = var.scoring_service_account_email
 
     environment_variables = {
-      GCP_PROJECT_ID = var.project_id
-      STORAGE_BUCKET = var.storage_bucket_name
+      GCP_PROJECT_ID   = var.project_id
+      STORAGE_BUCKET   = var.storage_bucket_name
+      CURRENT_EVENT_ID = var.current_event_id
     }
 
     secret_environment_variables {
@@ -207,7 +209,7 @@ resource "google_cloudfunctions2_function" "notification" {
   service_config {
     max_instance_count    = 10
     min_instance_count    = 0
-    available_memory      = "256M"
+    available_memory      = "512M"
     timeout_seconds       = 300
     service_account_email = var.webhook_service_account_email
 
