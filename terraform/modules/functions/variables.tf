@@ -41,3 +41,33 @@ variable "liff_channel_id_name" {
   type        = string
   default     = "liff-channel-id"
 }
+
+variable "current_event_id" {
+  description = "Current event ID for webhook and scoring functions"
+  type        = string
+  default     = ""
+}
+
+variable "smtp_password_secret_name" {
+  description = "Secret Manager secret name for SMTP password"
+  type        = string
+  default     = "smtp-password"
+}
+
+variable "admin_line_user_id" {
+  description = "LINE user ID for admin notifications"
+  type        = string
+  default     = ""
+}
+
+variable "admin_email" {
+  description = "Email address for admin notifications"
+  type        = string
+  default     = ""
+}
+
+variable "smtp_email" {
+  description = "SMTP sender email address"
+  type        = string
+  default     = ""
+}

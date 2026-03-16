@@ -96,7 +96,11 @@ jobs:
         id: plan
         run: |
           set +e
-          terraform plan -no-color -input=false -out=tfplan
+          terraform plan -no-color -input=false -out=tfplan \
+            -var="current_event_id=${{ secrets.CURRENT_EVENT_ID }}" \
+            -var="admin_line_user_id=${{ secrets.ADMIN_LINE_USER_ID }}" \
+            -var="admin_email=${{ secrets.ADMIN_EMAIL }}" \
+            -var="smtp_email=${{ secrets.SMTP_EMAIL }}"
           echo "exitcode=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 

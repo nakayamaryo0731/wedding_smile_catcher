@@ -56,6 +56,32 @@ variable "data_retention_days" {
   default     = 3 # 3 days for testing, change to 30 for production
 }
 
+# Function Configuration
+variable "current_event_id" {
+  description = "Current event ID for webhook and scoring functions"
+  type        = string
+  default     = ""
+}
+
+# Application Notify Configuration
+variable "admin_line_user_id" {
+  description = "LINE user ID for admin notifications"
+  type        = string
+  default     = ""
+}
+
+variable "admin_email" {
+  description = "Email address for admin notifications"
+  type        = string
+  default     = ""
+}
+
+variable "smtp_email" {
+  description = "SMTP sender email address"
+  type        = string
+  default     = ""
+}
+
 # Labels (for resource organization)
 variable "labels" {
   description = "Common labels for all resources"

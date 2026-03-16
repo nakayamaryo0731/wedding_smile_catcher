@@ -82,6 +82,11 @@ output "scoring_function_url" {
   value       = module.functions.scoring_function_url
 }
 
+output "application_notify_function_url" {
+  description = "Application notify function URL"
+  value       = module.functions.application_notify_function_url
+}
+
 # Future outputs (commented out for now)
 # These outputs will be enabled when respective modules are implemented:
 #
