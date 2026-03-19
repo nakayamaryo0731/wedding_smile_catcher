@@ -16,7 +16,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { db } from "../firebase-init.js";
-import { showToast } from "../utils.js";
+import { showToast, escapeHtml } from "../utils.js";
 import {
   currentUser,
   applicationsTable,
@@ -181,37 +181,37 @@ export async function showApplicationDetail(applicationId) {
       </div>
       <div class="detail-row">
         <label>Couple:</label>
-        <span>${app.groom_name} & ${app.bride_name}</span>
+        <span>${escapeHtml(app.groom_name)} & ${escapeHtml(app.bride_name)}</span>
       </div>
       <div class="detail-row">
         <label>Email:</label>
-        <span><a href="mailto:${app.email}">${app.email}</a></span>
+        <span><a href="mailto:${escapeHtml(app.email)}">${escapeHtml(app.email)}</a></span>
       </div>
       <div class="detail-row">
         <label>Event Date:</label>
-        <span>${app.event_date}</span>
+        <span>${escapeHtml(app.event_date)}</span>
       </div>
       <div class="detail-row">
         <label>Time:</label>
-        <span>${app.start_time} 〜 ${app.end_time}</span>
+        <span>${escapeHtml(app.start_time)} 〜 ${escapeHtml(app.end_time)}</span>
       </div>
       <div class="detail-row">
         <label>Guests:</label>
-        <span>${app.guest_count}</span>
+        <span>${escapeHtml(String(app.guest_count))}</span>
       </div>
       <div class="detail-row">
         <label>Venue:</label>
-        <span>${app.venue_name || "-"}</span>
+        <span>${escapeHtml(app.venue_name || "-")}</span>
       </div>
       <div class="detail-row">
         <label>Referral:</label>
-        <span>${app.referral_source || "-"}</span>
+        <span>${escapeHtml(app.referral_source || "-")}</span>
       </div>
       ${
         app.questions
           ? `<div class="detail-row detail-row-full">
         <label>Questions/Requests:</label>
-        <span class="detail-text">${app.questions}</span>
+        <span class="detail-text">${escapeHtml(app.questions)}</span>
       </div>`
           : ""
       }
@@ -223,7 +223,7 @@ export async function showApplicationDetail(applicationId) {
         app.event_id
           ? `<div class="detail-row">
         <label>Event ID:</label>
-        <span>${app.event_id}</span>
+        <span>${escapeHtml(app.event_id)}</span>
       </div>`
           : ""
       }
