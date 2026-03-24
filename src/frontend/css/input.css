@@ -1818,6 +1818,37 @@
     .ranking-page .photo-item { width: 28vw; max-width: 320px; }
 }
 
+/* Skeleton loading animation */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-row {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.skeleton-cell {
+    height: 1rem;
+    flex: 1;
+}
+
+.skeleton-cell-sm {
+    height: 1rem;
+    width: 80px;
+    flex-shrink: 0;
+}
+
 /* ========================================
    Admin Page Styles (from admin.css)
    Migrated for consolidation - will be
