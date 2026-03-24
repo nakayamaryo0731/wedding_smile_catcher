@@ -179,6 +179,17 @@
 
 <body class="font-sans text-lp-text-dark bg-lp-bg-light antialiased">
 
+<!-- Sticky Header (appears on scroll) -->
+<header id="stickyHeader" class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-md transform -translate-y-full transition-transform duration-300">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+        <span class="text-lg font-bold gradient-text">AI笑顔写真コンテスト</span>
+        <a href="#contact"
+            class="bg-gradient-to-r from-lp-primary to-lp-accent-orange text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-lp-primary/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+            申し込む
+        </a>
+    </div>
+</header>
+
     <!-- Hero Section -->
     <section
         class="min-h-screen flex flex-col lg:flex-row items-center justify-center px-6 py-20 lg:py-0 bg-gradient-to-br from-lp-bg-light to-blue-50 relative overflow-hidden">
@@ -787,6 +798,20 @@
                     }
                 });
             });
+
+            // Sticky header show/hide on scroll
+            const stickyHeader = document.getElementById('stickyHeader');
+            const heroSection = document.querySelector('section');
+
+            const observer = new IntersectionObserver(([entry]) => {
+                if (!entry.isIntersecting) {
+                    stickyHeader.classList.remove('-translate-y-full');
+                } else {
+                    stickyHeader.classList.add('-translate-y-full');
+                }
+            }, { threshold: 0.1 });
+
+            observer.observe(heroSection);
         });
     </script>
 </body>
