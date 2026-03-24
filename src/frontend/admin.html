@@ -22,17 +22,32 @@
                     <button class="auth-tab-btn" data-auth-tab="register">Sign Up</button>
                 </div>
                 <form id="loginForm" class="auth-form active">
-                    <input type="email" id="emailInput" placeholder="Email" required autocomplete="username">
-                    <input type="password" id="passwordInput" placeholder="Password" required
-                        autocomplete="current-password">
+                    <div class="auth-field">
+                        <label for="emailInput" class="auth-label">Email</label>
+                        <input type="email" id="emailInput" placeholder="you@example.com" required autocomplete="username">
+                    </div>
+                    <div class="auth-field">
+                        <label for="passwordInput" class="auth-label">Password</label>
+                        <input type="password" id="passwordInput" placeholder="Enter password" required
+                            autocomplete="current-password">
+                    </div>
                     <button type="submit">Login</button>
                 </form>
                 <form id="registerForm" class="auth-form">
-                    <input type="email" id="regEmailInput" placeholder="Email" required autocomplete="username">
-                    <input type="password" id="regPasswordInput" placeholder="Password (8+ characters)" required
-                        minlength="8" autocomplete="new-password">
-                    <input type="text" id="regDisplayNameInput" placeholder="Display Name (e.g. Taro & Hanako)" required
-                        maxlength="50">
+                    <div class="auth-field">
+                        <label for="regEmailInput" class="auth-label">Email</label>
+                        <input type="email" id="regEmailInput" placeholder="you@example.com" required autocomplete="username">
+                    </div>
+                    <div class="auth-field">
+                        <label for="regPasswordInput" class="auth-label">Password</label>
+                        <input type="password" id="regPasswordInput" placeholder="8+ characters" required
+                            minlength="8" autocomplete="new-password">
+                    </div>
+                    <div class="auth-field">
+                        <label for="regDisplayNameInput" class="auth-label">Display Name</label>
+                        <input type="text" id="regDisplayNameInput" placeholder="e.g. Taro &amp; Hanako" required
+                            maxlength="50">
+                    </div>
                     <label class="terms-label">
                         <input type="checkbox" id="regTermsCheckbox" required>
                         <span><a href="#" id="termsLink">Terms of Service</a> に同意する</span>

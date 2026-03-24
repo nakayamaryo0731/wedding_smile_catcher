@@ -1898,6 +1898,18 @@
     display: block;
 }
 
+.admin-page .auth-field {
+    margin-bottom: 1rem;
+}
+
+.admin-page .auth-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 0.35rem;
+}
+
 .admin-page .auth-form input[type="email"],
 .admin-page .auth-form input[type="password"],
 .admin-page .auth-form input[type="text"] {
@@ -1906,7 +1918,7 @@
     font-size: 1rem;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     transition: border-color 0.3s;
 }
 
