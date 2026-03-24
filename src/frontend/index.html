@@ -165,10 +165,6 @@
             transition: max-height 0.3s ease-out;
         }
 
-        .faq-item.open .faq-answer {
-            max-height: 200px;
-        }
-
         .faq-icon {
             transition: transform 0.3s ease;
         }
@@ -797,9 +793,14 @@
             document.querySelectorAll('.faq-item').forEach(item => {
                 item.querySelector('.faq-question').addEventListener('click', () => {
                     const wasOpen = item.classList.contains('open');
-                    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+                    document.querySelectorAll('.faq-item').forEach(i => {
+                        i.classList.remove('open');
+                        i.querySelector('.faq-answer').style.maxHeight = null;
+                    });
                     if (!wasOpen) {
                         item.classList.add('open');
+                        const answer = item.querySelector('.faq-answer');
+                        answer.style.maxHeight = answer.scrollHeight + 'px';
                     }
                 });
             });
