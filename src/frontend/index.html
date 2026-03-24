@@ -85,12 +85,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" media="print" onload="this.media='all'">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" media="print" onload="this.media='all'">
 
     <!-- Tailwind CSS -->
     <link rel="stylesheet" href="css/output.css">
 
     <!-- Lucide Icons (deferred) -->
-    <script defer src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="https://unpkg.com/lucide@0.460.0"></script>
 
     <style>
         /* Gradient text utility */
@@ -163,10 +165,6 @@
             transition: max-height 0.3s ease-out;
         }
 
-        .faq-item.open .faq-answer {
-            max-height: 200px;
-        }
-
         .faq-icon {
             transition: transform 0.3s ease;
         }
@@ -179,18 +177,30 @@
 
 <body class="font-sans text-lp-text-dark bg-lp-bg-light antialiased">
 
+<!-- Sticky Header (appears on scroll) -->
+<header id="stickyHeader" class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-md transform -translate-y-full transition-transform duration-300">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+        <span class="text-lg font-bold gradient-text">AI笑顔写真コンテスト</span>
+        <a href="#contact"
+            class="bg-gradient-to-r from-lp-primary to-lp-accent-orange text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-lp-primary/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+            申し込む
+        </a>
+    </div>
+</header>
+
     <!-- Hero Section -->
     <section
-        class="min-h-screen flex flex-col lg:flex-row items-center justify-center px-6 py-20 lg:py-0 bg-gradient-to-br from-lp-bg-light to-blue-50 relative overflow-hidden">
+        class="min-h-[85vh] lg:min-h-screen flex flex-col lg:flex-row items-center justify-center px-6 py-12 lg:py-0 bg-gradient-to-br from-lp-bg-light to-blue-50 relative overflow-hidden">
         <!-- Background decoration -->
         <div
             class="absolute -top-1/2 -right-1/4 w-3/4 h-[150%] bg-gradient-radial from-lp-primary/10 to-transparent pointer-events-none">
         </div>
 
         <div class="flex-1 max-w-lg z-10 text-center lg:text-left mb-10 lg:mb-0">
+            <p class="text-lp-text-light text-sm tracking-widest uppercase mb-2" style="font-family: 'Playfair Display', serif;">Smile Photo Contest</p>
             <p
                 class="inline-block bg-gradient-to-r from-lp-accent-yellow to-lp-accent-orange text-lp-text-dark px-5 py-2 rounded-full text-sm font-bold mb-6 animate-bounce-soft">
-                期間限定で無料！
+                先着10組限定で無料！
             </p>
             <h1 class="text-4xl lg:text-5xl font-black leading-tight mb-6 gradient-text">
                 写真を撮りたくなる<br>結婚式
@@ -428,7 +438,7 @@
                         data-lucide="message-circle" class="w-5 h-5 text-lp-primary"></i> LINE Bot</h3>
                 <div class="max-w-sm mx-auto">
                     <div class="text-center">
-                        <img src="images/lp/line-bot.webp" alt="LINE Bot画面" width="1218" height="1220" class="w-full mb-5 rounded-2xl shadow-lg">
+                        <img src="images/lp/line-bot.webp" alt="LINE Bot画面" width="1218" height="1220" loading="lazy" class="w-full mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">写真を送ってスコアをゲット</h4>
                         <p class="text-lp-text-light">ゲストは友だち追加して写真を送るだけ。<br>すぐにAIがスコアを返信します。</p>
                     </div>
@@ -442,19 +452,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                     <div class="text-center">
                         <img src="images/lp/ranking.webp" alt="ランキングモード" width="1487" height="915"
-                            class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
+                            loading="lazy" class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">ランキングモード</h4>
                         <p class="text-lp-text-light text-sm">直近の投稿からトップ3をリアルタイム表示。<br>新しい写真が来るたび順位が変動！</p>
                     </div>
                     <div class="text-center">
                         <img src="images/lp/slideshow.webp" alt="スライドショーモード" width="1869" height="905"
-                            class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
+                            loading="lazy" class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">スライドショーモード</h4>
                         <p class="text-lp-text-light text-sm">投稿された写真を次々と表示。<br>会場全体で思い出を共有できます。</p>
                     </div>
                     <div class="text-center">
                         <img src="images/lp/final.webp" alt="最終結果発表モード" width="1750" height="936"
-                            class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
+                            loading="lazy" class="w-full md:h-48 md:object-cover md:object-top mb-5 rounded-2xl shadow-lg">
                         <h4 class="text-lg font-bold mb-2">最終結果発表モード</h4>
                         <p class="text-lp-text-light text-sm">イベント全体のトップ10を発表！<br>紙吹雪の演出で盛り上がります。</p>
                     </div>
@@ -559,8 +569,10 @@
                 動作デモ
             </h2>
             <div class="max-w-3xl mx-auto">
-                <video class="w-full rounded-2xl shadow-2xl" autoplay loop muted playsinline>
+                <video class="w-full rounded-2xl shadow-2xl" autoplay loop muted playsinline
+                    poster="images/lp/ranking.webp">
                     <source src="images/lp/demo.webm" type="video/webm">
+                    <p class="text-center text-lp-text-light p-8">お使いのブラウザでは動画を再生できません。</p>
                 </video>
                 <p class="text-center text-lp-text-light text-sm mt-4">※ ランキングとスライドショーが自動で切り替わります</p>
             </div>
@@ -607,7 +619,7 @@
                 <!-- Badge -->
                 <div
                     class="absolute top-4 -right-8 bg-gradient-to-r from-lp-accent-yellow to-lp-accent-orange text-lp-text-dark px-10 py-1 text-xs font-bold rotate-45">
-                    期間限定
+                    先着10組
                 </div>
 
                 <div class="text-center mb-4">
@@ -616,7 +628,7 @@
                 </div>
 
                 <p class="text-center text-lp-text-light text-sm mb-6">
-                    サービス改善のため、初期は無料で提供中！<br>
+                    サービス改善のため、先着10組は無料で提供中！<br>
                     ご利用後にアンケートへのご協力お願いします。
                 </p>
 
@@ -781,12 +793,31 @@
             document.querySelectorAll('.faq-item').forEach(item => {
                 item.querySelector('.faq-question').addEventListener('click', () => {
                     const wasOpen = item.classList.contains('open');
-                    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+                    document.querySelectorAll('.faq-item').forEach(i => {
+                        i.classList.remove('open');
+                        i.querySelector('.faq-answer').style.maxHeight = null;
+                    });
                     if (!wasOpen) {
                         item.classList.add('open');
+                        const answer = item.querySelector('.faq-answer');
+                        answer.style.maxHeight = answer.scrollHeight + 'px';
                     }
                 });
             });
+
+            // Sticky header show/hide on scroll
+            const stickyHeader = document.getElementById('stickyHeader');
+            const heroSection = document.querySelector('section');
+
+            const observer = new IntersectionObserver(([entry]) => {
+                if (!entry.isIntersecting) {
+                    stickyHeader.classList.remove('-translate-y-full');
+                } else {
+                    stickyHeader.classList.add('-translate-y-full');
+                }
+            }, { threshold: 0.1 });
+
+            observer.observe(heroSection);
         });
     </script>
 </body>

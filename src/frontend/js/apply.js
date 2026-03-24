@@ -149,6 +149,10 @@ function showSuccessScreen() {
 async function handleSubmit(e) {
   e.preventDefault();
 
+  // Hide previous error
+  const errorEl = document.getElementById("submitError");
+  errorEl.classList.add("hidden");
+
   if (!validateForm()) {
     // Show validation errors
     form.reportValidity();
@@ -165,7 +169,9 @@ async function handleSubmit(e) {
   if (result.success) {
     showSuccessScreen();
   } else {
-    alert("送信に失敗しました。もう一度お試しください。");
+    const errorEl = document.getElementById("submitError");
+    errorEl.classList.remove("hidden");
+    errorEl.scrollIntoView({ behavior: "smooth", block: "center" });
     submitBtn.disabled = false;
     submitBtn.classList.remove("btn-loading");
   }

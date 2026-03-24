@@ -207,6 +207,17 @@
     @apply font-sans text-gray-800 antialiased;
   }
 
+  /* Accessible focus ring for keyboard navigation */
+  :focus-visible {
+      outline: 2px solid var(--color-primary, #FF6B9D);
+      outline-offset: 2px;
+  }
+
+  /* Remove default outline only when focus-visible handles it */
+  :focus:not(:focus-visible) {
+      outline: none;
+  }
+
   /* Themed background */
   .bg-theme {
     background: var(--gradient-bg);
@@ -251,7 +262,7 @@
 
   /* Form inputs */
   .input {
-    @apply w-full px-4 py-3 rounded-lg border border-gray-300 outline-none transition-all;
+    @apply w-full px-4 py-3 rounded-lg border border-gray-300 transition-all;
   }
 
   .input:focus {
@@ -1807,6 +1818,37 @@
     .ranking-page .photo-item { width: 28vw; max-width: 320px; }
 }
 
+/* Skeleton loading animation */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-row {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.skeleton-cell {
+    height: 1rem;
+    flex: 1;
+}
+
+.skeleton-cell-sm {
+    height: 1rem;
+    width: 80px;
+    flex-shrink: 0;
+}
+
 /* ========================================
    Admin Page Styles (from admin.css)
    Migrated for consolidation - will be
@@ -1898,6 +1940,18 @@
     display: block;
 }
 
+.admin-page .auth-field {
+    margin-bottom: 1rem;
+}
+
+.admin-page .auth-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 0.35rem;
+}
+
 .admin-page .auth-form input[type="email"],
 .admin-page .auth-form input[type="password"],
 .admin-page .auth-form input[type="text"] {
@@ -1906,15 +1960,15 @@
     font-size: 1rem;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     transition: border-color 0.3s;
 }
 
 .admin-page .auth-form input[type="email"]:focus,
 .admin-page .auth-form input[type="password"]:focus,
 .admin-page .auth-form input[type="text"]:focus {
-    outline: none;
     border-color: #2d5a27;
+    box-shadow: 0 0 0 3px rgba(45, 90, 39, 0.15);
 }
 
 .admin-page .auth-form button[type="submit"] {
@@ -2049,9 +2103,16 @@
 
 .admin-page .tabs {
     display: flex;
-    gap: 1rem;
+    gap: 0;
     margin-bottom: 2rem;
     border-bottom: 2px solid #e0e0e0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.admin-page .tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .admin-page .tab-btn {
@@ -2064,6 +2125,8 @@
     border-bottom: 3px solid transparent;
     cursor: pointer;
     transition: all 0.3s;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .admin-page .tab-btn:hover {
@@ -2739,8 +2802,15 @@
 }
 
 .admin-page .award-icon {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.5rem;
+    color: #1a472a;
+    background: #f0fdf4;
+    border-radius: 50%;
 }
 
 .admin-page .award-title {
@@ -2963,11 +3033,6 @@
 
     .admin-page .data-item-content {
         grid-template-columns: 1fr;
-    }
-
-    .admin-page .tabs {
-        overflow-x: auto;
-        flex-wrap: nowrap;
     }
 
     .admin-page .stats-grid-7 {
@@ -3408,5 +3473,19 @@
     to {
         opacity: 0;
         transform: translateX(100%);
+    }
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }
