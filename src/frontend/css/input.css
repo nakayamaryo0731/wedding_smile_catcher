@@ -2762,8 +2762,15 @@
 }
 
 .admin-page .award-icon {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.5rem;
+    color: #1a472a;
+    background: #f0fdf4;
+    border-radius: 50%;
 }
 
 .admin-page .award-title {
