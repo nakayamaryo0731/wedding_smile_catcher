@@ -207,6 +207,17 @@
     @apply font-sans text-gray-800 antialiased;
   }
 
+  /* Accessible focus ring for keyboard navigation */
+  :focus-visible {
+      outline: 2px solid var(--color-primary, #FF6B9D);
+      outline-offset: 2px;
+  }
+
+  /* Remove default outline only when focus-visible handles it */
+  :focus:not(:focus-visible) {
+      outline: none;
+  }
+
   /* Themed background */
   .bg-theme {
     background: var(--gradient-bg);
@@ -251,7 +262,7 @@
 
   /* Form inputs */
   .input {
-    @apply w-full px-4 py-3 rounded-lg border border-gray-300 outline-none transition-all;
+    @apply w-full px-4 py-3 rounded-lg border border-gray-300 transition-all;
   }
 
   .input:focus {
@@ -1925,8 +1936,8 @@
 .admin-page .auth-form input[type="email"]:focus,
 .admin-page .auth-form input[type="password"]:focus,
 .admin-page .auth-form input[type="text"]:focus {
-    outline: none;
     border-color: #2d5a27;
+    box-shadow: 0 0 0 3px rgba(45, 90, 39, 0.15);
 }
 
 .admin-page .auth-form button[type="submit"] {
