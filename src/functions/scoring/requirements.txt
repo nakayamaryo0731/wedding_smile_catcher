@@ -5,15 +5,15 @@ functions-framework==3.*
 line-bot-sdk==3.12.0
 
 # Google Cloud Libraries
-google-cloud-firestore==2.16.0
-google-cloud-storage==2.16.0
+google-cloud-firestore==2.26.0
+google-cloud-storage==3.10.1
 google-cloud-logging==3.10.0
 google-cloud-vision==3.7.2
-google-cloud-aiplatform==1.73.0
+google-cloud-aiplatform==1.133.0
 
 # Image processing for Average Hash
-Pillow==11.1.0
-imagehash==4.3.1
+Pillow==12.2.0
+imagehash==4.3.2
 
 # Utilities
-python-dotenv==1.0.1
+python-dotenv==1.2.2
