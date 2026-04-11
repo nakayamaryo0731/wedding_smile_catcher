@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Frontend for Wedding Smile Catcher - AI-powered smile photo contest for weddings",
   "scripts": {
-    "dev": "tailwindcss -i ./css/input.css -o ./css/output.css --watch",
-    "build": "tailwindcss -i ./css/input.css -o ./css/output.css --minify"
+    "dev": "npx @tailwindcss/cli -i ./css/input.css -o ./css/output.css --watch",
+    "build": "npx @tailwindcss/cli -i ./css/input.css -o ./css/output.css --minify"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.0"
