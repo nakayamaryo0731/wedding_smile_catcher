@@ -5,7 +5,7 @@
 line-bot-sdk==3.23.0
 
 # Google Cloud Libraries
-google-cloud-firestore==2.16.0
+google-cloud-firestore==2.26.0
 google-cloud-storage==2.16.0
 
 # Image processing (for rich menu setup)
