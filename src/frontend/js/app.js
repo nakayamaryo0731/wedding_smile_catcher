@@ -1511,6 +1511,73 @@ async function saveTheme(themeName) {
 }
 
 /**
+ * Save display mode to Firestore
+ */
+async function saveDisplayMode(mode) {
+  if (!currentEventData?.id) {
+    console.warn("No event data available to save display mode");
+    return;
+  }
+
+  try {
+    const eventRef = doc(db, "events", currentEventData.id);
+    await updateDoc(eventRef, { display_mode: mode });
+    currentEventData.display_mode = mode;
+  } catch (error) {
+    console.error("Failed to save display mode:", error);
+  }
+}
+
+/**
+ * Apply display mode setting
+ */
+function applyDisplayMode(mode) {
+  const toggleModeBtn = document.getElementById("toggle-mode-btn");
+
+  if (mode === "slideshow") {
+    stopAutoModeSwitch();
+    switchToSlideshow();
+    if (toggleModeBtn) toggleModeBtn.classList.add("hidden");
+  } else if (mode === "ranking") {
+    stopAutoModeSwitch();
+    switchToRanking();
+    if (toggleModeBtn) toggleModeBtn.classList.remove("hidden");
+    // Hide toggle since mode is fixed, but keep visible for final button access
+    if (toggleModeBtn) toggleModeBtn.classList.add("hidden");
+  } else {
+    // "both" - default behavior
+    if (toggleModeBtn) toggleModeBtn.classList.remove("hidden");
+    startAutoModeSwitch();
+  }
+}
+
+/**
+ * Initialize display mode selector
+ */
+function initDisplayModeSelector() {
+  const modeButtons = document.querySelectorAll(".display-mode-option");
+
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.mode;
+
+      // Update selected state
+      modeButtons.forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+
+      saveDisplayMode(mode);
+      applyDisplayMode(mode);
+    });
+  });
+
+  // Apply saved mode from Firestore
+  const savedMode = currentEventData?.display_mode || "both";
+  modeButtons.forEach((btn) => {
+    btn.classList.toggle("selected", btn.dataset.mode === savedMode);
+  });
+}
+
+/**
  * Initialize theme selector
  */
 function initThemeSelector() {
@@ -1973,11 +2040,15 @@ async function init() {
   // Initialize theme selector
   initThemeSelector();
 
+  // Initialize display mode selector
+  initDisplayModeSelector();
+
   // Set up real-time listener (replaces periodic polling)
   setupRealtimeListener();
 
-  // Start automatic mode switching (ranking <-> slideshow)
-  startAutoModeSwitch();
+  // Apply display mode (replaces hardcoded startAutoModeSwitch)
+  const displayMode = currentEventData?.display_mode || "both";
+  applyDisplayMode(displayMode);
 }
 
 // Cleanup on page unload
