@@ -1,6 +1,89 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@source "../*.html";
+@source "../js/**/*.js";
+
+/* ========================================
+   Custom Theme (migrated from tailwind.config.js)
+   ======================================== */
+
+@theme {
+  /* Font families */
+  --font-sans: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --font-display: 'Playfair Display', serif;
+
+  /* Primary colors (Forest Green default) */
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
+
+  /* Accent colors */
+  --color-accent-gold: #ffd700;
+  --color-accent-gold-dark: #d4af37;
+
+  /* Landing Page colors */
+  --color-lp-primary: #FF6B9D;
+  --color-lp-primary-dark: #E55A8A;
+  --color-lp-secondary: #4ECDC4;
+  --color-lp-accent-yellow: #FFE66D;
+  --color-lp-accent-orange: #FF8C42;
+  --color-lp-accent-purple: #A17FE0;
+  --color-lp-text-dark: #2D3436;
+  --color-lp-text-light: #636E72;
+  --color-lp-bg-light: #FFF9FB;
+
+  /* Background images / gradients */
+  --background-image-gradient-forest: linear-gradient(135deg, #1a472a 0%, #2d5a27 50%, #0d2818 100%);
+  --background-image-gradient-rose: linear-gradient(135deg, #be185d 0%, #db2777 50%, #9d174d 100%);
+  --background-image-gradient-ocean: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #1e3a8a 100%);
+  --background-image-gradient-sunset: linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #9a3412 100%);
+  --background-image-gradient-purple: linear-gradient(135deg, #581c87 0%, #7c3aed 50%, #4c1d95 100%);
+
+  /* Animations */
+  --animate-fade-in-down: fadeInDown 1s ease-out;
+  --animate-fade-in-up: fadeInUp 0.6s ease-out;
+  --animate-scale-in: scaleIn 0.5s ease-out;
+  --animate-float: float 3s ease-in-out infinite;
+
+  /* Keyframes */
+  @keyframes fadeInDown {
+    0% { opacity: 0; transform: translateY(-20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    0% { opacity: 0; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Box shadows */
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.15);
+  --shadow-card-lg: 0 20px 60px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* Theme-specific colors driven by CSS variables (needs inline for var() references) */
+@theme inline {
+  --color-theme-primary: var(--color-primary);
+  --color-theme-secondary: var(--color-secondary);
+  --color-theme-accent: var(--color-accent);
+  --color-theme-bg: var(--color-bg);
+}
 
 /* ========================================
    Theme Variables
@@ -229,98 +312,94 @@
    Component Classes
    ======================================== */
 
-@layer components {
-  /* Card styles */
-  .card {
-    @apply bg-white/90 backdrop-blur-sm rounded-2xl shadow-card p-6;
-  }
+/* Card styles */
+@utility card {
+  @apply bg-white/90 backdrop-blur-xs rounded-2xl shadow-card p-6;
+}
 
-  .card-lg {
-    @apply bg-white/90 backdrop-blur-sm rounded-3xl shadow-card-lg p-8;
-  }
+@utility card-lg {
+  @apply bg-white/90 backdrop-blur-xs rounded-3xl shadow-card-lg p-8;
+}
 
-  /* Button styles */
-  .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200;
-  }
+/* Button styles */
+@utility btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200;
+}
 
-  .btn-primary {
-    @apply btn bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-white shadow-md hover:shadow-lg;
-  }
+@utility btn-primary {
+  @apply btn bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-white shadow-md hover:shadow-lg;
+}
 
-  .btn-secondary {
-    @apply btn bg-white/20 hover:bg-white/30 text-white border border-white/30;
-  }
+@utility btn-secondary {
+  @apply btn bg-white/20 hover:bg-white/30 text-white border border-white/30;
+}
 
-  .btn-accent {
-    @apply btn bg-[var(--color-accent)] hover:brightness-110 text-gray-900 shadow-md;
-  }
+@utility btn-accent {
+  @apply btn bg-[var(--color-accent)] hover:brightness-110 text-gray-900 shadow-md;
+}
 
-  .btn-danger {
-    @apply btn bg-red-600 hover:bg-red-700 text-white;
-  }
+@utility btn-danger {
+  @apply btn bg-red-600 hover:bg-red-700 text-white;
+}
 
-  /* Form inputs */
-  .input {
-    @apply w-full px-4 py-3 rounded-lg border border-gray-300 transition-all;
-  }
+/* Form inputs */
+@utility input {
+  @apply w-full px-4 py-3 rounded-lg border border-gray-300 transition-all;
 
-  .input:focus {
+  &:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(26, 71, 42, 0.1);
   }
+}
 
-  /* Badge */
-  .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
-  }
+/* Badge */
+@utility badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+}
 
-  .badge-gold {
-    @apply badge bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900;
-  }
+@utility badge-gold {
+  @apply badge bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900;
+}
 
-  /* Section title */
-  .section-title {
-    @apply text-2xl md:text-3xl font-bold text-center mb-8;
-  }
+/* Section title */
+@utility section-title {
+  @apply text-2xl md:text-3xl font-bold text-center mb-8;
 }
 
 /* ========================================
    Utility Classes
    ======================================== */
 
-@layer utilities {
-  /* Text with theme accent color */
-  .text-theme-accent {
-    color: var(--color-accent);
-  }
+/* Text with theme accent color */
+@utility text-theme-accent {
+  color: var(--color-accent);
+}
 
-  .text-theme-primary {
-    color: var(--color-primary);
-  }
+@utility text-theme-primary {
+  color: var(--color-primary);
+}
 
-  /* Glassmorphism effect */
-  .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
-  }
+/* Glassmorphism effect */
+@utility glass {
+  @apply bg-white/10 backdrop-blur-md border border-white/20;
+}
 
-  .glass-dark {
-    @apply bg-black/20 backdrop-blur-md border border-white/10;
-  }
+@utility glass-dark {
+  @apply bg-black/20 backdrop-blur-md border border-white/10;
+}
 
-  /* Text shadow for readability on images */
-  .text-shadow {
-    text-shadow: 2px 4px 8px rgba(0, 0, 0, 0.3);
-  }
+/* Text shadow for readability on images */
+@utility text-shadow {
+  text-shadow: 2px 4px 8px rgba(0, 0, 0, 0.3);
+}
 
-  .text-shadow-sm {
-    text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.2);
-  }
+@utility text-shadow-sm {
+  text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.2);
+}
 
-  /* Glow effect */
-  .glow {
-    box-shadow: 0 0 20px var(--color-accent);
-  }
+/* Glow effect */
+@utility glow {
+  box-shadow: 0 0 20px var(--color-accent);
 }
 
 /* ========================================
@@ -370,7 +449,7 @@
 
 /* Tabulator customization */
 .tabulator {
-  @apply border-none rounded-lg overflow-hidden shadow-sm;
+  @apply border-none rounded-lg overflow-hidden shadow-xs;
 }
 
 .tabulator .tabulator-header {
