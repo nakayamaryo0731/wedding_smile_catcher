@@ -165,21 +165,14 @@ function createEventCard(docId, data) {
   );
   actions.appendChild(qrBtn);
 
-  const rankOpenBtn = document.createElement("button");
-  rankOpenBtn.className = "btn-secondary btn-sm";
-  rankOpenBtn.textContent = "Ranking";
-  rankOpenBtn.addEventListener("click", () =>
-    window.open(getRankingUrl(docId), "_blank")
-  );
-  actions.appendChild(rankOpenBtn);
-
-  const rankCopyBtn = document.createElement("button");
-  rankCopyBtn.className = "btn-secondary btn-sm";
-  rankCopyBtn.textContent = "URL Copy";
-  rankCopyBtn.addEventListener("click", () =>
-    copyToClipboard(getRankingUrl(docId))
-  );
-  actions.appendChild(rankCopyBtn);
+  const rankBtn = document.createElement("button");
+  rankBtn.className = "btn-secondary btn-sm";
+  rankBtn.textContent = "Ranking";
+  rankBtn.addEventListener("click", () => {
+    copyToClipboard(getRankingUrl(docId));
+    window.open(getRankingUrl(docId), "_blank");
+  });
+  actions.appendChild(rankBtn);
 
   if (status === "archived") {
     const notifyBtn = document.createElement("button");
