@@ -1,0 +1,31 @@
+# Binary images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.svg
+
+# Archives
+*.zip
+*.tar
+*.gz
+
+# Documents
+*.pdf
+
+# Lock files
+package-lock.json
+
+# Test images
+test_images/
+
+# Terraform cache
+terraform/.terraform/
+
+# Zenn submodule
+zenn/
+
+# Node modules
+node_modules/
