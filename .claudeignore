@@ -29,3 +29,7 @@ zenn/
 
 # Node modules
 node_modules/
+
+# Python virtual environment
+venv/
+.venv/
