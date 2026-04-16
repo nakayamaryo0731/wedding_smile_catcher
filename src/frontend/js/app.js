@@ -142,8 +142,34 @@ function getImageUrl(imageData) {
 }
 
 function isImageExpired(img) {
+  const now = Date.now();
   const expiresAt = img.storage_url_expires_at?.seconds;
-  return expiresAt && expiresAt * 1000 < Date.now();
+  if (expiresAt && expiresAt * 1000 < now) return true;
+  const SIGNED_URL_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+  const uploadAt = img.upload_timestamp?.seconds;
+  if (uploadAt && now - uploadAt * 1000 > SIGNED_URL_MAX_MS) return true;
+  return false;
+}
+
+async function filterByImageAvailability(images) {
+  const results = await Promise.all(
+    images.map(
+      (img) =>
+        new Promise((resolve) => {
+          const url = img.storage_url;
+          if (!url) {
+            resolve(null);
+            return;
+          }
+          const testImg = new Image();
+          testImg.onload = () =>
+            resolve(testImg.naturalWidth > 0 ? img : null);
+          testImg.onerror = () => resolve(null);
+          testImg.src = url;
+        })
+    )
+  );
+  return results.filter(Boolean);
 }
 
 function renderRankingList(images, startRank = 4) {
@@ -309,6 +335,7 @@ async function fetchRecentRankings() {
         !isNaN(img.total_score) &&
         !isImageExpired(img)
     );
+    images = await filterByImageAvailability(images);
 
     // Sort by total_score descending
     images.sort((a, b) => b.total_score - a.total_score);
@@ -355,6 +382,7 @@ async function fetchAllTimeRankings() {
         !isNaN(img.total_score) &&
         !isImageExpired(img)
     );
+    images = await filterByImageAvailability(images);
 
     // Sort by total_score desc, then smile_score desc for tiebreaker
     images.sort((a, b) => {
@@ -818,6 +846,7 @@ function processSnapshotData(snapshot) {
         !isNaN(img.total_score) &&
         !isImageExpired(img)
     );
+    images = await filterByImageAvailability(images);
 
     // Sort by total_score descending
     images.sort((a, b) => b.total_score - a.total_score);
@@ -922,6 +951,7 @@ async function fetchSlideshowImages() {
         !isNaN(img.total_score) &&
         !isImageExpired(img)
     );
+    images = await filterByImageAvailability(images);
 
     // Resolve user names (prefer denormalized user_name from image doc)
     images.forEach((img) => {
@@ -960,13 +990,15 @@ async function refreshSlideshowImages() {
       ...doc.data(),
     }));
 
-    // Filter out soft-deleted and incomplete images
+    // Filter out soft-deleted, expired, and incomplete images
     newImages = newImages.filter(
       (img) =>
         !img.deleted_at &&
         typeof img.total_score === "number" &&
-        !isNaN(img.total_score)
+        !isNaN(img.total_score) &&
+        !isImageExpired(img)
     );
+    newImages = await filterByImageAvailability(newImages);
 
     // Find images not already in the queue
     const existingIds = new Set(slideshowState.imageQueue.map((img) => img.id));
@@ -1100,13 +1132,15 @@ function createPhotoElement(imageData, position, zIndex) {
   img.src = imageUrl;
   img.alt = `Photo by ${imageData.user_name || "Guest"}`;
   img.onload = () => {
+    if (img.naturalWidth === 0) {
+      photoItem.remove();
+      return;
+    }
     if (img.naturalHeight > img.naturalWidth) {
       img.classList.add("portrait");
     }
   };
   img.onerror = () => {
-    console.warn(`Failed to load image: ${imageUrl}`);
-    // Remove the photo item if image fails to load
     photoItem.remove();
   };
 
@@ -1852,6 +1886,7 @@ async function downloadAllImages() {
         img.storage_url &&
         !isImageExpired(img)
     );
+    images = await filterByImageAvailability(images);
 
     if (images.length === 0) {
       alert("ダウンロード可能な画像がありません");
