@@ -141,6 +141,11 @@ function getImageUrl(imageData) {
   return "";
 }
 
+function isImageExpired(img) {
+  const expiresAt = img.storage_url_expires_at?.seconds;
+  return expiresAt && expiresAt * 1000 < Date.now();
+}
+
 function renderRankingList(images, startRank = 4) {
   const listContainer = document.getElementById("ranking-list-items");
   if (!listContainer) return;
@@ -169,6 +174,7 @@ function renderRankingList(images, startRank = 4) {
 
     // Apply portrait class for vertical images
     const imgEl = itemEl.querySelector(".list-image");
+    imgEl.onerror = () => { imgEl.style.display = "none"; };
     applyImageOrientation(imgEl);
   });
 }
@@ -217,6 +223,7 @@ function updateRankCard(rank, imageData, useDecimal = false) {
 
   // Update content
   card.image.src = imageUrl;
+  card.image.onerror = () => { card.image.style.display = "none"; };
   applyImageOrientation(card.image);
   const userName = imageData.user_name || imageData.user_id || "ゲスト";
   card.image.alt = `${userName}'s smile`;
@@ -294,12 +301,13 @@ async function fetchRecentRankings() {
       ...doc.data(),
     }));
 
-    // Filter out soft-deleted images and images without valid scores
+    // Filter out soft-deleted, expired, and invalid images
     images = images.filter(
       (img) =>
         !img.deleted_at &&
         typeof img.total_score === "number" &&
-        !isNaN(img.total_score)
+        !isNaN(img.total_score) &&
+        !isImageExpired(img)
     );
 
     // Sort by total_score descending
@@ -339,12 +347,13 @@ async function fetchAllTimeRankings() {
       ...doc.data(),
     }));
 
-    // Filter out soft-deleted images and images without valid scores
+    // Filter out soft-deleted, expired, and invalid images
     images = images.filter(
       (img) =>
         !img.deleted_at &&
         typeof img.total_score === "number" &&
-        !isNaN(img.total_score)
+        !isNaN(img.total_score) &&
+        !isImageExpired(img)
     );
 
     // Sort by total_score desc, then smile_score desc for tiebreaker
@@ -801,12 +810,13 @@ function processSnapshotData(snapshot) {
       ...doc.data(),
     }));
 
-    // Filter out soft-deleted images and images without valid scores
+    // Filter out soft-deleted, expired, and invalid images
     images = images.filter(
       (img) =>
         !img.deleted_at &&
         typeof img.total_score === "number" &&
-        !isNaN(img.total_score)
+        !isNaN(img.total_score) &&
+        !isImageExpired(img)
     );
 
     // Sort by total_score descending
@@ -904,12 +914,13 @@ async function fetchSlideshowImages() {
       ...doc.data(),
     }));
 
-    // Filter out soft-deleted and incomplete images
+    // Filter out soft-deleted, expired, and incomplete images
     images = images.filter(
       (img) =>
         !img.deleted_at &&
         typeof img.total_score === "number" &&
-        !isNaN(img.total_score)
+        !isNaN(img.total_score) &&
+        !isImageExpired(img)
     );
 
     // Resolve user names (prefer denormalized user_name from image doc)
@@ -1834,9 +1845,12 @@ async function downloadAllImages() {
       ...doc.data(),
     }));
 
-    // Filter out deleted and images without signed URLs
+    // Filter out deleted, expired, and images without signed URLs
     images = images.filter(
-      (img) => !img.deleted_at && img.storage_url
+      (img) =>
+        !img.deleted_at &&
+        img.storage_url &&
+        !isImageExpired(img)
     );
 
     if (images.length === 0) {

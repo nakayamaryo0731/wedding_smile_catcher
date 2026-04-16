@@ -84,28 +84,39 @@ export async function loadImages(forceRefresh = false) {
     ];
     await fetchEventNames(imageEventIds);
 
-    const data = snapshot.docs.map((docSnap) => {
-      const d = docSnap.data();
-      return {
-        id: docSnap.id,
-        thumbnail: d.storage_url || "",
-        user_name:
-          d.user_name || userNameCache.get(d.user_id) || d.user_id || "N/A",
-        event_id: d.event_id || "",
-        event_name: d.event_id
-          ? eventNameCache.get(d.event_id) || d.event_id
-          : "N/A",
-        total_score: d.total_score ?? null,
-        status: d.status || "N/A",
-        upload_timestamp: d.upload_timestamp?.seconds
-          ? new Date(d.upload_timestamp.seconds * 1000)
-          : null,
-        ai_comment: d.ai_comment || d.comment || "",
-        deleted_at: d.deleted_at?.seconds
-          ? new Date(d.deleted_at.seconds * 1000)
-          : null,
-      };
-    });
+    const now = Date.now();
+    const data = snapshot.docs
+      .map((docSnap) => {
+        const d = docSnap.data();
+        return {
+          id: docSnap.id,
+          thumbnail: d.storage_url || "",
+          user_name:
+            d.user_name || userNameCache.get(d.user_id) || d.user_id || "N/A",
+          event_id: d.event_id || "",
+          event_name: d.event_id
+            ? eventNameCache.get(d.event_id) || d.event_id
+            : "N/A",
+          total_score: d.total_score ?? null,
+          status: d.status || "N/A",
+          upload_timestamp: d.upload_timestamp?.seconds
+            ? new Date(d.upload_timestamp.seconds * 1000)
+            : null,
+          ai_comment: d.ai_comment || d.comment || "",
+          deleted_at: d.deleted_at?.seconds
+            ? new Date(d.deleted_at.seconds * 1000)
+            : null,
+          storage_url_expires_at: d.storage_url_expires_at?.seconds
+            ? d.storage_url_expires_at.seconds * 1000
+            : null,
+        };
+      })
+      .filter((img) => {
+        if (img.storage_url_expires_at && img.storage_url_expires_at < now) {
+          return false;
+        }
+        return true;
+      });
 
     setImagesDataCache(data);
 
@@ -134,8 +145,18 @@ export async function loadImages(forceRefresh = false) {
           {
             title: "",
             field: "thumbnail",
-            formatter: "image",
-            formatterParams: { height: "50px", width: "50px" },
+            formatter: function (cell) {
+              const url = cell.getValue();
+              if (!url) return "";
+              const img = document.createElement("img");
+              img.src = url;
+              img.style.cssText =
+                "width:50px;height:50px;object-fit:cover";
+              img.onerror = () => {
+                img.style.display = "none";
+              };
+              return img;
+            },
             headerSort: false,
             width: 70,
           },
