@@ -80,6 +80,7 @@ resource "google_cloudfunctions2_function" "webhook" {
       STORAGE_BUCKET       = var.storage_bucket_name
       SCORING_FUNCTION_URL = "https://${var.region}-${var.project_id}.cloudfunctions.net/scoring"
       CURRENT_EVENT_ID     = var.current_event_id
+      DATA_RETENTION_DAYS  = tostring(var.data_retention_days)
     }
 
     secret_environment_variables {

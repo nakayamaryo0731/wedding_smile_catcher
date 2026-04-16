@@ -68,6 +68,7 @@ GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
 SCORING_FUNCTION_URL = os.environ.get("SCORING_FUNCTION_URL")
 LIFF_CHANNEL_ID = os.environ.get("LIFF_CHANNEL_ID", "")
+DATA_RETENTION_DAYS = int(os.environ.get("DATA_RETENTION_DAYS", "30"))
 
 LIFF_ALLOWED_ORIGINS = [
     origin.strip()
@@ -657,6 +658,7 @@ def handle_image_message(event: MessageEvent):
             "upload_timestamp": firestore.SERVER_TIMESTAMP,
             "status": "pending",
             "line_message_id": message_id,
+            "expire_at": datetime.now(UTC) + timedelta(days=DATA_RETENTION_DAYS),
         }
 
         try:
@@ -668,9 +670,13 @@ def handle_image_message(event: MessageEvent):
             logger.warning(f"Failed to generate signed URL for image {image_id}: {str(e)}")
             # Continue without signed URL - scoring function will generate it later
 
-        # Create Firestore document (user_name denormalized for frontend)
+        # Create image doc and increment event counter atomically
         image_ref = db.collection("images").document(image_id)
-        image_ref.set(image_doc_data)
+        event_ref = db.collection("events").document(event_id)
+        batch = db.batch()
+        batch.set(image_ref, image_doc_data)
+        batch.update(event_ref, {"image_count": firestore.Increment(1)})
+        batch.commit()
 
         logger.info(f"Firestore document created: {image_id}")
 

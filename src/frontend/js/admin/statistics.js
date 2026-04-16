@@ -212,6 +212,7 @@ function renderRankings(images) {
       imgEl.className = "thumbnail";
       imgEl.alt = "";
       imgEl.loading = "lazy";
+      imgEl.onerror = () => { imgEl.style.display = "none"; };
       imgCell.appendChild(imgEl);
 
       const nameCell = document.createElement("td");
@@ -290,6 +291,7 @@ function renderAward(elementId, imageData, scoreField, label) {
   }
 
   imgEl.src = getImageUrl(imageData);
+  imgEl.onerror = () => { imgEl.style.display = "none"; };
   winnerEl.textContent = imageData.user_name || imageData.user_id || "Unknown";
   valueEl.textContent = `${label}: ${imageData[scoreField]}`;
 }
@@ -416,10 +418,16 @@ export async function loadStatistics() {
     }
     const snapshot = await getDocs(q);
 
-    let images = snapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      ...docSnap.data(),
-    }));
+    const now = Date.now();
+    let images = snapshot.docs
+      .map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }))
+      .filter((img) => {
+        const expiresAt = img.storage_url_expires_at?.seconds;
+        return !expiresAt || expiresAt * 1000 > now;
+      });
 
     images = enrichImagesWithUserNames(images);
 
