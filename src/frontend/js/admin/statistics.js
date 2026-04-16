@@ -426,7 +426,11 @@ export async function loadStatistics() {
       }))
       .filter((img) => {
         const expiresAt = img.storage_url_expires_at?.seconds;
-        return !expiresAt || expiresAt * 1000 > now;
+        if (expiresAt && expiresAt * 1000 < now) return false;
+        const SIGNED_URL_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+        const uploadAt = img.upload_timestamp?.seconds;
+        if (uploadAt && now - uploadAt * 1000 > SIGNED_URL_MAX_MS) return false;
+        return true;
       });
 
     images = enrichImagesWithUserNames(images);

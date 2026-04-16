@@ -112,23 +112,49 @@ export async function loadImages(forceRefresh = false) {
         };
       })
       .filter((img) => {
+        // Signed URL expiration check
         if (img.storage_url_expires_at && img.storage_url_expires_at < now) {
+          return false;
+        }
+        // Fallback: signed URLs are max 7 days, so older images are always expired
+        const SIGNED_URL_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+        if (img.upload_timestamp && now - img.upload_timestamp.getTime() > SIGNED_URL_MAX_MS) {
           return false;
         }
         return true;
       });
 
-    setImagesDataCache(data);
+    // Pre-validate thumbnails: filter out images whose GCS object is gone
+    const validatedData = await Promise.all(
+      data.map(
+        (img) =>
+          new Promise((resolve) => {
+            if (!img.thumbnail) {
+              resolve(null);
+              return;
+            }
+            const testImg = new Image();
+            testImg.onload = () =>
+              resolve(testImg.naturalWidth > 0 ? img : null);
+            testImg.onerror = () => resolve(null);
+            testImg.src = img.thumbnail;
+          })
+      )
+    ).then((results) => results.filter(Boolean));
 
-    const eventNames = data.map((d) => d.event_name).filter((n) => n !== "N/A");
+    setImagesDataCache(validatedData);
+
+    const eventNames = validatedData
+      .map((d) => d.event_name)
+      .filter((n) => n !== "N/A");
     populateEventFilterDropdown(eventNames);
 
     if (imagesTable) {
-      imagesTable.setData(data);
+      imagesTable.setData(validatedData);
       updateEventFilter();
     } else {
       const table = new Tabulator("#imagesTable", {
-        data: data,
+        data: validatedData,
         layout: "fitData",
         pagination: true,
         paginationSize: 30,
@@ -145,18 +171,8 @@ export async function loadImages(forceRefresh = false) {
           {
             title: "",
             field: "thumbnail",
-            formatter: function (cell) {
-              const url = cell.getValue();
-              if (!url) return "";
-              const img = document.createElement("img");
-              img.src = url;
-              img.style.cssText =
-                "width:50px;height:50px;object-fit:cover";
-              img.onerror = () => {
-                img.style.display = "none";
-              };
-              return img;
-            },
+            formatter: "image",
+            formatterParams: { height: "50px", width: "50px" },
             headerSort: false,
             width: 70,
           },
