@@ -88,6 +88,18 @@ module "firestore" {
   depends_on = [google_project_service.required_apis]
 }
 
+# Firestore TTL Policy - Auto-delete expired image documents
+resource "google_firestore_field" "images_ttl" {
+  project    = var.project_id
+  database   = "(default)"
+  collection = "images"
+  field      = "expire_at"
+
+  ttl_config {}
+
+  depends_on = [module.firestore]
+}
+
 # IAM Module - Service accounts and permissions for Cloud Functions
 module "iam" {
   source = "./modules/iam"
@@ -116,7 +128,8 @@ module "functions" {
   line_channel_access_token_name = "line-channel-access-token"
 
   # Shared function settings
-  current_event_id = var.current_event_id
+  current_event_id    = var.current_event_id
+  data_retention_days = var.data_retention_days
 
   # Application notify settings
   admin_line_user_id = var.admin_line_user_id

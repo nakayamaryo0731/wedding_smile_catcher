@@ -48,6 +48,12 @@ variable "current_event_id" {
   default     = ""
 }
 
+variable "data_retention_days" {
+  description = "Number of days to retain data before auto-deletion"
+  type        = number
+  default     = 30
+}
+
 variable "smtp_password_secret_name" {
   description = "Secret Manager secret name for SMTP password"
   type        = string
