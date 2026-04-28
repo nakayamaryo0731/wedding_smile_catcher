@@ -21,5 +21,5 @@ line-bot-sdk>=3.6.0
 functions-framework>=3.5.0
 
 # Utilities
-requests>=2.31.0
+requests>=2.33.1
 tqdm>=4.67.0
