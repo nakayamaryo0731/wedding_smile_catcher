@@ -12,4 +12,4 @@ google-cloud-storage==3.10.1
 Pillow>=10.0.0
 
 # Environment variables
-python-dotenv>=1.0.0
+python-dotenv>=1.2.2
