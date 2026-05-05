@@ -9,7 +9,7 @@ google-cloud-firestore==2.27.0
 google-cloud-storage==3.10.1
 
 # Image processing (for rich menu setup)
-Pillow>=10.0.0
+Pillow>=12.2.0
 
 # Environment variables
 python-dotenv>=1.2.2
