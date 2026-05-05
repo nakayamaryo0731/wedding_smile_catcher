@@ -11,7 +11,7 @@ responses>=0.25.0           # Mock HTTP requests
 
 # Code quality
 ruff>=0.8.0                 # Linter and formatter (replaces black + flake8)
-mypy>=1.8.0                 # Type checker
+mypy>=1.20.2                 # Type checker
 
 # Load testing (install separately: pip install locust)
 # locust is excluded from CI due to heavy dependencies (numpy build issues)
