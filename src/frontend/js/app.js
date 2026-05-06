@@ -2061,6 +2061,9 @@ async function init() {
         // Still setup settings panel for archived events (for image download)
         setupSettingsPanel();
         initThemeSelector();
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
         return;
       }
     }
