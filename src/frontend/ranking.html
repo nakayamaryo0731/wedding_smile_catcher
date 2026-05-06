@@ -55,6 +55,7 @@
                     <h1 class="title">笑顔写真コンテスト</h1>
                 </div>
                 <div class="header-buttons">
+                    <button id="top10-btn" class="header-btn final-btn hidden">TOP 10 一覧</button>
                     <button id="final-btn" class="header-btn final-btn">最終結果</button>
                     <button id="toggle-mode-btn" class="header-btn settings-btn" title="表示モード切替"><i data-lucide="repeat"></i></button>
                     <button id="rules-btn" class="header-btn settings-btn"><i data-lucide="help-circle"></i></button>
@@ -116,6 +117,7 @@
                                 <span class="label">スコア：</span>
                                 <span id="rank-2-score" class="score">0</span>
                             </div>
+                            <p id="rank-2-comment" class="ai-comment ai-comment--compact">-</p>
                         </div>
                     </div>
 
@@ -134,6 +136,7 @@
                                 <span class="label">スコア：</span>
                                 <span id="rank-3-score" class="score">0</span>
                             </div>
+                            <p id="rank-3-comment" class="ai-comment ai-comment--compact">-</p>
                         </div>
                     </div>
                 </div>
@@ -159,6 +162,17 @@
             <div id="slideshow-empty" class="slideshow-empty hidden">
                 <span class="empty-icon">📸</span>
                 <p class="empty-text">まだ写真がありません</p>
+            </div>
+        </div>
+
+        <!-- Top 10 List View (shown from final mode) -->
+        <div id="top10-list-content" class="top10-list-content hidden">
+            <div class="top10-header">
+                <button id="top10-back-btn" class="top10-back-btn">← 戻る</button>
+                <h2 class="top10-title">ランキング TOP 10</h2>
+            </div>
+            <div id="top10-list" class="top10-list">
+                <!-- Dynamically generated -->
             </div>
         </div>
 

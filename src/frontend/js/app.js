@@ -31,6 +31,7 @@ import { escapeHtml } from "./utils.js";
 // State
 let currentTop3 = [];
 let isFinalMode = false;
+let allTimeRankingImages = []; // Cached images for top10 list view
 let unsubscribeSnapshot = null; // Firestore listener unsubscribe function
 let pendingUpdate = null; // For debouncing updates
 const UPDATE_DEBOUNCE_MS = 2000; // Debounce updates by 2 seconds
@@ -92,12 +93,14 @@ const rankCards = {
     image: document.getElementById("rank-2-image"),
     name: document.getElementById("rank-2-name"),
     score: document.getElementById("rank-2-score"),
+    comment: document.getElementById("rank-2-comment"),
   },
   3: {
     card: document.getElementById("rank-3"),
     image: document.getElementById("rank-3-image"),
     name: document.getElementById("rank-3-name"),
     score: document.getElementById("rank-3-score"),
+    comment: document.getElementById("rank-3-comment"),
   },
 };
 
@@ -205,6 +208,76 @@ function renderRankingList(images, startRank = 4) {
   });
 }
 
+// =========================
+// Top 10 List View Functions
+// =========================
+
+function getAiComment(imageData) {
+  return imageData.comment || imageData.ai_comment || imageData.gemini_comment || "すばらしい笑顔です！";
+}
+
+function showTop10ListView() {
+  const rankingContent = document.getElementById("ranking-content");
+  const top10Content = document.getElementById("top10-list-content");
+  if (rankingContent) rankingContent.classList.add("hidden");
+  if (top10Content) top10Content.classList.remove("hidden");
+
+  // Hide ranking list (4-10) section since top10 view replaces it
+  const rankingListSection = document.getElementById("ranking-list");
+  if (rankingListSection) rankingListSection.classList.add("hidden");
+
+  renderTop10List(allTimeRankingImages);
+}
+
+function hideTop10ListView() {
+  const rankingContent = document.getElementById("ranking-content");
+  const top10Content = document.getElementById("top10-list-content");
+  if (rankingContent) rankingContent.classList.remove("hidden");
+  if (top10Content) top10Content.classList.add("hidden");
+
+  // Only show ranking list (4-10) in final mode
+  const rankingListSection = document.getElementById("ranking-list");
+  if (rankingListSection && isFinalMode) {
+    rankingListSection.classList.remove("hidden");
+  }
+}
+
+function renderTop10List(images) {
+  const listContainer = document.getElementById("top10-list");
+  if (!listContainer) return;
+
+  listContainer.innerHTML = "";
+
+  images.forEach((imageData, index) => {
+    const rank = index + 1;
+    const imageUrl = getImageUrl(imageData);
+    const userName = imageData.user_name || imageData.user_id || "ゲスト";
+    const score = Math.round(imageData.total_score);
+    const comment = getAiComment(imageData);
+
+    const itemEl = document.createElement("div");
+    itemEl.className = `top10-item ${rank <= 3 ? "top10-item--top3" : ""}`;
+    itemEl.innerHTML = `
+      <div class="top10-rank ${rank <= 3 ? "top10-rank--top3" : ""}">${rank}</div>
+      <div class="top10-image-container">
+        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(userName)}" class="top10-image">
+      </div>
+      <div class="top10-details">
+        <div class="top10-name-score">
+          <span class="top10-name">${escapeHtml(userName)}</span>
+          <span class="top10-score">${score}</span>
+        </div>
+        <p class="top10-comment">${escapeHtml(comment)}</p>
+      </div>
+    `;
+    listContainer.appendChild(itemEl);
+
+    const imgEl = itemEl.querySelector(".top10-image");
+    imgEl.onerror = () => { imgEl.style.display = "none"; };
+    applyImageOrientation(imgEl);
+  });
+}
+
 /**
  * Detect image orientation and apply appropriate CSS class
  * Portrait images get 'portrait' class for object-fit: contain
@@ -259,7 +332,7 @@ function updateRankCard(rank, imageData, useDecimal = false) {
     ? imageData.total_score.toFixed(2)
     : Math.round(imageData.total_score);
 
-  // Update AI comment for rank 1 only
+  // Update AI comment
   if (card.comment) {
     const rawComment =
       imageData.comment ||
@@ -408,6 +481,9 @@ async function fetchAllTimeRankings() {
       img.user_name = getUserName(img);
     });
 
+    // Cache for top10 list view
+    allTimeRankingImages = images;
+
     // Update top 3 cards
     const top3 = images.slice(0, 3);
     for (let i = 1; i <= 3; i++) {
@@ -519,11 +595,19 @@ function backToRecent() {
     rankingListSection.classList.add("hidden");
   }
 
+  // Hide top10 list view if shown
+  const top10Content = document.getElementById("top10-list-content");
+  if (top10Content) top10Content.classList.add("hidden");
+  const rankingContent = document.getElementById("ranking-content");
+  if (rankingContent) rankingContent.classList.remove("hidden");
+
   // Show buttons again
   const finalBtn = document.getElementById("final-btn");
   const toggleModeBtn = document.getElementById("toggle-mode-btn");
+  const top10Btn = document.getElementById("top10-btn");
   if (finalBtn) finalBtn.classList.remove("hidden");
   if (toggleModeBtn) toggleModeBtn.classList.remove("hidden");
+  if (top10Btn) top10Btn.classList.add("hidden");
 
   // Restart real-time listener
   setupRealtimeListener();
@@ -567,6 +651,11 @@ async function startFinalPresentation() {
   // Brief pause before showing results, then fetch and show with confetti
   await new Promise((r) => setTimeout(r, 1000));
   await fetchAllTimeRankings();
+
+  // Show top10 button after data is ready
+  const top10Btn = document.getElementById("top10-btn");
+  if (top10Btn) top10Btn.classList.remove("hidden");
+
   fireConfetti();
 
 }
@@ -819,6 +908,16 @@ function setupFinalButton() {
   const revealBtn = document.getElementById("reveal-btn");
   if (revealBtn) {
     revealBtn.addEventListener("click", startFinalPresentation);
+  }
+
+  const top10Btn = document.getElementById("top10-btn");
+  if (top10Btn) {
+    top10Btn.addEventListener("click", showTop10ListView);
+  }
+
+  const top10BackBtn = document.getElementById("top10-back-btn");
+  if (top10BackBtn) {
+    top10BackBtn.addEventListener("click", hideTop10ListView);
   }
 }
 
@@ -1145,6 +1244,16 @@ function createPhotoElement(imageData, position, zIndex) {
   };
 
   photoItem.appendChild(img);
+
+  // AI comment overlay
+  const comment = getAiComment(imageData);
+  const overlay = document.createElement("div");
+  overlay.className = "photo-comment-overlay";
+  const commentEl = document.createElement("p");
+  commentEl.className = "photo-comment";
+  commentEl.textContent = comment;
+  overlay.appendChild(commentEl);
+  photoItem.appendChild(overlay);
 
   return photoItem;
 }
