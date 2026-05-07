@@ -1855,10 +1855,12 @@ async function softDeleteEventData() {
 async function downloadAllImages() {
   const eventId = getCurrentEventId();
   // Support both settings panel button and archived page button
-  const settingsBtn = document.getElementById("download-images-btn");
   const archivedBtn = document.getElementById("archived-download-btn");
-  const activeBtn = settingsBtn || archivedBtn;
-  const statusEl = settingsBtn?.querySelector(".action-text") || archivedBtn?.querySelector("span");
+  const settingsBtn = document.getElementById("download-images-btn");
+  // Prefer archived button when visible (archived mode)
+  const isArchived = archivedBtn && !archivedBtn.closest(".hidden");
+  const activeBtn = isArchived ? archivedBtn : settingsBtn;
+  const statusEl = isArchived ? archivedBtn?.querySelector("span") : settingsBtn?.querySelector(".action-text");
 
   if (activeBtn) {
     activeBtn.disabled = true;
