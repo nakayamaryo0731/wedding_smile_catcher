@@ -1854,15 +1854,19 @@ async function softDeleteEventData() {
  */
 async function downloadAllImages() {
   const eventId = getCurrentEventId();
-  const downloadBtn = document.getElementById("download-images-btn");
-  const actionText = downloadBtn?.querySelector(".action-text");
-  const actionDesc = downloadBtn?.querySelector(".action-desc");
+  // Support both settings panel button and archived page button
+  const settingsBtn = document.getElementById("download-images-btn");
+  const archivedBtn = document.getElementById("archived-download-btn");
+  const activeBtn = settingsBtn || archivedBtn;
+  const statusEl = settingsBtn?.querySelector(".action-text") || archivedBtn?.querySelector("span");
 
-  if (downloadBtn) {
-    downloadBtn.disabled = true;
-    if (actionText) actionText.textContent = "準備中...";
-    if (actionDesc) actionDesc.textContent = "";
+  if (activeBtn) {
+    activeBtn.disabled = true;
   }
+  const updateStatus = (text) => {
+    if (statusEl) statusEl.textContent = text;
+  };
+  updateStatus("準備中...");
 
   try {
     // Fetch all images for this event
@@ -1903,16 +1907,10 @@ async function downloadAllImages() {
     let downloadedCount = 0;
 
     // Download images in batches
+    const totalCount = images.length;
     const batchSize = 5;
-    for (let i = 0; i < images.length; i += batchSize) {
+    for (let i = 0; i < totalCount; i += batchSize) {
       const batch = images.slice(i, i + batchSize);
-
-      if (actionText) {
-        actionText.textContent = `ダウンロード中 ${Math.min(
-          i + batchSize,
-          images.length
-        )}/${images.length}...`;
-      }
 
       await Promise.all(
         batch.map(async (img) => {
@@ -1929,6 +1927,8 @@ async function downloadAllImages() {
 
             imagesFolder.file(filename, blob);
             downloadedCount++;
+            const percent = Math.round((downloadedCount / totalCount) * 100);
+            updateStatus(`ダウンロード中... ${downloadedCount}/${totalCount}枚 (${percent}%)`);
           } catch (err) {
             console.warn(`Failed to download image ${img.id}:`, err);
           }
@@ -1942,9 +1942,7 @@ async function downloadAllImages() {
     }
 
     // Generate ZIP
-    if (actionText) {
-      actionText.textContent = "ZIP作成中...";
-    }
+    updateStatus("ZIP作成中...");
 
     const content = await zip.generateAsync({ type: "blob" });
 
@@ -1970,10 +1968,10 @@ async function downloadAllImages() {
     console.error("Download failed:", error);
     alert("ダウンロードに失敗しました: " + error.message);
   } finally {
-    if (downloadBtn) {
-      downloadBtn.disabled = false;
-      if (actionText) actionText.textContent = "投稿画像を一括ダウンロード";
+    if (activeBtn) {
+      activeBtn.disabled = false;
     }
+    updateStatus("投稿画像を一括ダウンロード");
   }
 }
 
