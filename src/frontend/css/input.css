@@ -714,6 +714,53 @@
     display: none;
 }
 
+/* Archived Download Section */
+.ranking-page .archived-download {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    flex: 1;
+}
+
+.ranking-page .archived-download.hidden {
+    display: none;
+}
+
+.ranking-page .archived-download-note {
+    font-size: 1rem;
+    color: var(--color-text-on-dark);
+    opacity: 0.8;
+}
+
+.ranking-page .archived-download-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1.2rem 2.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: #fff;
+    background: var(--primary-color);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.ranking-page .archived-download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ranking-page .archived-download-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
 /* Ranking Container */
 .ranking-page .ranking-container {
     display: grid;

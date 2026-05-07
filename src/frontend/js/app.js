@@ -2052,15 +2052,18 @@ async function init() {
       }
       if (status === "archived") {
         document.getElementById("event-ended-banner").classList.remove("hidden");
-        // Hide everything except header and banner
+        // Hide everything except header, banner, and download section
         document.getElementById("toggle-mode-btn")?.classList.add("hidden");
         document.getElementById("final-btn")?.classList.add("hidden");
+        document.getElementById("settings-btn")?.classList.add("hidden");
+        document.getElementById("rules-btn")?.classList.add("hidden");
         document.getElementById("ranking-content")?.classList.add("hidden");
         document.getElementById("fixed-qr-container")?.classList.add("hidden");
         loadingEl.classList.add("hidden");
-        // Still setup settings panel for archived events (for image download)
-        setupSettingsPanel();
-        initThemeSelector();
+        // Show archived download section
+        const archivedDownload = document.getElementById("archived-download");
+        if (archivedDownload) archivedDownload.classList.remove("hidden");
+        document.getElementById("archived-download-btn")?.addEventListener("click", downloadAllImages);
         if (window.lucide) {
           window.lucide.createIcons();
         }
