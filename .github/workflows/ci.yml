@@ -91,6 +91,9 @@ jobs:
         if: github.actor != 'dependabot[bot]'
         run: terraform init
 
+      # NOTE: data_retention_days is pinned here to keep PR plans aligned
+      # with deploy.yml. See incident: kceDPRaWTSYnY8m5W3UZ images deleted
+      # under default=3.
       - name: Terraform Plan
         if: github.actor != 'dependabot[bot]'
         id: plan
@@ -100,7 +103,8 @@ jobs:
             -var="current_event_id=${{ secrets.CURRENT_EVENT_ID }}" \
             -var="admin_line_user_id=${{ secrets.ADMIN_LINE_USER_ID }}" \
             -var="admin_email=${{ secrets.ADMIN_EMAIL }}" \
-            -var="smtp_email=${{ secrets.SMTP_EMAIL }}"
+            -var="smtp_email=${{ secrets.SMTP_EMAIL }}" \
+            -var="data_retention_days=30"
           echo "exitcode=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 
