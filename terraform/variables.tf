@@ -53,7 +53,7 @@ variable "alert_email" {
 variable "data_retention_days" {
   description = "Number of days to retain Cloud Storage images before auto-deletion (0 = disabled)"
   type        = number
-  default     = 3 # 3 days for testing, change to 30 for production
+  default     = 30
 }
 
 # Function Configuration
