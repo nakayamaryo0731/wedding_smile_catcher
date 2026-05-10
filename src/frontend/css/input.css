@@ -769,6 +769,7 @@
 .ranking-page .ranking-container {
     display: grid;
     grid-template-columns: 5fr 4fr;
+    grid-template-rows: minmax(0, 1fr);
     gap: 1rem;
     animation: fadeIn 1.5s ease-out;
     align-items: stretch;
@@ -782,6 +783,8 @@
     display: flex;
     justify-content: center;
     align-items: stretch;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* Rank 2 & 3 Container */
