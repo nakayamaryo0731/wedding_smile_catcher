@@ -8,8 +8,14 @@ line-bot-sdk==3.23.0
 google-cloud-firestore==2.27.0
 google-cloud-storage==3.10.1
 
-# Image processing (for rich menu setup)
+# Image processing (for rich menu setup, image restore)
 Pillow>=12.2.0
+
+# Image restore (perceptual hash matching for restore_event_images.py)
+imagehash==4.3.2
+scipy>=1.13.0
+numpy>=2.0.0
+requests>=2.32.0
 
 # Environment variables
 python-dotenv>=1.2.2
