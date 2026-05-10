@@ -50,6 +50,8 @@ variable "alert_email" {
 }
 
 # Data Retention Configuration
+# NOTE: CI pins this to 30 via -var= in .github/workflows/{ci,deploy}.yml.
+# Changing the default here without also updating CI will not affect deployed state.
 variable "data_retention_days" {
   description = "Number of days to retain Cloud Storage images before auto-deletion (0 = disabled)"
   type        = number
