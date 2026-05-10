@@ -298,6 +298,65 @@ python scripts/export_event_data.py wedding_20250315_tanaka
 
 ---
 
+### `restore_event_images.py`
+
+Cloud Storageから消失したイベント画像を、過去にダウンロードしたZIPバックアップから復元
+
+**前提条件**:
+
+- 過去に一括ダウンロード機能で取得したZIP（ファイル名形式 `images/NNN_userName_score.jpg`）が手元にあること
+- Firestoreの該当event imageドキュメントが残っており、`storage_path` と `average_hash` が記録されていること
+- `gcloud auth application-default login` 済み
+
+**マッチング戦略**:
+
+ZIPファイル名はsanitize済user_nameと丸めscoreを含むが、一括DLは並列fetchで順序が非決定的なため位置照合不可。代わりに各ZIP画像の `average_hash` を計算し、Firestoreに保存済の `average_hash` と二部マッチング（Hungarian algorithm）。コスト関数: `hamming*100 + name_diff*10 + min(|score差|, 50)`。全ペアが `hamming=0 ∧ name一致 ∧ |score差|<2` を満たすことをassertion、満たさなければabort。
+
+**引数**:
+
+- `--event-id` (必須): 対象イベントID
+- `--zip` (必須): バックアップZIPファイルのパス
+- `--project` (必須): GCPプロジェクトID
+- `--bucket` (必須): Cloud Storageバケット名
+- `--dry-run` (オプション): マッチング結果のみ出力しuploadしない
+
+**処理**:
+
+1. Firestoreから対象eventの非soft-delete imageドキュメント取得
+2. ZIPの各.jpgを読み込み `average_hash` 計算
+3. Hungarianマッチング → 全ペアのclean性をassert
+4. マッチング表をstdout出力
+5. `--dry-run` ならここで終了
+6. 各ZIP fileのbytesを対応 `storage_path` にupload（fail-fast）
+7. 全件成功時、Firestoreに保存済の `storage_url` をHEADして HTTP 200 件数を集計
+
+**例**:
+
+```bash
+# まず dry-run でマッチング確認
+python scripts/restore_event_images.py \
+  --event-id wedding_20250315_tanaka \
+  --zip /path/to/backup.zip \
+  --project wedding-smile-catcher \
+  --bucket wedding-smile-images-wedding-smile-catcher \
+  --dry-run
+
+# 内容OKなら本実行
+python scripts/restore_event_images.py \
+  --event-id wedding_20250315_tanaka \
+  --zip /path/to/backup.zip \
+  --project wedding-smile-catcher \
+  --bucket wedding-smile-images-wedding-smile-catcher
+```
+
+**トラブルシューティング**:
+
+- `count mismatch (zip=X vs firestore=Y)`: ZIPの画像数とFirestoreの非soft-delete docs数が異なる。手動確認が必要
+- `ASSERTION FAILED: matching has imperfect pairs`: ZIP画像とFirestore docのhash/name/scoreが一致しない。ZIPが該当event由来でない、もしくはFirestoreの状態が変わった可能性
+- `FATAL upload failure at [N/M]`: upload途中で失敗。N-1件まで成功、原因解消後に再実行（同一storage_pathへの再uploadは冪等）
+
+---
+
 ### `setup_rich_menu.py`
 
 LINE Botのリッチメニューを設定（プライバシーポリシーリンク）
