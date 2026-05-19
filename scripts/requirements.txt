@@ -13,7 +13,7 @@ Pillow>=12.2.0
 
 # Image restore (perceptual hash matching for restore_event_images.py)
 imagehash==4.3.2
-scipy>=1.13.0
+scipy>=1.17.1
 numpy>=2.0.0
 requests>=2.34.0
 
