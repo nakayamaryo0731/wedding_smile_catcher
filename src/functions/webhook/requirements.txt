@@ -12,7 +12,7 @@ google-cloud-secret-manager==2.28.0
 
 # HTTP and async
 aiohttp==3.13.5
-requests>=2.34.0
+requests>=2.34.2
 
 # Utilities
 python-dotenv==1.2.2
