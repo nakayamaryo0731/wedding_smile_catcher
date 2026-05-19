@@ -11,7 +11,7 @@
     "@firebase/rules-unit-testing": "^5.0.0",
     "firebase": "^12.12.1",
     "firebase-tools": "^15.16.0",
-    "jest": "^30.3.0"
+    "jest": "^30.4.2"
   },
   "jest": {
     "testEnvironment": "node",
