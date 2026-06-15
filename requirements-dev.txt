@@ -1,7 +1,7 @@
 # Development and testing dependencies for Wedding Smile Catcher
 
 # Testing framework
-pytest>=9.0.3
+pytest>=9.1.0
 pytest-cov>=7.1.0           # Code coverage
 pytest-mock>=3.15.1         # Mocking utilities
 pytest-asyncio>=1.4.0      # Async testing support
