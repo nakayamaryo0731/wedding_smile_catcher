@@ -9,7 +9,7 @@ google-cloud-firestore==2.27.0
 google-cloud-storage==3.12.0
 google-cloud-logging==3.16.0
 google-cloud-vision==3.14.0
-google-cloud-aiplatform==1.156.0
+google-cloud-aiplatform==1.157.0
 
 # Image processing for Average Hash
 Pillow==12.2.0
