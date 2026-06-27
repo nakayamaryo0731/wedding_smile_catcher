@@ -1118,7 +1118,9 @@
     100% { transform: rotate(360deg); }
 }
 
-/* Ranking List (4-10位) */
+/* Ranking List (4-10位) - rendered as a sibling of .ranking-content so that
+   top 1〜3 keep their full viewport size; this section sits below the fold
+   in final mode and is reached by scrolling. */
 .ranking-page .ranking-list {
     max-width: 1000px;
     margin: 2rem auto 0;
@@ -1212,6 +1214,18 @@
     font-size: 2rem;
     font-weight: 700;
     color: var(--color-score);
+}
+
+/* Final mode (最終結果): .ranking-list sits outside .container in the DOM,
+   so .container keeps its 100vh layout (top 1〜3 render at the exact same
+   size as recent mode) and 4〜10 appears below the first viewport, reached
+   by scrolling. Only adjustment needed: let the body scroll. */
+.ranking-page.final-mode {
+    overflow-y: auto;
+}
+
+.ranking-page.final-mode .ranking-list {
+    padding-bottom: 2rem;
 }
 
 /* Top 10 List View */
