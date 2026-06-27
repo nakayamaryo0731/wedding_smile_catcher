@@ -579,6 +579,7 @@ function backToRecent() {
 
   // Reset final mode flag
   isFinalMode = false;
+  document.body.classList.remove("final-mode");
 
   // Update label back to recent
   const labelEl = document.getElementById("ranking-label-text");
@@ -641,6 +642,7 @@ async function startFinalPresentation() {
 
   // Set final mode flag
   isFinalMode = true;
+  document.body.classList.add("final-mode");
 
   // Hide all mode buttons
   const finalBtn = document.getElementById("final-btn");

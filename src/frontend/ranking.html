@@ -150,14 +150,6 @@
                     </div>
                 </div>
             </main>
-
-            <!-- Ranking List (4-10位) - shown only in final mode -->
-            <section id="ranking-list" class="ranking-list hidden">
-                <h2 class="ranking-list-title">4位〜10位</h2>
-                <div id="ranking-list-items" class="ranking-list-items">
-                    <!-- Items will be dynamically inserted here -->
-                </div>
-            </section>
         </div>
 
         <!-- Slideshow Content (Photo Wall) -->
@@ -417,6 +409,16 @@
             </div>
         </div>
     </div>
+
+    <!-- Ranking List (4-10位) - shown only in final mode; placed outside
+         .container so it sits below the 100vh viewport and is reached by
+         scrolling, without competing with top 1〜3 for vertical space. -->
+    <section id="ranking-list" class="ranking-list hidden">
+        <h2 class="ranking-list-title">4位〜10位</h2>
+        <div id="ranking-list-items" class="ranking-list-items">
+            <!-- Items will be dynamically inserted here -->
+        </div>
+    </section>
 
     <!-- Canvas Confetti Library -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
