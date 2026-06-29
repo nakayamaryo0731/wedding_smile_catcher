@@ -1,7 +1,7 @@
 # Production dependencies for Wedding Smile Catcher
 
 # Google Cloud Platform (use latest compatible versions)
-google-cloud-vision>=3.14.0
+google-cloud-vision>=3.15.0
 google-cloud-firestore>=2.14.0
 google-cloud-storage>=2.14.0
 google-cloud-logging>=3.16.0
