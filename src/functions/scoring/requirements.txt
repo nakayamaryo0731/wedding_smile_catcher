@@ -2,7 +2,7 @@
 functions-framework==3.*
 
 # LINE Bot SDK
-line-bot-sdk==3.23.1
+line-bot-sdk==3.24.0
 
 # Google Cloud Libraries
 google-cloud-firestore==2.28.0
