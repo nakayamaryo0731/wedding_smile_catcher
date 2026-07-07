@@ -7,7 +7,7 @@ pytest-mock>=3.15.1         # Mocking utilities
 pytest-asyncio>=1.4.0      # Async testing support
 
 # Mocking and testing utilities
-responses>=0.26.1           # Mock HTTP requests
+responses>=0.26.2           # Mock HTTP requests
 
 # Code quality
 ruff>=0.15.20                 # Linter and formatter (replaces black + flake8)
