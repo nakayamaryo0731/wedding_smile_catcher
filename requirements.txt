@@ -11,7 +11,7 @@ google-cloud-aiplatform>=1.38.0
 vertexai>=1.71.1
 
 # Image processing
-Pillow>=10.3.0
+Pillow>=12.3.0
 imagehash>=4.3.1
 
 # LINE Bot SDK
