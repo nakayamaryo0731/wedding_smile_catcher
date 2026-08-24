@@ -18,4 +18,4 @@ numpy>=2.5.2
 requests>=2.34.2
 
 # Environment variables
-python-dotenv>=1.2.2
+python-dotenv>=1.2.3
