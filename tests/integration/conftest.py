@@ -10,8 +10,8 @@ from unittest.mock import Mock, patch
 import pytest
 from google.cloud import firestore
 
-# Configure Firestore emulator
-os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
+# Configure Firestore emulator (allow override for locally running emulators)
+os.environ.setdefault("FIRESTORE_EMULATOR_HOST", "localhost:8080")
 os.environ["GCP_PROJECT_ID"] = "wedding-smile-catcher-test"
 os.environ["STORAGE_BUCKET"] = "wedding-smile-images-test"
 os.environ["GCP_LOCATION"] = "us-central1"
@@ -81,7 +81,8 @@ def firestore_client():
     import socket
 
     # Check if the emulator is actually running
-    host, port = "localhost", 8080
+    host, port = os.environ["FIRESTORE_EMULATOR_HOST"].rsplit(":", 1)
+    port = int(port)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.settimeout(1)
