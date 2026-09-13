@@ -34,7 +34,7 @@ service cloud.firestore {
     // Public get (single doc) for ranking UI status check
     // Admins can list all; regular users can list their own
     // Write requires ownership or admin
-    // Theme field can be updated by anyone (for ranking page theme selection)
+    // Theme and event_name can be updated by anyone (for ranking page settings)
     match /events/{eventId} {
       allow get: if true;
       allow list: if request.auth != null;
@@ -42,7 +42,11 @@ service cloud.firestore {
         && request.resource.data.account_id == request.auth.uid;
       allow update: if (request.auth != null
         && (isAdmin() || resource.data.account_id == request.auth.uid))
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['theme']);
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['theme', 'event_name'])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['event_name'])
+            || (request.resource.data.event_name is string
+              && request.resource.data.event_name.size() >= 1
+              && request.resource.data.event_name.size() <= 100)));
       allow delete: if request.auth != null
         && (isAdmin() || resource.data.account_id == request.auth.uid);
     }

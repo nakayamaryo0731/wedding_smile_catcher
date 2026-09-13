@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { db } from "./firebase-init.js";
-import { escapeHtml } from "./utils.js";
+import { escapeHtml, showToast } from "./utils.js";
 
 // =========================
 // LP Redirect Check
@@ -1558,7 +1558,73 @@ function showSettingsPanel() {
   if (nameEl) nameEl.textContent = currentEventData?.event_name || "-";
   if (dateEl) dateEl.textContent = currentEventData?.event_date || "-";
 
+  // Reset event name editor to display state
+  cancelEventNameEdit();
+
   panel.classList.remove("hidden");
+}
+
+/**
+ * Switch event name row to edit mode
+ */
+function startEventNameEdit() {
+  const input = document.getElementById("event-name-input");
+  const form = document.getElementById("event-name-edit-form");
+  const editBtn = document.getElementById("edit-event-name-btn");
+  if (!input || !form || !editBtn) return;
+
+  input.value = currentEventData?.event_name || "";
+  form.classList.remove("hidden");
+  editBtn.classList.add("hidden");
+  input.focus();
+  input.select();
+}
+
+/**
+ * Switch event name row back to display mode
+ */
+function cancelEventNameEdit() {
+  document.getElementById("event-name-edit-form")?.classList.add("hidden");
+  document.getElementById("edit-event-name-btn")?.classList.remove("hidden");
+}
+
+/**
+ * Save edited event name to Firestore
+ */
+async function saveEventName() {
+  const input = document.getElementById("event-name-input");
+  const saveBtn = document.getElementById("save-event-name-btn");
+  if (!input || !currentEventData?.id) return;
+
+  const newName = input.value.trim();
+  if (!newName || newName.length > 100) {
+    showToast("イベント名は1〜100文字で入力してください", "warning");
+    return;
+  }
+  if (newName === currentEventData.event_name) {
+    cancelEventNameEdit();
+    return;
+  }
+
+  if (saveBtn) saveBtn.disabled = true;
+  try {
+    const eventRef = doc(db, "events", currentEventData.id);
+    await updateDoc(eventRef, { event_name: newName });
+    currentEventData.event_name = newName;
+
+    const nameEl = document.getElementById("settings-event-name");
+    if (nameEl) nameEl.textContent = newName;
+    // Join URL embeds the event name, so refresh the QR code
+    generateMainQRCode();
+
+    cancelEventNameEdit();
+    showToast("イベント名を変更しました", "success");
+  } catch (error) {
+    console.error("Failed to update event name:", error);
+    showToast("イベント名の変更に失敗しました", "error");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
 }
 
 /**
@@ -2103,6 +2169,19 @@ function setupSettingsPanel() {
   document.getElementById("close-settings-panel")?.addEventListener("click", hideSettingsPanel);
   document.getElementById("settings-panel")?.addEventListener("click", (e) => {
     if (e.target.id === "settings-panel") hideSettingsPanel();
+  });
+
+  // Event name inline editor
+  document.getElementById("edit-event-name-btn")?.addEventListener("click", startEventNameEdit);
+  document.getElementById("cancel-event-name-btn")?.addEventListener("click", cancelEventNameEdit);
+  document.getElementById("save-event-name-btn")?.addEventListener("click", saveEventName);
+  document.getElementById("event-name-input")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveEventName();
+    } else if (e.key === "Escape") {
+      cancelEventNameEdit();
+    }
   });
 
   // Download QR code

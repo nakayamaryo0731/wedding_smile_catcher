@@ -276,6 +276,15 @@
                         <div class="event-info-item">
                             <span class="event-info-label">イベント名</span>
                             <span class="event-info-value" id="settings-event-name">-</span>
+                            <button class="event-name-edit-btn" id="edit-event-name-btn" title="イベント名を変更">
+                                <i data-lucide="pencil"></i>
+                            </button>
+                        </div>
+                        <div class="event-name-edit-form hidden" id="event-name-edit-form">
+                            <input type="text" class="event-name-input" id="event-name-input" maxlength="100"
+                                placeholder="イベント名を入力">
+                            <button class="event-name-form-btn save" id="save-event-name-btn">保存</button>
+                            <button class="event-name-form-btn cancel" id="cancel-event-name-btn">キャンセル</button>
                         </div>
                         <div class="event-info-item">
                             <span class="event-info-label">開催日</span>
@@ -419,6 +428,9 @@
             <!-- Items will be dynamically inserted here -->
         </div>
     </section>
+
+    <!-- Toast notifications -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <!-- Canvas Confetti Library -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>

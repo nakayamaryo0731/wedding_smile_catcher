@@ -29,12 +29,17 @@ beforeAll(async () => {
   const rulesPath = resolve(__dirname, "../../firestore.rules");
   const rules = readFileSync(rulesPath, "utf8");
 
+  // emulators:exec sets FIRESTORE_EMULATOR_HOST; fall back to the default port
+  const [host, port] = (
+    process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8080"
+  ).split(":");
+
   testEnv = await initializeTestEnvironment({
     projectId: "wedding-smile-catcher-test",
     firestore: {
       rules,
-      host: "127.0.0.1",
-      port: 8080,
+      host,
+      port: Number(port),
     },
   });
 });
@@ -217,6 +222,71 @@ describe("Events Collection", () => {
   test("non-owner cannot delete event", async () => {
     const db = testEnv.authenticatedContext(OTHER_UID).firestore();
     await assertFails(deleteDoc(doc(db, "events", EVENT_ID)));
+  });
+
+  test("unauthenticated user can update theme only (ranking page)", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        theme: "ocean-blue",
+      })
+    );
+  });
+
+  test("unauthenticated user can update event_name (ranking page)", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        event_name: "Renamed Wedding",
+      })
+    );
+  });
+
+  test("unauthenticated user can update theme and event_name together", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        theme: "ocean-blue",
+        event_name: "Renamed Wedding",
+      })
+    );
+  });
+
+  test("unauthenticated user cannot update event_name with other fields", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        event_name: "Renamed Wedding",
+        status: "archived",
+      })
+    );
+  });
+
+  test("unauthenticated user cannot set empty event_name", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        event_name: "",
+      })
+    );
+  });
+
+  test("unauthenticated user cannot set event_name over 100 chars", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        event_name: "a".repeat(101),
+      })
+    );
+  });
+
+  test("unauthenticated user cannot set non-string event_name", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        event_name: 12345,
+      })
+    );
   });
 });
 
