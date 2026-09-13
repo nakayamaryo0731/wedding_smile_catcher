@@ -2030,6 +2030,87 @@
     color: #292524;
 }
 
+.ranking-page .event-name-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: #78716c;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.ranking-page .event-name-edit-btn:hover {
+    background: #e7e5e4;
+    color: #292524;
+}
+
+.ranking-page .event-name-edit-btn svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.ranking-page .event-name-edit-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.ranking-page .event-name-edit-form.hidden {
+    display: none;
+}
+
+.ranking-page .event-name-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #d6d3d1;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    color: #292524;
+}
+
+.ranking-page .event-name-input:focus {
+    outline: none;
+    border-color: #a8a29e;
+}
+
+.ranking-page .event-name-form-btn {
+    padding: 0.4rem 0.75rem;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+}
+
+.ranking-page .event-name-form-btn:hover {
+    opacity: 0.85;
+}
+
+.ranking-page .event-name-form-btn.save {
+    background: #292524;
+    color: #fff;
+}
+
+.ranking-page .event-name-form-btn.save:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.ranking-page .event-name-form-btn.cancel {
+    background: #e7e5e4;
+    color: #57534e;
+}
+
 /* Theme Selector */
 .ranking-page .settings-section {
     margin-bottom: 1.5rem;
