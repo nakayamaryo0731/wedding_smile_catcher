@@ -24,3 +24,6 @@ npm-debug.log*
 # Temporary files
 *.tmp
 *~
+
+# LP sample source images (AI-generated JPEG originals; only optimized webp in use is committed)
+images/lp/samples/
