@@ -3,7 +3,7 @@
 # Google Cloud Platform (use latest compatible versions)
 google-cloud-vision>=3.15.0
 google-cloud-firestore>=2.30.0
-google-cloud-storage>=2.14.0
+google-cloud-storage>=3.14.1
 google-cloud-logging>=3.16.3
 # Provides the `vertexai` module; the standalone `vertexai` package pins
 # an old aiplatform whose protobuf<6 conflicts with google-cloud-firestore>=2.30.0
