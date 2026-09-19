@@ -7,6 +7,9 @@
       "hosting": {
         "production": [
           "smile-photo-contest"
+        ],
+        "legacy": [
+          "wedding-smile-catcher"
         ]
       }
     }
