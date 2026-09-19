@@ -62,6 +62,11 @@
       ],
       "redirects": [
         {
+          "source": "/",
+          "destination": "https://smile-photo-contest.web.app/",
+          "type": 301
+        },
+        {
           "source": "/:path*",
           "destination": "https://smile-photo-contest.web.app/:path*",
           "type": 301
