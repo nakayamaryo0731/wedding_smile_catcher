@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'src/frontend/**'
+      - 'src/hosting-legacy/**'
       - 'firestore.rules'
       - 'firestore.indexes.json'
       - 'firebase.json'
@@ -52,4 +53,4 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         working-directory: .
-        run: firebase deploy --only hosting:production --project wedding-smile-catcher --non-interactive
+        run: firebase deploy --only hosting --project wedding-smile-catcher --non-interactive
