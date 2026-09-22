@@ -18,7 +18,7 @@ graph TB
 
     subgraph ScoringFunc[Cloud Functions - Scoring Handler]
         Vision[Vision API<br/>笑顔検出]
-        VertexAI[Vertex AI<br/>gemini-2.5-flash]
+        VertexAI[Vertex AI<br/>gemini-3.5-flash]
         AvgHash[Average Hash<br/>類似画像検出]
     end
 
@@ -118,7 +118,7 @@ graph TB
 
 **主な機能**:
 - 笑顔検出（Vision API）
-- 画像評価（Vertex AI gemini-2.5-flash）
+- 画像評価（Vertex AI gemini-3.5-flash）
 - 類似画像判定（Average Hash、同一ユーザー内のみ）
 - 顔サイズ係数による調整
 - スコア計算ロジック
@@ -140,7 +140,7 @@ graph TB
 
 **役割**: 画像のテーマ関連性評価
 
-**使用モデル**: `gemini-2.5-flash`
+**使用モデル**: `gemini-3.5-flash`
 
 **処理内容**:
 - 画像が結婚式に関連しているかを判定
