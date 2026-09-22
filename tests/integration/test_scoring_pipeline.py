@@ -36,7 +36,7 @@ class TestScoringPipeline:
         firestore_client,
         test_image_bytes,
         mock_vision_client_integration,
-        mock_vertex_ai_integration,
+        mock_genai_client_integration,
     ):
         """
         Test the complete scoring flow from image upload to Firestore update.
@@ -90,8 +90,8 @@ class TestScoringPipeline:
             assert smile_result["face_count"] == 2
             assert smile_result["smiling_faces"] == 2
 
-        # Calculate AI score (patch gemini_model directly, no PILImage mock needed)
-        with patch("scoring.main.gemini_model", mock_vertex_ai_integration):
+        # Calculate AI score (patch genai_client directly, no PILImage mock needed)
+        with patch("scoring.main.genai_client", mock_genai_client_integration):
             ai_result = evaluate_theme(test_image_bytes)
             assert ai_result["score"] == 85
             assert "素晴らしい笑顔です" in ai_result["comment"]

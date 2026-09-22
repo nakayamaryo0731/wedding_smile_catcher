@@ -65,6 +65,12 @@ variable "current_event_id" {
   default     = ""
 }
 
+variable "gemini_model_name" {
+  description = "Gemini model used by the scoring function for theme evaluation"
+  type        = string
+  default     = "gemini-2.5-flash"
+}
+
 # Application Notify Configuration
 variable "admin_line_user_id" {
   description = "LINE user ID for admin notifications"

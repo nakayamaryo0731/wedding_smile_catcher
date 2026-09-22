@@ -130,6 +130,7 @@ module "functions" {
   # Shared function settings
   current_event_id    = var.current_event_id
   data_retention_days = var.data_retention_days
+  gemini_model_name   = var.gemini_model_name
 
   # Application notify settings
   admin_line_user_id = var.admin_line_user_id
