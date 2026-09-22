@@ -51,10 +51,10 @@ def pytest_configure(config):
     mock_vision.return_value = Mock()
     _patches.append(vision_patch)
 
-    # Mock vertexai.init
-    vertexai_patch = patch("vertexai.init")
-    vertexai_patch.start()
-    _patches.append(vertexai_patch)
+    # Mock Gen AI client constructor
+    genai_patch = patch("google.genai.Client")
+    genai_patch.start()
+    _patches.append(genai_patch)
 
 
 def pytest_unconfigure(config):

@@ -56,10 +56,10 @@ def pytest_configure(config):
     mock_vision.return_value = Mock()
     _patches.append(vision_patch)
 
-    # Mock vertexai.init
-    vertexai_patch = patch("vertexai.init")
-    vertexai_patch.start()
-    _patches.append(vertexai_patch)
+    # Mock Gen AI client constructor
+    genai_patch = patch("google.genai.Client")
+    genai_patch.start()
+    _patches.append(genai_patch)
 
 
 def pytest_unconfigure(config):
@@ -185,15 +185,14 @@ def mock_vision_client_integration():
 
 
 @pytest.fixture
-def mock_vertex_ai_integration():
+def mock_genai_client_integration():
     """
-    Mock Vertex AI for integration tests.
-    Returns a mock instance that can be used to patch gemini_model directly.
+    Mock Gen AI client for integration tests.
+    Returns a mock instance that can be used to patch genai_client directly.
     """
-    # Create mock instance with generate_content method
     mock_instance = Mock()
     mock_response = Mock()
     mock_response.text = '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
-    mock_instance.generate_content = Mock(return_value=mock_response)
+    mock_instance.models.generate_content = Mock(return_value=mock_response)
 
     yield mock_instance

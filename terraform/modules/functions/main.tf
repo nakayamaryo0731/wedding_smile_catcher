@@ -132,9 +132,10 @@ resource "google_cloudfunctions2_function" "scoring" {
     service_account_email = var.scoring_service_account_email
 
     environment_variables = {
-      GCP_PROJECT_ID   = var.project_id
-      STORAGE_BUCKET   = var.storage_bucket_name
-      CURRENT_EVENT_ID = var.current_event_id
+      GCP_PROJECT_ID    = var.project_id
+      STORAGE_BUCKET    = var.storage_bucket_name
+      CURRENT_EVENT_ID  = var.current_event_id
+      GEMINI_MODEL_NAME = var.gemini_model_name
     }
 
     secret_environment_variables {

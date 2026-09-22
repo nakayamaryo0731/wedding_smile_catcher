@@ -24,10 +24,12 @@ import functions_framework
 import google.auth
 import google.auth.transport.requests
 import imagehash
-import vertexai
 from flask import Request, jsonify
+from google import genai
 from google.cloud import firestore, storage, vision
 from google.cloud import logging as cloud_logging
+from google.genai.errors import APIError
+from google.genai.types import GenerateContentConfig, HttpOptions, HttpRetryOptions, Part
 from linebot.v3.messaging import (
     ApiClient,
     Configuration,
@@ -37,7 +39,6 @@ from linebot.v3.messaging import (
 )
 from linebot.v3.messaging.exceptions import ApiException
 from PIL import Image as PILImage
-from vertexai.generative_models import GenerativeModel, Part
 
 # Initialize Cloud Logging
 logging_client = cloud_logging.Client()
@@ -57,6 +58,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "wedding-smile-catcher")
 GCP_REGION = os.environ.get("GCP_REGION", "asia-northeast1")
 STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "wedding-smile-images")
+GEMINI_MODEL_NAME = os.environ.get("GEMINI_MODEL_NAME", "gemini-2.5-flash")
 
 # Validate required environment variables at startup
 _REQUIRED_ENV_VARS = ["LINE_CHANNEL_ACCESS_TOKEN"]
@@ -69,11 +71,14 @@ configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
 api_client = ApiClient(configuration)
 messaging_api = MessagingApi(api_client)
 
-# Initialize Vertex AI
-vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
-
-# Initialize Gemini model once at module level to avoid re-initialization overhead
-gemini_model = GenerativeModel("gemini-2.5-flash")
+# Initialize Gen AI client once at module level to avoid re-initialization overhead.
+# SDK-level retries are disabled; evaluate_theme implements its own backoff.
+genai_client = genai.Client(
+    vertexai=True,
+    project=GCP_PROJECT_ID,
+    location=GCP_REGION,
+    http_options=HttpOptions(retry_options=HttpRetryOptions(attempts=1)),
+)
 
 # Signed URL configuration (7 days - sufficient for wedding event + post-event viewing)
 SIGNED_URL_EXPIRATION_HOURS = 168
@@ -645,6 +650,16 @@ Example outputs (showing variety):
 {"score": 0, "comment": "美味しそう！でも笑顔写真コンテストなので、お料理と一緒にニッコリお願いします"}
 """
 
+    # Constrain output to valid JSON via controlled generation (no markdown fences)
+    response_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "score": {"type": "INTEGER"},
+            "comment": {"type": "STRING"},
+        },
+        "required": ["score", "comment"],
+    }
+
     # Retry configuration - generous settings for handling burst traffic
     # With 90 concurrent users, rate limits may trigger temporarily
     # Total max wait: 2 + 4 + 8 + 16 + 30 = 60 seconds (well within 300s timeout)
@@ -654,26 +669,18 @@ Example outputs (showing variety):
 
     for attempt in range(max_retries):
         try:
-            # Create image part from bytes
-            image_part = Part.from_data(image_bytes, mime_type="image/jpeg")
-
-            # Generate content using module-level model instance
-            response = gemini_model.generate_content([image_part, prompt])
+            response = genai_client.models.generate_content(
+                model=GEMINI_MODEL_NAME,
+                contents=[Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), prompt],
+                config=GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=response_schema,
+                ),
+            )
 
             logger.info(f"Gemini response: {response.text}")
 
-            # Parse JSON response
-            # Remove markdown code blocks if present
-            response_text = response.text.strip()
-            if response_text.startswith("```json"):
-                response_text = response_text[7:]  # Remove ```json
-            if response_text.startswith("```"):
-                response_text = response_text[3:]  # Remove ```
-            if response_text.endswith("```"):
-                response_text = response_text[:-3]  # Remove ```
-            response_text = response_text.strip()
-
-            result = json.loads(response_text)
+            result = json.loads(response.text)
 
             # Validate response structure
             if "score" not in result or "comment" not in result:
@@ -697,24 +704,15 @@ Example outputs (showing variety):
                 "error": "vertex_ai_parse_failed",
             }
 
-        except Exception as e:
-            error_message = str(e)
-            logger.warning(f"Gemini API error (attempt {attempt + 1}/{max_retries}): {error_message}")
+        except APIError as e:
+            logger.warning(f"Gemini API error (attempt {attempt + 1}/{max_retries}): {str(e)}")
 
-            # Check if error is retryable (rate limit or server error)
-            is_retryable = (
-                "429" in error_message  # Rate limit
-                or "500" in error_message  # Internal server error
-                or "502" in error_message  # Bad gateway
-                or "503" in error_message  # Service unavailable
-                or "504" in error_message  # Gateway timeout
-                or "ResourceExhausted" in error_message
-                or "DeadlineExceeded" in error_message
-            )
+            # Retryable: rate limit, request timeout, or transient server errors
+            is_retryable = e.code in (408, 429, 500, 502, 503, 504)
 
             # If not retryable or last attempt, return fallback
             if not is_retryable or attempt == max_retries - 1:
-                logger.error(f"Gemini API error (final): {error_message}")
+                logger.error(f"Gemini API error (final): {str(e)}")
                 return {
                     "score": 50,
                     "comment": "AI評価中にエラーが発生しました。デフォルトスコアを適用しています。",
@@ -728,6 +726,14 @@ Example outputs (showing variety):
 
             logger.info(f"Retrying after {sleep_time:.2f} seconds...")
             time.sleep(sleep_time)
+
+        except Exception as e:
+            logger.error(f"Gemini evaluation failed: {str(e)}")
+            return {
+                "score": 50,
+                "comment": "AI評価中にエラーが発生しました。デフォルトスコアを適用しています。",
+                "error": "vertex_ai_failed",
+            }
 
     # Should not reach here, but return fallback just in case
     return {

@@ -48,6 +48,12 @@ variable "current_event_id" {
   default     = ""
 }
 
+variable "gemini_model_name" {
+  description = "Gemini model used by the scoring function for theme evaluation"
+  type        = string
+  default     = "gemini-2.5-flash"
+}
+
 variable "data_retention_days" {
   description = "Number of days to retain data before auto-deletion"
   type        = number
