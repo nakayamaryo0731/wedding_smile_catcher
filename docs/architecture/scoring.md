@@ -135,11 +135,14 @@ Guests submit photos via LINE, and you score them and write a fun, unique commen
 JSON only: {"score": 88, "comment": "..."}
 """
 
-    model = GenerativeModel("gemini-2.5-flash")
-    response = model.generate_content([
-        Part.from_image(Image.from_bytes(image_bytes)),
-        prompt
-    ])
+    response = genai_client.models.generate_content(
+        model=GEMINI_MODEL_NAME,  # gemini-3.5-flash
+        contents=[Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), prompt],
+        config=GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=response_schema,
+        ),
+    )
 
     result = json.loads(response.text)
     return result

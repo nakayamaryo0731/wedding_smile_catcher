@@ -22,11 +22,11 @@
 
 ### 1. Cloud Functions（第2世代）
 
-#### 役割
+#### 役割（Cloud Functions）
 - LINE Webhook受信処理
 - 画像スコアリング処理
 
-#### 選定理由
+#### 選定理由（Cloud Functions）
 - **イベントドリブン**: HTTP、Cloud Storage、Pub/Subトリガーに対応
 - **自動スケーリング**: 同時実行数に応じて自動的にインスタンスが増減
 - **コスト効率**: 実行時間のみ課金、アイドル時は無料
@@ -63,17 +63,17 @@ Scoring Function:
 
 ### 2. Cloud Vision API
 
-#### 役割
+#### 役割（Vision API）
 顔検出と笑顔信頼度の取得
 
-#### 選定理由
+#### 選定理由（Vision API）
 - **高精度**: Googleの機械学習技術
 - **簡単な統合**: クライアントライブラリが充実
 - **日本語ドキュメント**: 学習コストが低い
 
 #### 使用機能
 
-**Face Detection**
+##### Face Detection
 - 顔の位置（bounding box）
 - 感情分析（joyLikelihood, sorrowLikelihood, etc.）
 - 顔のランドマーク（目、鼻、口の位置）
@@ -112,7 +112,7 @@ Scoring Function:
 | UNLIKELY | 25 | 低い確率 |
 | VERY_UNLIKELY | 5 | 非常に低い確率 |
 
-#### コスト見積もり
+#### コスト見積もり（Vision API）
 
 ```
 Face Detection:
@@ -125,23 +125,25 @@ Face Detection:
 
 ### 3. Vertex AI (Gemini)
 
-#### 役割
+#### 役割（Vertex AI）
 画像のテーマ関連性評価とコメント生成
 
-#### 選定理由
+#### 選定理由（Vertex AI）
 - **マルチモーダル**: 画像とテキストを同時に処理
 - **高精度**: 結婚式テーマの評価に適している
 - **無関係画像への厳格さ**: GPT-4oと異なり、無関係な画像に0点をつける
 
 #### 使用モデル
 
-**gemini-2.5-flash**（本番採用）
+**gemini-3.5-flash**（本番採用）
 
 | モデル | 速度 | 精度 | コスト |
 |-------|------|------|--------|
-| gemini-2.5-flash | 速い | 高い | 低い |
+| gemini-3.5-flash | 速い | 高い | 低い |
 
 **採用理由**: 高速かつ十分な精度でコストパフォーマンスが最も良い
+
+**経緯**: 当初は gemini-2.5-flash を採用していたが、Google の 2.5 系廃止（2026-10 GA終了、2027-03 完全廃止）に伴い、同ティア後継の gemini-3.5-flash へ移行（テスト画像でスコア傾向の同等性を確認済み）
 
 #### プロンプト設計
 
@@ -177,7 +179,7 @@ JSON形式でscoreとcommentのキーで返却する。JSONのみを出力する
 """
 ```
 
-#### コスト見積もり
+#### コスト見積もり（Vertex AI）
 
 ```
 gemini-1.5-flash:
@@ -193,10 +195,10 @@ gemini-1.5-pro:
 
 ### 4. Cloud Storage
 
-#### 役割
+#### 役割（Cloud Storage）
 画像ファイルの永続化ストレージ
 
-#### 選定理由
+#### 選定理由（Cloud Storage）
 - **スケーラブル**: 容量無制限
 - **高可用性**: 99.99%の稼働率
 - **ライフサイクル管理**: 自動削除・アーカイブ
@@ -218,7 +220,7 @@ graph TD
 
 #### ストレージクラス
 
-**Standard Storage**
+##### Standard Storage
 - 頻繁にアクセスされるデータ向け
 - 結婚式当日〜1週間後まで
 
@@ -250,7 +252,7 @@ graph TD
 }
 ```
 
-#### コスト見積もり
+#### コスト見積もり（Cloud Storage）
 
 ```
 Standard Storage:
@@ -267,10 +269,10 @@ Nearline Storage（30日後）:
 
 ### 5. Firestore
 
-#### 役割
+#### 役割（Firestore）
 メタデータ、スコア、ユーザー情報の管理
 
-#### 選定理由
+#### 選定理由（Firestore）
 - **リアルタイム同期**: フロントエンドとの自動同期
 - **スケーラブル**: 自動シャーディング
 - **強力なクエリ**: 複雑な条件での検索が可能
@@ -280,7 +282,7 @@ Nearline Storage（30日後）:
 
 詳細は [database.md](database.md) を参照
 
-#### コスト見積もり
+#### コスト見積もり（Firestore）
 
 ```
 想定：
@@ -300,10 +302,10 @@ Nearline Storage（30日後）:
 
 > **注意**: 当初Cloud Run + Next.jsを計画していましたが、シンプルさと保守性を重視しFirebase Hosting + Vanilla JSに変更しました。
 
-#### 役割
+#### 役割（Firebase Hosting）
 ランキング表示・管理画面のホスティング
 
-#### 選定理由
+#### 選定理由（Firebase Hosting）
 - **シンプル**: ビルドプロセス不要、即座にデプロイ
 - **Firebase統合**: Firestore、Auth との相性が良い
 - **無料枠**: 十分な無料枠
@@ -319,7 +321,7 @@ Nearline Storage（30日後）:
 | `js/app.js` | ランキング表示ロジック（~1,900行） |
 | `js/admin.js` | 管理画面ロジック（~1,900行） |
 
-#### コスト見積もり
+#### コスト見積もり（Firebase Hosting）
 
 ```
 Firebase Hosting:
@@ -332,10 +334,10 @@ Firebase Hosting:
 
 ### 7. Cloud CDN
 
-#### 役割
+#### 役割（Cloud CDN）
 静的コンテンツの配信高速化
 
-#### 選定理由
+#### 選定理由（Cloud CDN）
 - **低レイテンシ**: グローバルエッジロケーション
 - **コスト削減**: オリジンへのリクエストを削減
 
@@ -345,7 +347,7 @@ Firebase Hosting:
 - **TTL**: 3600秒（1時間）
 - **対象**: 画像、CSS、JS
 
-#### コスト見積もり
+#### コスト見積もり（Cloud CDN）
 
 ```
 想定：
@@ -357,26 +359,26 @@ Firebase Hosting:
 
 ### 8. Cloud Logging & Monitoring
 
-#### 役割
+#### 役割（Logging & Monitoring）
 ログ収集、メトリクス監視、アラート
 
 #### 主要機能
 
-**Cloud Logging**
+##### Cloud Logging
 - すべてのCloud Functionsログを自動収集
 - エラーログのフィルタリング
 - ログベースのメトリクス作成
 
-**Cloud Monitoring**
+##### Cloud Monitoring
 - CPU、メモリ、リクエスト数の監視
 - カスタムメトリクス（スコアリング時間など）
 - アラート設定（エラー率、レイテンシ）
 
-**Error Reporting**
+##### Error Reporting
 - 自動的にエラーを集約
 - スタックトレースの可視化
 
-#### コスト見積もり
+#### コスト見積もり（Logging & Monitoring）
 
 ```
 月間無料枠:
@@ -434,9 +436,9 @@ gcloud services enable \
 
 | サービスアカウント | ロール | 用途 |
 |-----------------|-------|------|
-| webhook-function-sa | - Storage Object Creator<br/>- Firestore User | Webhook処理 |
-| scoring-function-sa | - Vision API User<br/>- Vertex AI User<br/>- Firestore User<br/>- Storage Object Viewer | スコアリング処理 |
-| frontend-sa | - Firestore Viewer<br/>- Storage Object Viewer | フロントエンド |
+| webhook-function-sa | Storage Object Creator、Firestore User | Webhook処理 |
+| scoring-function-sa | Vision API User、Vertex AI User、Firestore User、Storage Object Viewer | スコアリング処理 |
+| frontend-sa | Firestore Viewer、Storage Object Viewer | フロントエンド |
 
 ### シークレット管理
 

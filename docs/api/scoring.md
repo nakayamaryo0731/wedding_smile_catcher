@@ -142,7 +142,7 @@ Cloud Vision APIで顔検出を行い、各顔の`joy_likelihood`を数値化し
 
 ### 2. AI評価スコア（Vertex AI Gemini）
 
-`gemini-2.5-flash`モデルで画像を評価し、0-100点のスコアとコメントを生成。
+`gemini-3.5-flash`モデルで画像を評価し、0-100点のスコアとコメントを生成。
 
 #### 評価プロンプト
 

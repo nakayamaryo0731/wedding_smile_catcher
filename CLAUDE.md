@@ -43,7 +43,7 @@ LINE Bot → Cloud Functions (Webhook) → Cloud Storage + Firestore
 | Webhook processing | Cloud Functions | Receive LINE messages, register users, save images |
 | Image scoring | Cloud Functions | Execute scoring algorithm |
 | Smile detection | Cloud Vision API | Detect faces and joy likelihood |
-| Theme evaluation | Vertex AI (Gemini 1.5) | Evaluate image relevance (0-100) |
+| Theme evaluation | Vertex AI (Gemini) | Evaluate image relevance (0-100) |
 | Image storage | Cloud Storage | Store original photos |
 | Database | Firestore | User info, image metadata, scores, rankings |
 | Frontend | Cloud Run (Next.js) | Real-time display and ranking screens |
@@ -86,7 +86,7 @@ Total Score = (Smile Score × AI Score ÷ 100) × Similarity Penalty
    - Example: 5 people with big smiles = ~450-500 points
 
 2. **AI Evaluation** (Vertex AI)
-   - Gemini 2.5 Flash evaluates image against wedding theme
+   - Gemini 3.5 Flash evaluates image against wedding theme
    - Returns 0-100 score + comment
    - Acts as multiplier (0 = no score, 100 = full score)
    - **Critical**: Use Gemini or Amazon Nova; GPT-4o tends to give inflated scores
@@ -205,7 +205,7 @@ When implementation starts, these will be needed:
 - `LINE_CHANNEL_ACCESS_TOKEN` - LINE Messaging API
 - `GCP_PROJECT_ID` - Google Cloud project
 - `STORAGE_BUCKET` - Cloud Storage bucket name
-- `GEMINI_MODEL_NAME` - Vertex AI model (e.g., "gemini-2.5-flash")
+- `GEMINI_MODEL_NAME` - Vertex AI model (e.g., "gemini-3.5-flash")
 
 ## Cost Considerations
 
