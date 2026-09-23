@@ -7,6 +7,9 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --forceExit",
     "test:emulator": "firebase emulators:exec --only firestore 'npm test'"
   },
+  "overrides": {
+    "csv-parse": "^7.0.2"
+  },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
     "firebase": "^12.19.0",
