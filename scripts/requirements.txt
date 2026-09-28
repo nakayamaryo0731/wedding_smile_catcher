@@ -6,7 +6,7 @@ line-bot-sdk==3.25.0
 
 # Google Cloud Libraries
 google-cloud-firestore==2.31.0
-google-cloud-storage==3.14.1
+google-cloud-storage==3.15.0
 
 # Image processing (for rich menu setup, image restore)
 Pillow>=12.3.0
