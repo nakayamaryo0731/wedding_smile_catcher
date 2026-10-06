@@ -7,7 +7,7 @@ line-bot-sdk==3.26.0
 # Google Cloud Libraries
 google-cloud-firestore==2.32.0
 google-cloud-storage==3.16.0
-google-cloud-logging==3.16.3
+google-cloud-logging==3.17.0
 google-cloud-vision==3.16.0
 google-genai==2.25.0
 
