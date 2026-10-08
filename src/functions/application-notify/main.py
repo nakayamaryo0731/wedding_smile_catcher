@@ -10,6 +10,7 @@ import os
 import re
 import smtplib
 from email.mime.text import MIMEText
+from email.utils import formataddr
 
 import functions_framework
 import google.cloud.logging
@@ -67,9 +68,13 @@ def send_line_push_message(user_id: str, message: str) -> bool:
 
 MAX_NAME_LENGTH = 50
 MAX_FIELD_LENGTH = 30
+MAX_EMAIL_LENGTH = 254
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TIME_PATTERN = re.compile(r"^\d{2}:\d{2}$")
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 GUEST_COUNT_OPTIONS = {"~50人", "51~100人", "101~150人", "150人~"}
+SERVICE_NAME = "Smile Photo Contest"
+SERVICE_URL = "https://smile-photo-contest.web.app"
 
 
 def sanitize_text(value: str, max_length: int) -> str:
@@ -168,6 +173,73 @@ def send_email_notification(data: dict) -> bool:
         return False
 
 
+def send_customer_confirmation_email(data: dict) -> bool:
+    """Send application confirmation email to the customer via Gmail SMTP.
+
+    Best-effort: skipped silently when SMTP is not configured or the
+    customer email is missing/invalid, so the admin notification result
+    is never affected.
+
+    Args:
+        data: Application data from request
+
+    Returns:
+        True if successful, False otherwise
+    """
+    if not all([SMTP_EMAIL, SMTP_PASSWORD]):
+        logger.info("Customer confirmation email skipped (SMTP not configured)")
+        return False
+
+    to_email = sanitize_text(data.get("email", ""), MAX_EMAIL_LENGTH)
+    if not EMAIL_PATTERN.match(to_email):
+        logger.info("Customer confirmation email skipped (missing or invalid email)")
+        return False
+
+    groom_name = sanitize_text(data.get("groom_name", ""), MAX_NAME_LENGTH)
+    bride_name = sanitize_text(data.get("bride_name", ""), MAX_NAME_LENGTH)
+    event_date = sanitize_text(data.get("event_date", ""), MAX_FIELD_LENGTH)
+    start_time = sanitize_text(data.get("start_time", ""), MAX_FIELD_LENGTH)
+    end_time = sanitize_text(data.get("end_time", ""), MAX_FIELD_LENGTH)
+    guest_count = sanitize_text(data.get("guest_count", ""), MAX_FIELD_LENGTH)
+
+    subject = f"【{SERVICE_NAME}】お申し込みを受け付けました"
+    body = f"""{groom_name}様・{bride_name}様
+
+{SERVICE_NAME}にお申し込みいただきありがとうございます。
+以下の内容で受け付けました。
+
+■お申し込み内容
+開催日: {event_date}
+時間: {start_time}〜{end_time}
+ゲスト数: {guest_count}
+
+■今後の流れ
+1. 運営者が内容を確認し、お支払いのご案内をこのメールアドレス宛にお送りします。
+2. お支払いの確認後、イベントを有効化し、ご利用開始に必要な情報をお送りします。
+
+ご不明な点がありましたら、このメールに返信してお問い合わせください。
+
+{SERVICE_NAME}
+{SERVICE_URL}"""
+
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = formataddr((SERVICE_NAME, SMTP_EMAIL))
+    msg["To"] = to_email
+    if ADMIN_EMAIL:
+        msg["Reply-To"] = ADMIN_EMAIL
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+        logger.info("Successfully sent confirmation email to customer")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send customer confirmation email: {e}")
+        return False
+
+
 @functions_framework.http
 def application_notify(request):
     """Send notification to admin about new application.
@@ -176,6 +248,7 @@ def application_notify(request):
         {
             "groom_name": "太郎",
             "bride_name": "花子",
+            "email": "taro@example.com",
             "event_date": "2026-03-15",
             "start_time": "14:00",
             "end_time": "17:00",
@@ -230,9 +303,15 @@ def application_notify(request):
     message = format_notification_message(data)
     line_success = send_line_push_message(ADMIN_LINE_USER_ID, message)
     email_success = send_email_notification(data)
+    confirmation_success = send_customer_confirmation_email(data)
 
     if line_success or email_success:
-        logger.info("Application notification sent successfully (LINE=%s, email=%s)", line_success, email_success)
+        logger.info(
+            "Application notification sent successfully (LINE=%s, email=%s, customer_confirmation=%s)",
+            line_success,
+            email_success,
+            confirmation_success,
+        )
         return (jsonify({"success": True}), 200, cors_headers)
     else:
         logger.error("Failed to send application notification via all channels")
