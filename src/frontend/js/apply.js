@@ -125,6 +125,7 @@ async function sendAdminNotification(data) {
     body: JSON.stringify({
       groom_name: data.groom_name,
       bride_name: data.bride_name,
+      email: data.email,
       event_date: data.event_date,
       start_time: data.start_time,
       end_time: data.end_time,
