@@ -22,11 +22,16 @@ service cloud.firestore {
 
     // Accounts collection
     // Admins can read all; regular users can only read their own
-    // Only admins can create/update other accounts; users can update their own
+    // Users can create their own account with the sign-up fields only (never is_admin),
+    // and afterwards change only display_name; everything else is admin-only
     match /accounts/{accountId} {
       allow read: if request.auth != null && (isAdmin() || request.auth.uid == accountId);
-      allow create: if request.auth != null && request.auth.uid == accountId;
-      allow update: if request.auth != null && (isAdmin() || request.auth.uid == accountId);
+      allow create: if request.auth != null && request.auth.uid == accountId
+        && request.resource.data.keys().hasOnly(['email', 'display_name', 'created_at', 'terms_accepted_at', 'status']);
+      allow update: if request.auth != null
+        && (isAdmin()
+          || (request.auth.uid == accountId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['display_name'])));
       allow delete: if false;
     }
 
