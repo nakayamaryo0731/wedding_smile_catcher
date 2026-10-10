@@ -10,7 +10,17 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  serverTimestamp,
+} from "firebase/firestore";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -499,6 +509,159 @@ describe("Images Collection", () => {
 
     const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore();
     await assertSucceeds(deleteDoc(doc(adminDb, "images", "image-123")));
+  });
+});
+
+describe("Applications Collection", () => {
+  const APPLICATION_ID = "abcdefghij0123456789";
+
+  // Mirrors getFormData() in src/frontend/js/apply.js
+  function validApplication(overrides = {}) {
+    return {
+      groom_name: "太郎",
+      bride_name: "花子",
+      email: "couple@example.com",
+      event_date: "2026-12-01",
+      start_time: "14:00",
+      end_time: "17:00",
+      guest_count: "51~100人",
+      venue_name: "テストホテル",
+      referral_source: "ネット検索",
+      questions: "",
+      status: "pending",
+      event_id: null,
+      created_at: serverTimestamp(),
+      ...overrides,
+    };
+  }
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "applications", APPLICATION_ID), {
+        ...validApplication(),
+        created_at: new Date(),
+      });
+    });
+  });
+
+  test("unauthenticated user can submit a valid application", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(addDoc(collection(db, "applications"), validApplication()));
+  });
+
+  test("unauthenticated user can submit with optional fields empty", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(
+      addDoc(
+        collection(db, "applications"),
+        validApplication({ venue_name: "", referral_source: "", questions: "" })
+      )
+    );
+  });
+
+  test("application cannot use a custom document ID", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      setDoc(doc(db, "applications", "custom-id"), validApplication())
+    );
+  });
+
+  test("application cannot include unknown fields", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ note: "extra" }))
+    );
+  });
+
+  test("application cannot omit form fields", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    const data = validApplication();
+    delete data.questions;
+    await assertFails(addDoc(collection(db, "applications"), data));
+  });
+
+  test("application status must be pending", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ status: "event_created" }))
+    );
+  });
+
+  test("application cannot set event_id", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ event_id: "event-1" }))
+    );
+  });
+
+  test("application names must be 1-50 chars", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ groom_name: "" }))
+    );
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ bride_name: "a".repeat(51) }))
+    );
+  });
+
+  test("application questions must be at most 1000 chars", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ questions: "a".repeat(1001) }))
+    );
+  });
+
+  test("application select fields must be one of the form options", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ guest_count: "1000人" }))
+    );
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ referral_source: "other" }))
+    );
+  });
+
+  test("application date and times must match the form format", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ event_date: "2026/12/01" }))
+    );
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ start_time: "2pm" }))
+    );
+  });
+
+  test("application created_at must be the server timestamp", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      addDoc(collection(db, "applications"), validApplication({ created_at: new Date() }))
+    );
+  });
+
+  test("only admin can read applications", async () => {
+    const unauthDb = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(unauthDb, "applications", APPLICATION_ID)));
+
+    const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(getDoc(doc(ownerDb, "applications", APPLICATION_ID)));
+
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore();
+    await assertSucceeds(getDoc(doc(adminDb, "applications", APPLICATION_ID)));
+  });
+
+  test("only admin can update applications", async () => {
+    const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(ownerDb, "applications", APPLICATION_ID), { status: "rejected" })
+    );
+
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(adminDb, "applications", APPLICATION_ID), {
+        status: "event_created",
+        event_id: EVENT_ID,
+      })
+    );
   });
 });
 
