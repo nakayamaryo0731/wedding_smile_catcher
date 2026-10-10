@@ -237,14 +237,32 @@ describe("Events Collection", () => {
     await assertFails(getDocs(collection(db, "events")));
   });
 
-  test("authenticated user can list events", async () => {
+  test("non-admin user cannot list events", async () => {
     const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(getDocs(collection(db, "events")));
+  });
+
+  test("admin can list events", async () => {
+    const db = testEnv.authenticatedContext(ADMIN_UID).firestore();
     await assertSucceeds(getDocs(collection(db, "events")));
   });
 
-  test("authenticated user can create event with their account_id", async () => {
-    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+  test("admin can create event with their account_id", async () => {
+    const db = testEnv.authenticatedContext(ADMIN_UID).firestore();
     await assertSucceeds(
+      setDoc(doc(db, "events", "new-event"), {
+        account_id: ADMIN_UID,
+        event_name: "New Wedding",
+        event_code: "new-code-456",
+        status: "draft",
+        created_at: new Date(),
+      })
+    );
+  });
+
+  test("non-admin user cannot create event even with their account_id", async () => {
+    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
       setDoc(doc(db, "events", "new-event"), {
         account_id: OWNER_UID,
         event_name: "New Wedding",
@@ -255,8 +273,8 @@ describe("Events Collection", () => {
     );
   });
 
-  test("user cannot create event with different account_id", async () => {
-    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+  test("admin cannot create event with different account_id", async () => {
+    const db = testEnv.authenticatedContext(ADMIN_UID).firestore();
     await assertFails(
       setDoc(doc(db, "events", "fake-event"), {
         account_id: OTHER_UID,

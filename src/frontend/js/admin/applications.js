@@ -259,9 +259,6 @@ export async function showApplicationDetail(applicationId) {
   document.getElementById("applicationModal").classList.add("show");
 }
 
-// Expose to global scope for the inline onclick in events.js
-window.showApplicationDetail = showApplicationDetail;
-
 export async function createEventFromApplication(applicationId) {
   const app = applicationsDataCache.find((a) => a.id === applicationId);
   if (!app) return;
