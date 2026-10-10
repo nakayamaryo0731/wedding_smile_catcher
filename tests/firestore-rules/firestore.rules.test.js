@@ -115,14 +115,83 @@ describe("Accounts Collection", () => {
     await assertSucceeds(getDoc(doc(db, "accounts", OWNER_UID)));
   });
 
-  test("authenticated user can create their own account", async () => {
+  test("authenticated user can create their own account with sign-up fields", async () => {
     const db = testEnv.authenticatedContext(OTHER_UID).firestore();
     await assertSucceeds(
       setDoc(doc(db, "accounts", OTHER_UID), {
         email: "other@example.com",
-        is_admin: false,
+        display_name: "Other",
         created_at: new Date(),
+        terms_accepted_at: new Date(),
+        status: "active",
       })
+    );
+  });
+
+  test("user cannot create their own account with is_admin", async () => {
+    const db = testEnv.authenticatedContext(OTHER_UID).firestore();
+    await assertFails(
+      setDoc(doc(db, "accounts", OTHER_UID), {
+        email: "other@example.com",
+        display_name: "Other",
+        created_at: new Date(),
+        is_admin: true,
+      })
+    );
+  });
+
+  test("user cannot create their own account with unknown fields", async () => {
+    const db = testEnv.authenticatedContext(OTHER_UID).firestore();
+    await assertFails(
+      setDoc(doc(db, "accounts", OTHER_UID), {
+        email: "other@example.com",
+        role: "admin",
+      })
+    );
+  });
+
+  test("user can update their own display_name", async () => {
+    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "accounts", OWNER_UID), { display_name: "New Name" })
+    );
+  });
+
+  test("user cannot grant themselves is_admin", async () => {
+    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(db, "accounts", OWNER_UID), { is_admin: true })
+    );
+  });
+
+  test("user cannot update is_admin together with display_name", async () => {
+    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(db, "accounts", OWNER_UID), {
+        display_name: "New Name",
+        is_admin: true,
+      })
+    );
+  });
+
+  test("user cannot change their own status", async () => {
+    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(db, "accounts", OWNER_UID), { status: "active" })
+    );
+  });
+
+  test("user cannot update another user's account", async () => {
+    const db = testEnv.authenticatedContext(OTHER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(db, "accounts", OWNER_UID), { display_name: "Hacked" })
+    );
+  });
+
+  test("admin can grant is_admin to another account", async () => {
+    const db = testEnv.authenticatedContext(ADMIN_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "accounts", OWNER_UID), { is_admin: true })
     );
   });
 
