@@ -129,11 +129,26 @@ export async function loadApplications(forceRefresh = false) {
             hozAlign: "center",
             formatter: function (cell) {
               const data = cell.getRow().getData();
-              let buttons = `<button class="btn-sm btn-secondary" onclick="showApplicationDetail('${data.id}')">Detail</button>`;
+              const container = document.createElement("span");
+
+              const detailBtn = document.createElement("button");
+              detailBtn.className = "btn-sm btn-secondary";
+              detailBtn.textContent = "Detail";
+              detailBtn.addEventListener("click", () =>
+                showApplicationDetail(data.id)
+              );
+              container.appendChild(detailBtn);
+
               if (data.status === "pending") {
-                buttons += ` <button class="btn-sm btn-primary" onclick="createEventFromApplicationDirect('${data.id}')">✓</button>`;
+                const createBtn = document.createElement("button");
+                createBtn.className = "btn-sm btn-primary";
+                createBtn.textContent = "✓";
+                createBtn.addEventListener("click", () =>
+                  createEventFromApplicationDirect(data.id)
+                );
+                container.append(" ", createBtn);
               }
-              return buttons;
+              return container;
             },
           },
         ],
@@ -177,7 +192,7 @@ export async function showApplicationDetail(applicationId) {
     <div class="application-detail-grid">
       <div class="detail-row">
         <label>Status:</label>
-        <span class="status-badge ${APPLICATION_STATUS_BADGE[app.status]?.cssClass || "status-draft"}">${APPLICATION_STATUS_BADGE[app.status]?.label || app.status}</span>
+        <span class="status-badge ${APPLICATION_STATUS_BADGE[app.status]?.cssClass || "status-draft"}">${escapeHtml(APPLICATION_STATUS_BADGE[app.status]?.label || app.status)}</span>
       </div>
       <div class="detail-row">
         <label>Couple:</label>
@@ -244,7 +259,7 @@ export async function showApplicationDetail(applicationId) {
   document.getElementById("applicationModal").classList.add("show");
 }
 
-// Expose to global scope for onclick handlers in Tabulator cells
+// Expose to global scope for the inline onclick in events.js
 window.showApplicationDetail = showApplicationDetail;
 
 export async function createEventFromApplication(applicationId) {
@@ -299,8 +314,6 @@ export async function createEventFromApplicationDirect(applicationId) {
     await createEventFromApplication(applicationId);
   }
 }
-
-window.createEventFromApplicationDirect = createEventFromApplicationDirect;
 
 /**
  * Re-filter the applications table using cached data (no re-fetch).
