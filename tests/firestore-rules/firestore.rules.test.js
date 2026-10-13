@@ -385,6 +385,37 @@ describe("Events Collection", () => {
       })
     );
   });
+
+  test.each(["both", "slideshow", "ranking"])(
+    "unauthenticated user can update display_mode to %s (ranking page)",
+    async (mode) => {
+      const db = testEnv.unauthenticatedContext().firestore();
+      await assertSucceeds(
+        updateDoc(doc(db, "events", EVENT_ID), {
+          display_mode: mode,
+        })
+      );
+    }
+  );
+
+  test("unauthenticated user cannot set unknown display_mode", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        display_mode: "final",
+      })
+    );
+  });
+
+  test("unauthenticated user cannot update display_mode with other fields", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      updateDoc(doc(db, "events", EVENT_ID), {
+        display_mode: "slideshow",
+        status: "archived",
+      })
+    );
+  });
 });
 
 describe("Users Collection (LINE Users)", () => {

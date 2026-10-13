@@ -45,6 +45,16 @@ service cloud.firestore {
         && data.created_at == request.time;
     }
 
+    // Helper: Settings the ranking page saves without signing in
+    // Must stay in sync with the settings panel in src/frontend/js/app.js
+    function isRankingSettingsUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let data = request.resource.data;
+      return affected.hasOnly(['theme', 'event_name', 'display_mode'])
+        && (!affected.hasAny(['event_name']) || isStringOfSize(data.event_name, 1, 100))
+        && (!affected.hasAny(['display_mode']) || data.display_mode in ['both', 'slideshow', 'ranking']);
+    }
+
     // Accounts collection
     // Admins can read all; regular users can only read their own
     // Users can create their own account with the sign-up fields only (never is_admin),
@@ -64,7 +74,7 @@ service cloud.firestore {
     // Public get (single doc) for ranking UI status check
     // Only admins can list and create (events are created from the admin panel)
     // Update/delete requires ownership or admin
-    // Theme and event_name can be updated by anyone (for ranking page settings)
+    // Theme, event_name and display_mode can be updated by anyone (for ranking page settings)
     match /events/{eventId} {
       allow get: if true;
       allow list: if isAdmin();
@@ -72,11 +82,7 @@ service cloud.firestore {
         && request.resource.data.account_id == request.auth.uid;
       allow update: if (request.auth != null
         && (isAdmin() || resource.data.account_id == request.auth.uid))
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['theme', 'event_name'])
-          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['event_name'])
-            || (request.resource.data.event_name is string
-              && request.resource.data.event_name.size() >= 1
-              && request.resource.data.event_name.size() <= 100)));
+        || isRankingSettingsUpdate();
       allow delete: if request.auth != null
         && (isAdmin() || resource.data.account_id == request.auth.uid);
     }

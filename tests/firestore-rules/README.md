@@ -48,6 +48,8 @@ npm test
 - イベント作成はadminが自分のaccount_idで行う場合のみ可能
 - イベント更新は所有者またはadminのみ
 - イベント削除は所有者またはadminのみ
+- 未ログインでもランキング画面の設定（theme、event_name、display_mode）は更新可能
+- display_modeはboth、slideshow、rankingのいずれかのみ
 
 ### users コレクション（LINEユーザー）
 - 誰でも読み取り可能（ランキング表示用）
