@@ -62,13 +62,13 @@ service cloud.firestore {
 
     // Events collection
     // Public get (single doc) for ranking UI status check
-    // Admins can list all; regular users can list their own
-    // Write requires ownership or admin
+    // Only admins can list and create (events are created from the admin panel)
+    // Update/delete requires ownership or admin
     // Theme and event_name can be updated by anyone (for ranking page settings)
     match /events/{eventId} {
       allow get: if true;
-      allow list: if request.auth != null;
-      allow create: if request.auth != null
+      allow list: if isAdmin();
+      allow create: if isAdmin()
         && request.resource.data.account_id == request.auth.uid;
       allow update: if (request.auth != null
         && (isAdmin() || resource.data.account_id == request.auth.uid))

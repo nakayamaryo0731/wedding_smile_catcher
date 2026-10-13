@@ -28,6 +28,7 @@ import {
   updateSelectionCount,
   showConfirmModal,
 } from "./state.js";
+import { showApplicationDetail } from "./applications.js";
 
 // --- Event name cache helper (used by images and users modules too) ---
 
@@ -140,15 +141,19 @@ function createEventCard(docId, data) {
 
   const meta = document.createElement("div");
   meta.className = "event-card-meta";
-  let metaHtml =
+  meta.innerHTML =
     `<span>Date: ${escapeHtml(eventDate)}</span>` +
     `<span>Code: <code>${escapeHtml(eventCode)}</code></span>`;
 
   if (data.application_id) {
-    metaHtml += `<span class="application-link" onclick="showApplicationDetail('${data.application_id}')">📋 Application</span>`;
+    const applicationLink = document.createElement("span");
+    applicationLink.className = "application-link";
+    applicationLink.textContent = "📋 Application";
+    applicationLink.addEventListener("click", () =>
+      showApplicationDetail(data.application_id)
+    );
+    meta.appendChild(applicationLink);
   }
-
-  meta.innerHTML = metaHtml;
 
   info.appendChild(header);
   info.appendChild(meta);
