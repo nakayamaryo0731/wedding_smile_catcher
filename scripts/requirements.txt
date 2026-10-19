@@ -9,7 +9,7 @@ google-cloud-firestore==2.34.0
 google-cloud-storage==3.16.0
 
 # Image processing (for rich menu setup, image restore)
-Pillow>=12.3.0
+Pillow>=13.0.0
 
 # Image restore (perceptual hash matching for restore_event_images.py)
 imagehash==4.3.2
