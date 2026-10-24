@@ -17,8 +17,8 @@ graph TB
     WebhookFunc --> ScoringFunc
 
     subgraph ScoringFunc[Cloud Functions - Scoring Handler]
-        Vision[Vision API<br/>笑顔検出]
-        VertexAI[Vertex AI<br/>gemini-3.5-flash]
+        Vision[Vision API<br/>顔検出]
+        VertexAI[Vertex AI<br/>gemini-3.5-flash<br/>笑顔判定・テーマ評価]
         AvgHash[Average Hash<br/>類似画像検出]
     end
 
@@ -106,7 +106,7 @@ graph TB
 **処理フロー**:
 1. Cloud Storageから画像取得
 2. 並列処理:
-   - Cloud Vision APIで笑顔検出（顔サイズ係数適用）
+   - Cloud Vision APIで顔検出し、Vertex AI (Gemini)で顔ごとの笑顔を判定（顔サイズ係数適用）
    - Vertex AI (Gemini)でテーマ評価
    - Average Hashで同一ユーザーの類似画像判定
 3. 総合スコア計算
@@ -117,7 +117,8 @@ graph TB
 **実装言語**: Python 3.11
 
 **主な機能**:
-- 笑顔検出（Vision API）
+- 顔検出（Vision API）
+- 笑顔判定（Vertex AI gemini-3.5-flash）
 - 画像評価（Vertex AI gemini-3.5-flash）
 - 類似画像判定（Average Hash、同一ユーザー内のみ）
 - 顔サイズ係数による調整
@@ -125,30 +126,30 @@ graph TB
 
 ### 4. Cloud Vision API
 
-**役割**: 顔検出・笑顔検出
+**役割**: 顔検出
 
 **処理内容**:
 - 画像から顔を検出
-- 各顔の笑顔信頼度（joy_likelihood）を取得
-- 顔の位置・サイズ情報を取得（顔サイズ係数計算用）
-- 笑顔スコアの算出
+- 顔の位置・サイズ情報を取得（顔サイズ係数計算用、笑顔判定用の切り出し）
+- 顔検出の確信度（detection_confidence）を取得
 
 **入力**: 画像バイト列
-**出力**: 顔情報（位置、笑顔信頼度、サイズなど）
+**出力**: 顔情報（位置、サイズ、確信度など）
+
+Vision APIの感情ラベル（joy_likelihoodなど）は2026-10-15に廃止され、常に`UNKNOWN`を返す。笑顔の判定はVertex AI (Gemini)で行う。
 
 ### 5. Vertex AI (Gemini)
 
-**役割**: 画像のテーマ関連性評価
+**役割**: 顔ごとの笑顔判定、画像のテーマ関連性評価
 
 **使用モデル**: `gemini-3.5-flash`
 
 **処理内容**:
-- 画像が結婚式に関連しているかを判定
-- 0-100点で評価
-- コメント生成
+- 笑顔判定: Vision APIで検出した顔を1人ずつ切り出し、笑顔の度合いを5段階で判定
+- テーマ評価: 笑顔の質・創造性・ストーリー性を0-100点で評価し、コメントを生成
 
-**入力**: 画像 + プロンプト
-**出力**: スコア + コメント（JSON形式）
+**入力**: 切り出した顔画像 + プロンプト（笑顔判定）、画像 + プロンプト（テーマ評価）
+**出力**: 顔ごとの笑顔の段階（笑顔判定）、スコア + コメント（テーマ評価）。どちらもJSON形式
 
 ### 6. Average Hash（自前実装）
 
@@ -239,8 +240,10 @@ sequenceDiagram
     Webhook->>Scoring: 非同期起動
 
     par 並列処理
-        Scoring->>Vision: 笑顔検出リクエスト
-        Vision-->>Scoring: 笑顔スコア + 顔サイズ
+        Scoring->>Vision: 顔検出リクエスト
+        Vision-->>Scoring: 顔の位置・サイズ・確信度
+        Scoring->>Vertex: 笑顔判定リクエスト（切り出した顔）
+        Vertex-->>Scoring: 顔ごとの笑顔の段階
     and
         Scoring->>Vertex: テーマ評価リクエスト
         Vertex-->>Scoring: AI評価スコア
@@ -282,7 +285,7 @@ graph TD
 - **Cloud Functions**: 自動スケーリング（最大1000インスタンス）
 - **Firestore**: 読み取り/書き込みの自動シャーディング
 - **Cloud Storage**: 無制限のスループット
-- **Cloud Vision API**: リクエストクォータ管理
+- **Cloud Vision API / Vertex AI**: リクエストクォータ管理（Geminiは1枚あたり2回呼び出す）
 
 ### コスト最適化
 
