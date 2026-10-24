@@ -5,7 +5,7 @@
 
 このシステムでは、投稿された写真に対して以下の3つの要素からスコアを算出します：
 
-1. **笑顔スコア**: Cloud Vision APIによる笑顔検出
+1. **笑顔スコア**: Cloud Vision APIによる顔検出と、Vertex AI (Gemini)による顔ごとの笑顔判定
 2. **テーマ評価**: Vertex AI (Gemini)による結婚式テーマ関連性評価
 3. **類似ペナルティ**: Average Hashによる連写検出
 
@@ -23,7 +23,11 @@
 
 ### 算出方法
 
-Cloud Vision APIの `DetectFaces` 機能を使用し、画像内の全ての顔に対して笑顔の信頼度を取得します。
+1. Cloud Vision APIの `DetectFaces` 機能で、画像内の顔を検出します。顔ごとに位置（`boundingPoly`）と検出の確信度（`detectionConfidence`）を取得します。
+2. 検出した顔を1人ずつ切り出し、Vertex AI (Gemini) に笑顔の度合いを5段階で判定させます。
+3. `LIKELY` 以上と判定された顔だけを、確信度と顔サイズで補正して合計します。
+
+> Vision APIの感情ラベル（`joyLikelihood` など）は2026-10-15に廃止され、常に `UNKNOWN` を返すようになりました（[Vision release notes](https://docs.cloud.google.com/vision/docs/release-notes)）。そのため、笑顔の判定はGeminiで行います。
 
 ```python
 def calculate_smile_score(image_bytes):
@@ -31,68 +35,95 @@ def calculate_smile_score(image_bytes):
     笑顔スコアを計算
 
     Returns:
-        float: 全ての笑顔の信頼度の合計（0～∞）
+        dict: {"smile_score": float, "face_count": int, "smiling_faces": int}
     """
-    vision_client = vision.ImageAnnotatorClient()
-    image = vision.Image(content=image_bytes)
-    response = vision_client.face_detection(image=image)
+    img = PILImage.open(io.BytesIO(image_bytes))
+    image_width, image_height = img.size
+
+    faces = detect_faces(image_bytes)  # Vision API: 顔の位置と確信度
+    joy_levels = classify_smiles(img, faces) if faces else []  # Gemini: 顔ごとの笑顔の段階
 
     total_smile_score = 0.0
+    smiling_faces = 0
 
-    for face in response.face_annotations:
-        # joyLikelihood を数値化
-        # VERY_LIKELY: 0.95
-        # LIKELY: 0.75
-        # POSSIBLE: 0.5
-        # UNLIKELY: 0.25
-        # VERY_UNLIKELY: 0.05
+    for face, joy in zip(faces, joy_levels, strict=True):
+        if joy >= vision.Likelihood.LIKELY:
+            base_score = get_joy_likelihood_score(joy, face.detection_confidence)
+            size_multiplier = get_face_size_multiplier(face, image_width, image_height)
+            total_smile_score += base_score * size_multiplier
+            smiling_faces += 1
 
-        if face.joy_likelihood >= likelihood.LIKELY:
-            # 笑顔の場合、信頼度を加算（例: 95.0）
-            confidence = get_likelihood_score(face.joy_likelihood)
-            total_smile_score += confidence
-
-    return total_smile_score
+    return {
+        "smile_score": round(total_smile_score, 2),
+        "face_count": len(faces),
+        "smiling_faces": smiling_faces,
+    }
 ```
+
+### 笑顔の判定（Gemini）
+
+- 顔ごとに周囲20%の余白をつけて切り出し、すべての顔を1回の呼び出しでまとめて送ります
+- 判定の段階は、Vision APIの感情ラベルと同じ5段階です。思考量は `low` です
+- Geminiが判定を返さなかった顔は、笑顔ではないものとして扱います
+
+| 判定 | 基本点 |
+|------|--------|
+| VERY_LIKELY | 95 |
+| LIKELY | 75 |
+| POSSIBLE / UNLIKELY / VERY_UNLIKELY | 加算しない |
+
+基本点には、顔検出の確信度による補正 `(detectionConfidence - 0.5) × 20`（±10点）を加えます。
 
 ### 特徴
 
 - **人数が多いほど有利**: 複数人が写っている写真ほど高スコア
 - **狙い**: グループ間の交流を促進
-- **顔サイズ係数**: 小さい顔（遠景）には係数をかけて調整
-- **例**:
+- **顔サイズ係数**: 顔の大きさで係数をかけて調整
+- **例**（確信度と顔サイズの補正前）:
   - 1人の満面の笑み: 95点
   - 5人の笑顔: 95 × 5 = 475点
 
 ### 顔サイズ係数
 
-小さい顔（遠くに写っている人）の笑顔スコアには係数をかけて調整します：
+顔の面積比率に応じて、笑顔スコアに係数をかけて調整します：
 
 | 顔の面積比率（画像全体に対する） | 係数 |
 |--------------------------------|------|
-| 5%以上 | 1.0（フルスコア） |
-| 2-5% | 0.7-1.0（線形補間） |
-| 1-2% | 0.4-0.7（線形補間） |
-| 1%未満 | 0.4（最小係数） |
+| 8%以上 | 1.2 |
+| 5-8% | 0.9-1.2（線形補間） |
+| 2-5% | 0.6-0.9（線形補間） |
+| 1-2% | 0.5-0.6（線形補間） |
+| 1%未満 | 0.5（最小係数） |
 
 **目的**: 近くで大きく写っている顔をより重視しつつ、遠景の顔も完全には無視しない
 
-### Vision API レスポンス例
+1人あたりの最大は `(95 + 10) × 1.2 = 126点` です。
+
+### レスポンス例
+
+Vision API（感情ラベルは返らない）:
 
 ```json
 {
   "faceAnnotations": [
     {
-      "joyLikelihood": "VERY_LIKELY",
-      "sorrowLikelihood": "VERY_UNLIKELY",
-      "angerLikelihood": "VERY_UNLIKELY",
-      "surpriseLikelihood": "VERY_UNLIKELY",
       "boundingPoly": {...},
       "fdBoundingPoly": {...},
-      "landmarks": [...]
+      "landmarks": [...],
+      "detectionConfidence": 0.99,
+      "landmarkingConfidence": 0.85,
+      "underExposedLikelihood": "VERY_UNLIKELY",
+      "blurredLikelihood": "VERY_UNLIKELY",
+      "headwearLikelihood": "VERY_UNLIKELY"
     }
   ]
 }
+```
+
+Gemini（笑顔判定）:
+
+```json
+{"faces": [{"index": 1, "joy": "VERY_LIKELY"}, {"index": 2, "joy": "POSSIBLE"}]}
 ```
 
 ## 2. テーマ評価スコア（AI評価）
@@ -362,7 +393,7 @@ AI評価: 0点（結婚式と無関係）
 
 ### フォールバックマトリクス
 
-| Vision API | Gemini | smile_score | ai_score | similarity_penalty |
+| 笑顔判定（Vision API + Gemini） | AI評価（Gemini） | smile_score | ai_score | similarity_penalty |
 |-----------|--------|-------------|----------|--------------------|
 | ✅ 正常 | ✅ 正常 | 実測値 | 実測値 | 実測値 |
 | ✅ 正常 | ❌ 障害 | 実測値 | `random(60, 85)` | 実測値 |

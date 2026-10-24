@@ -27,8 +27,8 @@ Key design principles:
 LINE Bot → Cloud Functions (Webhook) → Cloud Storage + Firestore
                                     ↓
                         Cloud Functions (Scoring)
-                        - Vision API: smile detection
-                        - Vertex AI (Gemini): theme evaluation
+                        - Vision API: face detection
+                        - Vertex AI (Gemini): per-face smile level, theme evaluation
                         - Average Hash: similarity check
                                     ↓
                         LINE Bot (reply) + Firestore (ranking)
@@ -42,7 +42,8 @@ LINE Bot → Cloud Functions (Webhook) → Cloud Storage + Firestore
 |----------|---------|---------|
 | Webhook processing | Cloud Functions | Receive LINE messages, register users, save images |
 | Image scoring | Cloud Functions | Execute scoring algorithm |
-| Smile detection | Cloud Vision API | Detect faces and joy likelihood |
+| Face detection | Cloud Vision API | Detect faces (position, size, confidence) |
+| Smile detection | Vertex AI (Gemini) | Judge each cropped face's smile level |
 | Theme evaluation | Vertex AI (Gemini) | Evaluate image relevance (0-100) |
 | Image storage | Cloud Storage | Store original photos |
 | Database | Firestore | User info, image metadata, scores, rankings |
@@ -79,9 +80,10 @@ Total Score = (Smile Score × AI Score ÷ 100) × Similarity Penalty
 
 ### Components
 
-1. **Smile Score** (Vision API)
-   - Detects all faces in image
-   - Sums joy likelihood scores (0-100 per face)
+1. **Smile Score** (Vision API + Gemini)
+   - Vision API detects all faces in image
+   - Gemini judges each cropped face on five levels (Vision stopped returning joy likelihood on 2026-10-15)
+   - Sums scores of faces judged LIKELY or better (95/75 base, adjusted by detection confidence and face size)
    - More people = higher potential score
    - Example: 5 people with big smiles = ~450-500 points
 

@@ -9,7 +9,7 @@
 | 機能 | AWS（元システム） | GCP（本プロジェクト） | 移行の難易度 |
 |------|------------------|---------------------|------------|
 | サーバーレス実行環境 | AWS Lambda | **Cloud Functions / Cloud Run** | 低 |
-| 笑顔検出API | Amazon Rekognition | **Cloud Vision API** | 低 |
+| 笑顔検出API | Amazon Rekognition | **Cloud Vision API（顔検出）+ Vertex AI Gemini（笑顔判定）** | 低 |
 | 生成AIモデル | Amazon Bedrock (Nova) | **Vertex AI (Gemini)** | 低 |
 | オブジェクトストレージ | Amazon S3 | **Cloud Storage** | 低 |
 | NoSQLデータベース | Amazon DynamoDB | **Firestore** | 中 |
@@ -64,7 +64,9 @@ Scoring Function:
 ### 2. Cloud Vision API
 
 #### 役割（Vision API）
-顔検出と笑顔信頼度の取得
+顔検出（顔の位置と検出の確信度の取得）
+
+感情分析（joyLikelihoodなど）は2026-10-15に廃止され、常に`UNKNOWN`を返すようになった。笑顔の判定は、Vision APIで検出した顔を切り出してVertex AI (Gemini)で行う（[スコアリングアルゴリズム](scoring.md)を参照）。
 
 #### 選定理由（Vision API）
 - **高精度**: Googleの機械学習技術
@@ -75,7 +77,7 @@ Scoring Function:
 
 ##### Face Detection
 - 顔の位置（bounding box）
-- 感情分析（joyLikelihood, sorrowLikelihood, etc.）
+- 顔検出の確信度（detectionConfidence）
 - 顔のランドマーク（目、鼻、口の位置）
 
 #### API レスポンス例
@@ -84,10 +86,6 @@ Scoring Function:
 {
   "faceAnnotations": [
     {
-      "joyLikelihood": "VERY_LIKELY",
-      "sorrowLikelihood": "VERY_UNLIKELY",
-      "angerLikelihood": "VERY_UNLIKELY",
-      "surpriseLikelihood": "VERY_UNLIKELY",
       "boundingPoly": {
         "vertices": [
           {"x": 120, "y": 80},
@@ -101,16 +99,6 @@ Scoring Function:
   ]
 }
 ```
-
-#### Likelihood 値のマッピング
-
-| Likelihood | 数値化 | 説明 |
-|-----------|--------|------|
-| VERY_LIKELY | 95 | 非常に高い確率 |
-| LIKELY | 75 | 高い確率 |
-| POSSIBLE | 50 | 可能性あり |
-| UNLIKELY | 25 | 低い確率 |
-| VERY_UNLIKELY | 5 | 非常に低い確率 |
 
 #### コスト見積もり（Vision API）
 
@@ -126,7 +114,10 @@ Face Detection:
 ### 3. Vertex AI (Gemini)
 
 #### 役割（Vertex AI）
-画像のテーマ関連性評価とコメント生成
+- 顔ごとの笑顔判定（Vision APIで検出した顔を切り出し、5段階で判定）
+- 画像のテーマ関連性評価とコメント生成
+
+写真1枚あたり2回呼び出す（笑顔判定とテーマ評価）。
 
 #### 選定理由（Vertex AI）
 - **マルチモーダル**: 画像とテキストを同時に処理

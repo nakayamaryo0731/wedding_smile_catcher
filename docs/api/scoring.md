@@ -73,7 +73,7 @@ graph TD
     D -->|No| E[エラーログ記録]
     D -->|Yes| F[並列処理開始]
 
-    F --> G[Vision API<br/>笑顔検出]
+    F --> G[Vision API 顔検出<br/>+ Gemini 笑顔判定]
     F --> H[Vertex AI<br/>テーマ評価]
     F --> I[Average Hash計算]
     F --> J[既存ハッシュ取得<br/>同一ユーザー]
@@ -114,31 +114,33 @@ graph TD
 Total Score = (Smile Score × AI Score ÷ 100) × Similarity Penalty
 ```
 
-### 1. 笑顔スコア（Vision API）
+### 1. 笑顔スコア（Vision API + Gemini）
 
-Cloud Vision APIで顔検出を行い、各顔の`joy_likelihood`を数値化して合計。
+Cloud Vision APIで顔を検出し、検出した顔を1人ずつ切り出してGeminiに笑顔の度合いを5段階で判定させる。`LIKELY`以上の顔だけを、確信度と顔サイズで補正して合計。
 
-#### joy_likelihoodマッピング
+Vision APIの感情ラベル（`joy_likelihood`など）は2026-10-15に廃止され、常に`UNKNOWN`を返すため、笑顔の判定はGeminiで行う。詳細は [スコアリングアルゴリズム](../architecture/scoring.md) を参照。
 
-| Likelihood | スコア |
-|------------|--------|
+#### 笑顔の段階と基本点
+
+| 判定 | 基本点 |
+|------|--------|
 | VERY_LIKELY | 95 |
 | LIKELY | 75 |
-| POSSIBLE | 50 |
-| UNLIKELY | 25 |
-| VERY_UNLIKELY | 5 |
-| UNKNOWN | 0 |
+| POSSIBLE / UNLIKELY / VERY_UNLIKELY | 加算しない |
+
+基本点に、顔検出の確信度による補正 `(detection_confidence - 0.5) × 20`（±10点）を加える。
 
 #### 顔サイズ係数
 
-小さい顔（遠景）には係数をかけて調整:
+顔の面積比率に応じて係数をかけて調整:
 
 | 顔の面積比率 | 係数 |
 |-------------|------|
-| 5%以上 | 1.0 |
-| 2-5% | 0.7-1.0（補間） |
-| 1-2% | 0.4-0.7（補間） |
-| 1%未満 | 0.4 |
+| 8%以上 | 1.2 |
+| 5-8% | 0.9-1.2（補間） |
+| 2-5% | 0.6-0.9（補間） |
+| 1-2% | 0.5-0.6（補間） |
+| 1%未満 | 0.5 |
 
 ### 2. AI評価スコア（Vertex AI Gemini）
 
@@ -324,7 +326,7 @@ if face_count == 0:
 
 ### APIエラー（リトライあり）
 
-Vision APIとVertex AIはそれぞれ指数バックオフでリトライ:
+Vision API、Vertex AI（笑顔判定、テーマ評価）はそれぞれ指数バックオフでリトライ:
 
 ```python
 @retry(
@@ -370,14 +372,14 @@ gcloud functions deploy scoring \
 | 処理 | 時間 |
 |-----|------|
 | 画像ダウンロード | ~100ms |
-| Vision API | ~500-1000ms |
-| Vertex AI (Gemini) | ~1000-2000ms |
+| Vision API（顔検出） + Gemini（笑顔判定） | ~1.5-5秒 |
+| Vertex AI (Gemini、テーマ評価) | ~3-7秒 |
 | Average Hash | ~50ms |
 | Firestore更新 | ~100ms |
-| **合計** | **~2-3秒** |
+| **合計** | **~3-8秒** |
 
-並列処理により、Vision APIとVertex AIの呼び出しが同時に行われるため、
-シーケンシャル実行より約1秒短縮。
+笑顔の判定（Vision APIのあとにGemini）とテーマ評価は並列で実行されるため、合計はおおむね遅い方の処理時間で決まる。
+処理時間は2026-10-24の本番ログでの実測値。
 
 ## 次のステップ
 

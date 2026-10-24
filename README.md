@@ -21,7 +21,7 @@
 ### 主な機能
 
 - 🤖 **LINE Bot**: 誰でも簡単に写真を投稿できるインターフェース
-- 😊 **笑顔検出**: Cloud Vision APIで顔と笑顔を自動検出
+- 😊 **笑顔検出**: Cloud Vision APIで顔を検出し、Vertex AI (Gemini)で顔ごとの笑顔を判定
 - 🎯 **スコアリング**: 笑顔の信頼度を加算してスコア化
 - 🏆 **ランキング**: トップ3をリアルタイム表示（トップ1は大きく、2・3は小さく）
 - 🎨 **生成AI評価**: Vertex AI (Gemini)でテーマ関連性を判定
@@ -36,8 +36,8 @@
 | コンピューティング | Cloud Functions / Cloud Run | Webhook処理、画像処理 |
 | ストレージ | Cloud Storage | 画像保存 |
 | データベース | Firestore | メタデータ・スコア・ユーザー情報 |
-| AI/ML | Cloud Vision API | 顔検出・笑顔検出 |
-| AI/ML | Vertex AI (Gemini) | 画像のテーマ評価 |
+| AI/ML | Cloud Vision API | 顔検出 |
+| AI/ML | Vertex AI (Gemini) | 顔ごとの笑顔判定、画像のテーマ評価 |
 | ホスティング | Cloud Run / Firebase Hosting | フロントエンド配信 |
 | CDN | Cloud CDN | 静的コンテンツ配信 |
 | IaC | Terraform | インフラ管理 |
@@ -85,7 +85,7 @@ wedding_smile_catcher/
 1. **写真投稿**: 参加者がLINE Botに写真を送信
 2. **ユーザー登録**: 初回投稿時に名前を登録
 3. **画像保存**: Cloud Storageに保存
-4. **笑顔検出**: Cloud Vision APIで笑顔スコア算出
+4. **笑顔検出**: Cloud Vision APIで顔を検出し、Vertex AIで顔ごとの笑顔を判定して笑顔スコア算出
 5. **AI評価**: Vertex AIでテーマ関連性評価
 6. **類似判定**: Average Hashで類似画像をチェック
 7. **スコア計算**: 総合スコアを算出してFirestoreに保存
