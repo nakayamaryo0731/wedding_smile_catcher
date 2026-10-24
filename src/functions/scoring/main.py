@@ -1315,3 +1315,69 @@ def send_error_to_line(user_id: str):
     """
     message = TextMessage(text="❌ スコアリング処理に失敗しました。\n\nもう一度お試しください。")
     _send_line_message_with_retry(user_id, message)
+
+
+# Canary: score a fixed test photo once a day to catch upstream changes that break
+# scoring without raising errors (Vision API silently stopped returning joy likelihood
+# on 2026-10-15). Measured on 2026-10-24: 5 faces, 3 smiling, AI score 98.
+CANARY_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "canary", "kids3_cake.jpg")
+CANARY_MIN_SMILING_FACES = 2
+CANARY_MIN_AI_SCORE = 70
+
+
+def check_canary_result(smile_result: dict[str, Any], theme_result: dict[str, Any]) -> list[str]:
+    """
+    Check whether the canary photo was scored as expected.
+
+    Args:
+        smile_result: Result of calculate_smile_score
+        theme_result: Result of evaluate_theme
+
+    Returns:
+        Reasons the result looks wrong (empty when it looks fine)
+    """
+    problems = []
+    if smile_result.get("error"):
+        problems.append(f"smile detection error: {smile_result['error']}")
+    if theme_result.get("error"):
+        problems.append(f"AI evaluation error: {theme_result['error']}")
+    if smile_result["smiling_faces"] < CANARY_MIN_SMILING_FACES:
+        problems.append(f"smiling faces {smile_result['smiling_faces']} < {CANARY_MIN_SMILING_FACES}")
+    if theme_result["score"] < CANARY_MIN_AI_SCORE:
+        problems.append(f"AI score {theme_result['score']} < {CANARY_MIN_AI_SCORE}")
+    return problems
+
+
+@functions_framework.http
+def canary(request: Request):
+    """
+    Score the canary photo with the production code path and check the result.
+
+    Called once a day by Cloud Scheduler. A wrong result is logged as ERROR,
+    which triggers an email alert. Nothing is written to Firestore or sent to LINE.
+
+    Args:
+        request: Flask Request object (unused)
+
+    Returns:
+        JSON response with the canary result
+    """
+    with open(CANARY_IMAGE_PATH, "rb") as f:
+        image_bytes = f.read()
+
+    smile_result = calculate_smile_score(image_bytes)
+    theme_result = evaluate_theme(image_bytes)
+    summary = {
+        "smile_score": smile_result["smile_score"],
+        "face_count": smile_result["face_count"],
+        "smiling_faces": smile_result["smiling_faces"],
+        "ai_score": theme_result["score"],
+    }
+
+    problems = check_canary_result(smile_result, theme_result)
+    if problems:
+        logger.error(f"Canary failed: {'; '.join(problems)} ({summary})")
+        return jsonify({"status": "failed", "problems": problems, **summary}), 500
+
+    logger.info(f"Canary passed ({summary})")
+    return jsonify({"status": "passed", **summary}), 200

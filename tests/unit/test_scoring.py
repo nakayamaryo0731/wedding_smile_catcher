@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from flask import Flask
 from google.cloud import vision
 from google.genai.errors import APIError
 from google.genai.types import Part
@@ -18,8 +19,11 @@ src_path = Path(__file__).parent.parent.parent / "src" / "functions" / "scoring"
 sys.path.insert(0, str(src_path.parent))
 
 from scoring.main import (  # noqa: E402
+    CANARY_IMAGE_PATH,
     calculate_average_hash,
     calculate_smile_score,
+    canary,
+    check_canary_result,
     evaluate_theme,
     format_face_count,
     generate_scores_with_vision_api,
@@ -610,3 +614,70 @@ class TestGenerateScoresWithVisionAPI:
         # Assert
         assert result["smile_score"] == 300.0  # Fallback score
         assert "error" in result or "has_errors" in result
+
+
+# Canary photo result measured on 2026-10-24
+CANARY_SMILE_RESULT = {"smile_score": 294.55, "face_count": 5, "smiling_faces": 3}
+CANARY_THEME_RESULT = {"score": 98, "comment": "ケーキを囲む笑顔！"}
+
+
+class TestCheckCanaryResult:
+    """Tests for check_canary_result function."""
+
+    def test_expected_result_passes(self):
+        assert check_canary_result(CANARY_SMILE_RESULT, CANARY_THEME_RESULT) == []
+
+    def test_no_smiling_faces_fails(self):
+        """Silent upstream change like Vision returning UNKNOWN joy for every face."""
+        smile_result = {**CANARY_SMILE_RESULT, "smile_score": 0.0, "smiling_faces": 0}
+
+        problems = check_canary_result(smile_result, CANARY_THEME_RESULT)
+
+        assert problems == ["smiling faces 0 < 2"]
+
+    def test_smile_fallback_fails(self):
+        """Scores from the smile fallback still count as a failure."""
+        smile_result = {**CANARY_SMILE_RESULT, "error": "smile_classification_failed"}
+
+        problems = check_canary_result(smile_result, CANARY_THEME_RESULT)
+
+        assert problems == ["smile detection error: smile_classification_failed"]
+
+    def test_ai_error_and_low_score_fail(self):
+        theme_result = {"score": 50, "comment": "", "error": "vertex_ai_failed"}
+
+        problems = check_canary_result(CANARY_SMILE_RESULT, theme_result)
+
+        assert problems == ["AI evaluation error: vertex_ai_failed", "AI score 50 < 70"]
+
+
+class TestCanary:
+    """Tests for the canary HTTP entrypoint."""
+
+    def test_canary_image_is_bundled_jpeg(self):
+        with PILImage.open(CANARY_IMAGE_PATH) as img:
+            assert img.format == "JPEG"
+
+    @patch("scoring.main.evaluate_theme", return_value=CANARY_THEME_RESULT)
+    @patch("scoring.main.calculate_smile_score", return_value=CANARY_SMILE_RESULT)
+    def test_canary_passes(self, mock_smile, mock_theme):
+        with Flask(__name__).app_context():
+            response, status = canary(Mock())
+
+        assert status == 200
+        assert response.get_json()["status"] == "passed"
+        # The bundled photo goes through the production scoring functions
+        with open(CANARY_IMAGE_PATH, "rb") as f:
+            mock_smile.assert_called_once_with(f.read())
+
+    @patch("scoring.main.evaluate_theme", return_value=CANARY_THEME_RESULT)
+    @patch("scoring.main.calculate_smile_score")
+    def test_canary_failure_logs_error(self, mock_smile, _theme, caplog):
+        mock_smile.return_value = {**CANARY_SMILE_RESULT, "smile_score": 0.0, "smiling_faces": 0}
+
+        with Flask(__name__).app_context():
+            response, status = canary(Mock())
+
+        assert status == 500
+        assert response.get_json()["problems"] == ["smiling faces 0 < 2"]
+        assert any(r.levelname == "ERROR" and "Canary failed" in r.getMessage() for r in caplog.records)
