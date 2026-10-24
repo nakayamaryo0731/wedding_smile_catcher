@@ -19,7 +19,7 @@ resource "google_monitoring_alert_policy" "webhook_errors" {
   combiner     = "OR"
 
   conditions {
-    display_name = "Webhook error rate > 5%"
+    display_name = "Webhook errors > 5 in 5 minutes"
 
     condition_threshold {
       filter = <<-EOT
@@ -33,9 +33,10 @@ resource "google_monitoring_alert_policy" "webhook_errors" {
       comparison      = "COMPARISON_GT"
       threshold_value = 5
 
+      # Count errors per period (ALIGN_RATE would compare a per-second rate against 5)
       aggregations {
         alignment_period     = "300s"
-        per_series_aligner   = "ALIGN_RATE"
+        per_series_aligner   = "ALIGN_SUM"
         cross_series_reducer = "REDUCE_SUM"
       }
 
@@ -64,7 +65,7 @@ resource "google_monitoring_alert_policy" "scoring_errors" {
   combiner     = "OR"
 
   conditions {
-    display_name = "Scoring error rate > 5%"
+    display_name = "Scoring errors > 5 in 5 minutes"
 
     condition_threshold {
       filter = <<-EOT
@@ -78,9 +79,10 @@ resource "google_monitoring_alert_policy" "scoring_errors" {
       comparison      = "COMPARISON_GT"
       threshold_value = 5
 
+      # Count errors per period (ALIGN_RATE would compare a per-second rate against 5)
       aggregations {
         alignment_period     = "300s"
-        per_series_aligner   = "ALIGN_RATE"
+        per_series_aligner   = "ALIGN_SUM"
         cross_series_reducer = "REDUCE_SUM"
       }
 
@@ -186,6 +188,44 @@ resource "google_monitoring_alert_policy" "scoring_latency" {
 
   documentation {
     content   = "Scoring function latency is high. AI processing may be slow."
+    mime_type = "text/markdown"
+  }
+}
+
+# Alert: Scoring canary failed
+# Scoring can break without any error (e.g. an upstream API silently changes its response),
+# so the daily canary logs an ERROR when its test photo is scored outside the expected range.
+resource "google_monitoring_alert_policy" "scoring_canary" {
+  project      = var.project_id
+  display_name = "Scoring Canary Failed"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Scoring canary or its scheduler job logged an error"
+
+    condition_matched_log {
+      filter = <<-EOT
+        (resource.type = "cloud_run_revision"
+          AND resource.labels.service_name = "${var.canary_function_name}"
+          AND severity >= ERROR)
+        OR (resource.type = "cloud_scheduler_job"
+          AND resource.labels.job_id = "${var.canary_scheduler_job_name}"
+          AND severity >= ERROR)
+      EOT
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "3600s"
+    }
+    auto_close = "86400s"
+  }
+
+  documentation {
+    content   = "The daily scoring canary did not score its test photo as expected, or failed to run. Scores for guests' photos may be wrong. Check the scoring-canary logs."
     mime_type = "text/markdown"
   }
 }

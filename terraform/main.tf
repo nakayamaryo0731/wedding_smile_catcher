@@ -14,6 +14,7 @@ resource "google_project_service" "required_apis" {
     "cloudfunctions.googleapis.com",
     "cloudbuild.googleapis.com",
     "monitoring.googleapis.com",
+    "cloudscheduler.googleapis.com", # Runs the daily scoring canary
     # Uncomment as modules are implemented:
     # "run.googleapis.com",
     # "logging.googleapis.com",
@@ -121,8 +122,9 @@ module "functions" {
   region              = var.region
   storage_bucket_name = var.storage_bucket_name
 
-  webhook_service_account_email = module.iam.webhook_service_account_email
-  scoring_service_account_email = module.iam.scoring_service_account_email
+  webhook_service_account_email          = module.iam.webhook_service_account_email
+  scoring_service_account_email          = module.iam.scoring_service_account_email
+  canary_scheduler_service_account_email = module.iam.canary_scheduler_service_account_email
 
   line_channel_secret_name       = "line-channel-secret"
   line_channel_access_token_name = "line-channel-access-token"
@@ -152,8 +154,10 @@ module "monitoring" {
   project_id  = var.project_id
   alert_email = var.alert_email
 
-  webhook_function_name = "webhook"
-  scoring_function_name = "scoring"
+  webhook_function_name     = "webhook"
+  scoring_function_name     = "scoring"
+  canary_function_name      = "scoring-canary"
+  canary_scheduler_job_name = "scoring-canary"
 
   depends_on = [
     google_project_service.required_apis,

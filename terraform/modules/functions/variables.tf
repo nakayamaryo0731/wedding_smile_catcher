@@ -24,6 +24,11 @@ variable "scoring_service_account_email" {
   type        = string
 }
 
+variable "canary_scheduler_service_account_email" {
+  description = "Service account email Cloud Scheduler uses to call the scoring canary"
+  type        = string
+}
+
 variable "line_channel_secret_name" {
   description = "Secret Manager secret name for LINE channel secret"
   type        = string

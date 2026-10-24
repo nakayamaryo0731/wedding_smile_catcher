@@ -189,6 +189,85 @@ resource "google_cloud_run_service_iam_member" "scoring_run_invoker" {
   member   = "serviceAccount:${var.webhook_service_account_email}"
 }
 
+# Scoring Canary Cloud Function (Gen2)
+# Scores a test photo bundled with the scoring source once a day, using the same code
+resource "google_cloudfunctions2_function" "scoring_canary" {
+  name        = "scoring-canary"
+  location    = var.region
+  description = "Daily check that scoring still gives plausible scores to a test photo"
+  project     = var.project_id
+
+  build_config {
+    runtime     = "python311"
+    entry_point = "canary"
+
+    source {
+      storage_source {
+        bucket = var.storage_bucket_name
+        object = google_storage_bucket_object.scoring_source.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 1
+    min_instance_count    = 0
+    available_memory      = "1Gi"
+    timeout_seconds       = 300
+    service_account_email = var.scoring_service_account_email
+
+    environment_variables = {
+      GCP_PROJECT_ID    = var.project_id
+      STORAGE_BUCKET    = var.storage_bucket_name
+      GEMINI_MODEL_NAME = var.gemini_model_name
+    }
+
+    # The scoring module requires it at import time, though the canary sends no LINE messages
+    secret_environment_variables {
+      key        = "LINE_CHANNEL_ACCESS_TOKEN"
+      project_id = var.project_id
+      secret     = var.line_channel_access_token_name
+      version    = "latest"
+    }
+  }
+
+  labels = {
+    environment = "production"
+    managed_by  = "terraform"
+    function    = "scoring-canary"
+  }
+}
+
+# Allow Cloud Scheduler to invoke the canary
+resource "google_cloud_run_service_iam_member" "scoring_canary_run_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.scoring_canary.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.canary_scheduler_service_account_email}"
+}
+
+# Run the canary every morning
+resource "google_cloud_scheduler_job" "scoring_canary" {
+  name             = "scoring-canary"
+  project          = var.project_id
+  region           = var.region
+  description      = "Run the scoring canary once a day"
+  schedule         = "0 9 * * *"
+  time_zone        = "Asia/Tokyo"
+  attempt_deadline = "320s"
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloudfunctions2_function.scoring_canary.service_config[0].uri
+
+    oidc_token {
+      service_account_email = var.canary_scheduler_service_account_email
+      audience              = google_cloudfunctions2_function.scoring_canary.service_config[0].uri
+    }
+  }
+}
+
 # Notification Cloud Function (Gen2)
 resource "google_cloudfunctions2_function" "notification" {
   name        = "notification"
