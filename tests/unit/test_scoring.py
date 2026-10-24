@@ -146,15 +146,29 @@ class TestCalculateSmileScore:
     @patch("scoring.main.genai_client")
     @patch("scoring.main.vision_client")
     def test_calculate_smile_score_gemini_error_fallback(self, mock_vision_client, mock_genai_client):
-        """Gemini error while judging smiles gives zero points."""
+        """Gemini error while judging smiles counts every detected face as LIKELY."""
         mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
         mock_genai_client.models.generate_content.side_effect = APIError(400, {"error": {"message": "Bad request"}})
 
         result = calculate_smile_score(_jpeg_bytes())
 
-        assert result["smile_score"] == 0.0
-        assert result["face_count"] == 0
-        assert result["smiling_faces"] == 0
+        # Score = (75 + (0.9-0.5)*20) * 1.2 * 2 = 83 * 1.2 * 2 = 199.2
+        assert result["smile_score"] == 199.2
+        assert result["face_count"] == 2
+        assert result["smiling_faces"] == 2
+        assert result["error"] == "smile_classification_failed"
+
+    @patch("scoring.main.genai_client")
+    @patch("scoring.main.vision_client")
+    def test_calculate_smile_score_gemini_invalid_json_fallback(self, mock_vision_client, mock_genai_client):
+        """Unreadable Gemini response also counts every detected face as LIKELY."""
+        mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
+        mock_genai_client.models.generate_content.return_value = Mock(text="not json")
+
+        result = calculate_smile_score(_jpeg_bytes())
+
+        assert result["smile_score"] == 199.2
+        assert result["smiling_faces"] == 2
         assert result["error"] == "smile_classification_failed"
 
     @patch("scoring.main.time.sleep")

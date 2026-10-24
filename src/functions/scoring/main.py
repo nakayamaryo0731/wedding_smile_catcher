@@ -550,18 +550,22 @@ def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
     img = PILImage.open(io.BytesIO(image_bytes))
     image_width, image_height = img.size
 
-    # Return zero score to ensure fairness - API failures should not give any points
+    # Without faces there is nothing to score, so Vision API failures give zero points
     try:
         faces = detect_faces(image_bytes)
     except Exception as e:
         logger.error(f"Vision API error (final): {str(e)}")
         return {"smile_score": 0.0, "face_count": 0, "smiling_faces": 0, "error": "vision_api_failed"}
 
+    # If Gemini cannot judge smiles, count every detected face as LIKELY so guests still get a score.
+    # The AI score still reflects smile quality.
+    error = None
     try:
         joy_levels = classify_smiles(img, faces) if faces else []
     except Exception as e:
-        logger.error(f"Gemini smile classification error (final): {str(e)}")
-        return {"smile_score": 0.0, "face_count": 0, "smiling_faces": 0, "error": "smile_classification_failed"}
+        logger.error(f"Gemini smile classification error (final), counting all faces as LIKELY: {str(e)}")
+        joy_levels = [vision.Likelihood.LIKELY] * len(faces)
+        error = "smile_classification_failed"
 
     logger.info(f"Smile levels: {[joy.name for joy in joy_levels]}")
 
@@ -590,11 +594,14 @@ def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
         f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, total score={total_smile_score:.2f}"
     )
 
-    return {
+    result = {
         "smile_score": round(total_smile_score, 2),
         "face_count": face_count,
         "smiling_faces": smiling_faces,
     }
+    if error:
+        result["error"] = error
+    return result
 
 
 def download_image_from_storage(storage_path: str) -> bytes:
