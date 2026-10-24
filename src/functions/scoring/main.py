@@ -2,7 +2,7 @@
 Smile Photo Contest - Scoring Function
 
 Analyzes uploaded images using:
-- Vision API for smile detection (face count + joy likelihood)
+- Vision API for face detection and Vertex AI (Gemini) for each face's smile level
 - Vertex AI (Gemini) for theme evaluation (0-100 score + comment)
 - Average Hash for similarity detection (prevents spam uploads)
 - Face size multiplier to penalize small faces in group photos
@@ -29,7 +29,7 @@ from google import genai
 from google.cloud import firestore, storage, vision
 from google.cloud import logging as cloud_logging
 from google.genai.errors import APIError
-from google.genai.types import GenerateContentConfig, HttpOptions, HttpRetryOptions, Part
+from google.genai.types import GenerateContentConfig, HttpOptions, HttpRetryOptions, Part, ThinkingConfig
 from linebot.v3.messaging import (
     ApiClient,
     Configuration,
@@ -260,7 +260,7 @@ def get_joy_likelihood_score(joy_likelihood, detection_confidence: float) -> flo
     detection_confidence to create a more continuous score distribution.
 
     Args:
-        joy_likelihood: Vision API joy likelihood enum
+        joy_likelihood: Smile level judged by Gemini, as a Vision Likelihood enum
         detection_confidence: Face detection confidence (0.0-1.0)
 
     Returns:
@@ -345,24 +345,20 @@ def format_face_count(smiling_faces: int, face_count: int) -> str:
         return f"{smiling_faces}人が笑顔！"
 
 
-def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
+def detect_faces(image_bytes: bytes) -> list:
     """
-    Calculate smile score using Vision API with face size adjustment.
+    Detect faces using Vision API.
     Implements exponential backoff retry for rate limit and server errors.
-
-    Larger faces (close-up photos) get full score, while smaller faces
-    (distant/crowd photos) get reduced scores.
 
     Args:
         image_bytes: Image binary data
 
     Returns:
-        Dictionary with smile_score and face_count
-    """
-    # Get image dimensions for face size calculation
-    img = PILImage.open(io.BytesIO(image_bytes))
-    image_width, image_height = img.size
+        List of Vision API FaceAnnotation objects
 
+    Raises:
+        Exception: If Vision API still fails after retries
+    """
     # Retry configuration - generous settings for handling burst traffic
     # With 90 concurrent users, rate limits may trigger temporarily
     # Total max wait: 2 + 4 + 8 + 16 + 30 = 60 seconds (well within 300s timeout)
@@ -372,46 +368,12 @@ def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
 
     for attempt in range(max_retries):
         try:
-            # Create Vision API image object
-            image = vision.Image(content=image_bytes)
-
-            # Detect faces
-            response = vision_client.face_detection(image=image)
+            response = vision_client.face_detection(image=vision.Image(content=image_bytes))
 
             if response.error.message:
                 raise Exception(f"Vision API error: {response.error.message}")
 
-            # Calculate total smile score with face size adjustment
-            total_smile_score = 0.0
-            smiling_faces = 0
-
-            for face in response.face_annotations:
-                # Only count faces with LIKELY or VERY_LIKELY joy
-                if face.joy_likelihood >= vision.Likelihood.LIKELY:
-                    base_score = get_joy_likelihood_score(face.joy_likelihood, face.detection_confidence)
-                    size_multiplier = get_face_size_multiplier(face, image_width, image_height)
-                    adjusted_score = base_score * size_multiplier
-                    total_smile_score += adjusted_score
-                    smiling_faces += 1
-                    logger.info(
-                        f"Face detected: joy={face.joy_likelihood.name}, "
-                        f"confidence={face.detection_confidence:.2f}, "
-                        f"base_score={base_score:.2f}, size_multiplier={size_multiplier:.2f}, "
-                        f"adjusted_score={adjusted_score:.2f}"
-                    )
-
-            face_count = len(response.face_annotations)
-
-            logger.info(
-                f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, "
-                f"total score={total_smile_score:.2f}"
-            )
-
-            return {
-                "smile_score": round(total_smile_score, 2),
-                "face_count": face_count,
-                "smiling_faces": smiling_faces,
-            }
+            return list(response.face_annotations)
 
         except Exception as e:
             error_message = str(e)
@@ -428,16 +390,8 @@ def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
                 or "DeadlineExceeded" in error_message
             )
 
-            # If not retryable or last attempt, return fallback
             if not is_retryable or attempt == max_retries - 1:
-                logger.error(f"Vision API error (final): {error_message}")
-                # Return zero score to ensure fairness - API failures should not give any points
-                return {
-                    "smile_score": 0.0,  # Zero points for API failures
-                    "face_count": 0,
-                    "smiling_faces": 0,
-                    "error": "vision_api_failed",
-                }
+                raise
 
             # Calculate exponential backoff delay with jitter
             delay = min(base_delay * (2**attempt), max_delay)
@@ -447,13 +401,199 @@ def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
             logger.info(f"Retrying Vision API after {sleep_time:.2f} seconds...")
             time.sleep(sleep_time)
 
-    # Should not reach here, but return fallback just in case
+    raise Exception("Vision API retries exhausted")
+
+
+def crop_faces(img: PILImage.Image, faces: list) -> list[bytes]:
+    """
+    Crop each face out of the image as JPEG, with 20% padding around the face.
+
+    Args:
+        img: Source image
+        faces: Vision API FaceAnnotation objects
+
+    Returns:
+        JPEG bytes for each face, in the same order as faces
+    """
+    image_width, image_height = img.size
+    rgb = img.convert("RGB")
+    crops = []
+
+    for face in faces:
+        xs = [v.x for v in face.bounding_poly.vertices]
+        ys = [v.y for v in face.bounding_poly.vertices]
+        pad_x = (max(xs) - min(xs)) * 0.2
+        pad_y = (max(ys) - min(ys)) * 0.2
+        box = (
+            max(0, min(xs) - pad_x),
+            max(0, min(ys) - pad_y),
+            min(image_width, max(xs) + pad_x),
+            min(image_height, max(ys) + pad_y),
+        )
+        buffer = io.BytesIO()
+        rgb.crop(box).save(buffer, format="JPEG", quality=90)
+        crops.append(buffer.getvalue())
+
+    return crops
+
+
+def classify_smiles(img: PILImage.Image, faces: list) -> list:
+    """
+    Judge how clearly each face is smiling using Gemini.
+
+    Vision API stopped returning joy likelihood on 2026-10-15, so Gemini judges
+    each cropped face on the same five levels instead.
+    Implements exponential backoff retry for rate limit and server errors.
+
+    Args:
+        img: Source image
+        faces: Vision API FaceAnnotation objects
+
+    Returns:
+        A vision.Likelihood for each face, in the same order as faces
+
+    Raises:
+        Exception: If Gemini still fails after retries or returns invalid JSON
+    """
+    face_count = len(faces)
+    prompt = f"""You are given {face_count} cropped face images from one party photo, in order (face 1 .. face {face_count}).
+For each face, rate how clearly the person is smiling, using exactly one level:
+- VERY_LIKELY: big, obvious smile or laughing
+- LIKELY: clear smile
+- POSSIBLE: slight or ambiguous smile
+- UNLIKELY: mostly neutral expression
+- VERY_UNLIKELY: not smiling at all, or the face is not visible enough to judge
+Return JSON: {{"faces": [{{"index": 1, "joy": "<LEVEL>"}}, ...]}} with one entry per face, in order."""
+
+    response_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "faces": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "index": {"type": "INTEGER"},
+                        "joy": {
+                            "type": "STRING",
+                            "enum": ["VERY_LIKELY", "LIKELY", "POSSIBLE", "UNLIKELY", "VERY_UNLIKELY"],
+                        },
+                    },
+                    "required": ["index", "joy"],
+                },
+            },
+        },
+        "required": ["faces"],
+    }
+
+    contents = []
+    for index, crop in enumerate(crop_faces(img, faces), start=1):
+        contents += [f"face {index}:", Part.from_bytes(data=crop, mime_type="image/jpeg")]
+    contents.append(prompt)
+
+    # Same retry configuration as evaluate_theme
+    max_retries = 5
+    base_delay = 2.0  # seconds
+    max_delay = 30.0  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            response = genai_client.models.generate_content(
+                model=GEMINI_MODEL_NAME,
+                contents=contents,
+                config=GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=response_schema,
+                    thinking_config=ThinkingConfig(thinking_level="low"),
+                ),
+            )
+
+            levels = {entry["index"]: entry["joy"] for entry in json.loads(response.text)["faces"]}
+            if len(levels) != face_count:
+                logger.warning(f"Gemini rated {len(levels)} of {face_count} faces; unrated faces count as not smiling")
+
+            return [vision.Likelihood[levels.get(index, "VERY_UNLIKELY")] for index in range(1, face_count + 1)]
+
+        except APIError as e:
+            logger.warning(f"Gemini smile classification error (attempt {attempt + 1}/{max_retries}): {str(e)}")
+
+            # Retryable: rate limit, request timeout, or transient server errors
+            is_retryable = e.code in (408, 429, 500, 502, 503, 504)
+            if not is_retryable or attempt == max_retries - 1:
+                raise
+
+            # Calculate exponential backoff delay with jitter
+            delay = min(base_delay * (2**attempt), max_delay)
+            jitter = random.uniform(0, delay * 0.1)  # Add 10% jitter
+            sleep_time = delay + jitter
+
+            logger.info(f"Retrying Gemini smile classification after {sleep_time:.2f} seconds...")
+            time.sleep(sleep_time)
+
+    raise Exception("Gemini smile classification retries exhausted")
+
+
+def calculate_smile_score(image_bytes: bytes) -> dict[str, Any]:
+    """
+    Calculate smile score from Vision API faces and Gemini smile levels, with face size adjustment.
+
+    Larger faces (close-up photos) get full score, while smaller faces
+    (distant/crowd photos) get reduced scores.
+
+    Args:
+        image_bytes: Image binary data
+
+    Returns:
+        Dictionary with smile_score and face_count
+    """
+    # Get image dimensions for face size calculation
+    img = PILImage.open(io.BytesIO(image_bytes))
+    image_width, image_height = img.size
+
     # Return zero score to ensure fairness - API failures should not give any points
+    try:
+        faces = detect_faces(image_bytes)
+    except Exception as e:
+        logger.error(f"Vision API error (final): {str(e)}")
+        return {"smile_score": 0.0, "face_count": 0, "smiling_faces": 0, "error": "vision_api_failed"}
+
+    try:
+        joy_levels = classify_smiles(img, faces) if faces else []
+    except Exception as e:
+        logger.error(f"Gemini smile classification error (final): {str(e)}")
+        return {"smile_score": 0.0, "face_count": 0, "smiling_faces": 0, "error": "smile_classification_failed"}
+
+    logger.info(f"Smile levels: {[joy.name for joy in joy_levels]}")
+
+    # Calculate total smile score with face size adjustment
+    total_smile_score = 0.0
+    smiling_faces = 0
+
+    for face, joy in zip(faces, joy_levels, strict=True):
+        # Only count faces with LIKELY or VERY_LIKELY joy
+        if joy >= vision.Likelihood.LIKELY:
+            base_score = get_joy_likelihood_score(joy, face.detection_confidence)
+            size_multiplier = get_face_size_multiplier(face, image_width, image_height)
+            adjusted_score = base_score * size_multiplier
+            total_smile_score += adjusted_score
+            smiling_faces += 1
+            logger.info(
+                f"Face detected: joy={joy.name}, "
+                f"confidence={face.detection_confidence:.2f}, "
+                f"base_score={base_score:.2f}, size_multiplier={size_multiplier:.2f}, "
+                f"adjusted_score={adjusted_score:.2f}"
+            )
+
+    face_count = len(faces)
+
+    logger.info(
+        f"Smile detection complete: {smiling_faces}/{face_count} smiling faces, total score={total_smile_score:.2f}"
+    )
+
     return {
-        "smile_score": 0.0,
-        "face_count": 0,
-        "smiling_faces": 0,
-        "error": "vision_api_failed",
+        "smile_score": round(total_smile_score, 2),
+        "face_count": face_count,
+        "smiling_faces": smiling_faces,
     }
 
 
