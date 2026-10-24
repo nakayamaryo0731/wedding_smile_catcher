@@ -2,12 +2,16 @@
 Unit tests for scoring functions (src/functions/scoring/main.py).
 """
 
+import io
+import json
 import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 from google.cloud import vision
 from google.genai.errors import APIError
+from google.genai.types import Part
+from PIL import Image as PILImage
 
 # Add src directory to path
 src_path = Path(__file__).parent.parent.parent / "src" / "functions" / "scoring"
@@ -24,133 +28,150 @@ from scoring.main import (  # noqa: E402
 )
 
 
+def _jpeg_bytes(width: int = 1000, height: int = 1000) -> bytes:
+    buffer = io.BytesIO()
+    PILImage.new("RGB", (width, height), "white").save(buffer, format="JPEG")
+    return buffer.getvalue()
+
+
+def _face(x0: int, y0: int, x1: int, y1: int, confidence: float = 0.9) -> Mock:
+    face = Mock()
+    # Vision no longer returns emotions, so joy is always UNKNOWN
+    face.joy_likelihood = vision.Likelihood.UNKNOWN
+    face.detection_confidence = confidence
+    face.bounding_poly.vertices = [Mock(x=x0, y=y0), Mock(x=x1, y=y0), Mock(x=x1, y=y1), Mock(x=x0, y=y1)]
+    return face
+
+
+def _vision_response(faces: list) -> Mock:
+    response = Mock()
+    response.face_annotations = faces
+    response.error.message = ""
+    return response
+
+
+def _smile_response(levels: list[str]) -> Mock:
+    response = Mock()
+    response.text = json.dumps({"faces": [{"index": i, "joy": level} for i, level in enumerate(levels, 1)]})
+    return response
+
+
+# Two faces that each cover 8% of a 1000x1000 image (size multiplier 1.2)
+LARGE_FACES = [(0, 0, 283, 283), (300, 0, 583, 283)]
+
+
 class TestCalculateSmileScore:
     """Tests for calculate_smile_score function."""
 
-    @patch("scoring.main.PILImage")
+    @patch("scoring.main.genai_client")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_two_happy_faces(self, mock_vision_client, mock_pil):
-        """Test with 2 very likely smiling faces with large faces (full multiplier)."""
-        # Setup PIL mock for image dimensions (1000x1000)
-        mock_img = Mock()
-        mock_img.size = (1000, 1000)
-        mock_pil.open.return_value = mock_img
+    def test_calculate_smile_score_two_happy_faces(self, mock_vision_client, mock_genai_client):
+        """Faces Gemini judges VERY_LIKELY are scored even though Vision returns no joy."""
+        mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
+        mock_genai_client.models.generate_content.return_value = _smile_response(["VERY_LIKELY", "VERY_LIKELY"])
 
-        # Setup mock
-        mock_response = Mock()
+        result = calculate_smile_score(_jpeg_bytes())
 
-        # Create faces with bounding boxes (8%+ of image = max multiplier 1.2)
-        face1 = Mock()
-        face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 base points
-        face1.detection_confidence = 0.9  # +8 bonus = 103.0 points
-        face1.bounding_poly.vertices = [
-            Mock(x=0, y=0),
-            Mock(x=283, y=0),
-            Mock(x=283, y=283),
-            Mock(x=0, y=283),
-        ]  # 8% of 1000x1000
-
-        face2 = Mock()
-        face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # 95.0 base points
-        face2.detection_confidence = 0.9  # +8 bonus = 103.0 points
-        face2.bounding_poly.vertices = [
-            Mock(x=300, y=0),
-            Mock(x=583, y=0),
-            Mock(x=583, y=283),
-            Mock(x=300, y=283),
-        ]  # 8% of 1000x1000
-
-        mock_response.face_annotations = [face1, face2]
-        mock_response.error.message = ""
-
-        mock_vision_client.face_detection.return_value = mock_response
-
-        # Test
-        result = calculate_smile_score(b"fake_image_bytes")
-
-        # Assert
         assert result["face_count"] == 2
         assert result["smiling_faces"] == 2
-        # With 8%+ face size, multiplier = 1.2
         # Score = (95 + (0.9-0.5)*20) * 1.2 * 2 = 103 * 1.2 * 2 = 247.2
         assert result["smile_score"] == 247.2
         assert "error" not in result
 
-    @patch("scoring.main.PILImage")
+    @patch("scoring.main.genai_client")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_no_smiles(self, mock_vision_client, mock_pil):
-        """Test with no smiling faces (expected score: 0)."""
-        # Setup PIL mock
-        mock_img = Mock()
-        mock_img.size = (1000, 1000)
-        mock_pil.open.return_value = mock_img
+    def test_calculate_smile_score_sends_one_crop_per_face(self, mock_vision_client, mock_genai_client):
+        """Each detected face is sent to Gemini as its own image."""
+        mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
+        mock_genai_client.models.generate_content.return_value = _smile_response(["LIKELY", "LIKELY"])
 
-        # Setup mock
-        mock_response = Mock()
+        calculate_smile_score(_jpeg_bytes())
 
-        face1 = Mock()
-        face1.joy_likelihood = vision.Likelihood.UNLIKELY  # 2 → 0 points
+        contents = mock_genai_client.models.generate_content.call_args.kwargs["contents"]
+        assert len([part for part in contents if isinstance(part, Part)]) == 2
 
-        face2 = Mock()
-        face2.joy_likelihood = vision.Likelihood.VERY_UNLIKELY  # 1 → 0 points
+    @patch("scoring.main.genai_client")
+    @patch("scoring.main.vision_client")
+    def test_calculate_smile_score_no_smiles(self, mock_vision_client, mock_genai_client):
+        """Faces Gemini judges below LIKELY get no points."""
+        mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
+        mock_genai_client.models.generate_content.return_value = _smile_response(["POSSIBLE", "VERY_UNLIKELY"])
 
-        mock_response.face_annotations = [face1, face2]
-        mock_response.error.message = ""
+        result = calculate_smile_score(_jpeg_bytes())
 
-        mock_vision_client.face_detection.return_value = mock_response
-
-        # Test
-        result = calculate_smile_score(b"fake_image_bytes")
-
-        # Assert
         assert result["face_count"] == 2
         assert result["smiling_faces"] == 0
         assert result["smile_score"] == 0.0
 
-    @patch("scoring.main.PILImage")
+    @patch("scoring.main.genai_client")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_no_faces(self, mock_vision_client, mock_pil):
-        """Test with no faces detected (expected score: 0)."""
-        # Setup PIL mock
-        mock_img = Mock()
-        mock_img.size = (1000, 1000)
-        mock_pil.open.return_value = mock_img
+    def test_calculate_smile_score_face_missing_from_gemini_response(self, mock_vision_client, mock_genai_client):
+        """A face Gemini does not rate is treated as not smiling."""
+        mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
+        mock_genai_client.models.generate_content.return_value = _smile_response(["VERY_LIKELY"])
 
-        # Setup mock
-        mock_response = Mock()
-        mock_response.face_annotations = []
-        mock_response.error.message = ""
+        result = calculate_smile_score(_jpeg_bytes())
 
-        mock_vision_client.face_detection.return_value = mock_response
+        assert result["face_count"] == 2
+        assert result["smiling_faces"] == 1
+        assert result["smile_score"] == 123.6
 
-        # Test
-        result = calculate_smile_score(b"fake_image_bytes")
+    @patch("scoring.main.genai_client")
+    @patch("scoring.main.vision_client")
+    def test_calculate_smile_score_no_faces(self, mock_vision_client, mock_genai_client):
+        """No faces means no points and no Gemini call."""
+        mock_vision_client.face_detection.return_value = _vision_response([])
 
-        # Assert
+        result = calculate_smile_score(_jpeg_bytes())
+
         assert result["face_count"] == 0
         assert result["smiling_faces"] == 0
         assert result["smile_score"] == 0.0
+        mock_genai_client.models.generate_content.assert_not_called()
 
-    @patch("scoring.main.PILImage")
+    @patch("scoring.main.genai_client")
     @patch("scoring.main.vision_client")
-    def test_calculate_smile_score_api_error_fallback(self, mock_vision_client, mock_pil):
-        """Test Vision API error triggers fallback score."""
-        # Setup PIL mock
-        mock_img = Mock()
-        mock_img.size = (1000, 1000)
-        mock_pil.open.return_value = mock_img
-
-        # Setup mock to raise exception
+    def test_calculate_smile_score_api_error_fallback(self, mock_vision_client, mock_genai_client):
+        """Vision API error gives zero points."""
         mock_vision_client.face_detection.side_effect = Exception("API Error")
 
-        # Test
-        result = calculate_smile_score(b"fake_image_bytes")
+        result = calculate_smile_score(_jpeg_bytes())
 
-        # Assert fallback values (zero points for API failures)
         assert result["smile_score"] == 0.0  # Zero points for fairness
         assert result["face_count"] == 0
         assert result["smiling_faces"] == 0
         assert result["error"] == "vision_api_failed"
+        mock_genai_client.models.generate_content.assert_not_called()
+
+    @patch("scoring.main.genai_client")
+    @patch("scoring.main.vision_client")
+    def test_calculate_smile_score_gemini_error_fallback(self, mock_vision_client, mock_genai_client):
+        """Gemini error while judging smiles gives zero points."""
+        mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
+        mock_genai_client.models.generate_content.side_effect = APIError(400, {"error": {"message": "Bad request"}})
+
+        result = calculate_smile_score(_jpeg_bytes())
+
+        assert result["smile_score"] == 0.0
+        assert result["face_count"] == 0
+        assert result["smiling_faces"] == 0
+        assert result["error"] == "smile_classification_failed"
+
+    @patch("scoring.main.time.sleep")
+    @patch("scoring.main.genai_client")
+    @patch("scoring.main.vision_client")
+    def test_calculate_smile_score_gemini_retries_on_rate_limit(self, mock_vision_client, mock_genai_client, _sleep):
+        """Gemini rate limit is retried and then succeeds."""
+        mock_vision_client.face_detection.return_value = _vision_response([_face(*box) for box in LARGE_FACES])
+        mock_genai_client.models.generate_content.side_effect = [
+            APIError(429, {"error": {"message": "Resource exhausted"}}),
+            _smile_response(["VERY_LIKELY", "VERY_LIKELY"]),
+        ]
+
+        result = calculate_smile_score(_jpeg_bytes())
+
+        assert result["smile_score"] == 247.2
+        assert mock_genai_client.models.generate_content.call_count == 2
 
 
 class TestGetFaceSizeMultiplier:

@@ -37,6 +37,7 @@ class TestScoringPipeline:
         test_image_bytes,
         mock_vision_client_integration,
         mock_genai_client_integration,
+        mock_smile_genai_client_integration,
     ):
         """
         Test the complete scoring flow from image upload to Firestore update.
@@ -80,6 +81,7 @@ class TestScoringPipeline:
         # Calculate smile score with mocked PILImage (for image dimensions)
         with (
             patch("scoring.main.vision_client", mock_vision_client_integration),
+            patch("scoring.main.genai_client", mock_smile_genai_client_integration),
             patch("scoring.main.PILImage.open", return_value=mock_pil_image),
         ):
             # Each face: 95.0 base score × 0.5 size multiplier (1% relative size)
@@ -285,7 +287,9 @@ class TestScoringPipeline:
         assert result["face_count"] == 0
         assert result["smiling_faces"] == 0
 
-    def test_concurrent_scoring_no_conflicts(self, firestore_client, test_image_bytes, mock_vision_client_integration):
+    def test_concurrent_scoring_no_conflicts(
+        self, firestore_client, test_image_bytes, mock_vision_client_integration, mock_smile_genai_client_integration
+    ):
         """
         Test that concurrent scoring operations don't conflict.
         Simulates multiple images being scored simultaneously.
@@ -315,6 +319,7 @@ class TestScoringPipeline:
             # Calculate smile score with mocked PILImage
             with (
                 patch("scoring.main.vision_client", mock_vision_client_integration),
+                patch("scoring.main.genai_client", mock_smile_genai_client_integration),
                 patch("scoring.main.PILImage.open", return_value=mock_pil_image),
             ):
                 smile_result = calculate_smile_score(test_image_bytes)

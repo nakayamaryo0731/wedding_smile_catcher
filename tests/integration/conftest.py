@@ -160,14 +160,14 @@ def mock_vision_client_integration():
         mock_vertex4,
     ]
 
-    # Default: 2 happy faces with VERY_LIKELY enum
+    # Default: 2 faces. Vision no longer returns emotions, so joy is always UNKNOWN
     face1 = Mock()
-    face1.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 base points
+    face1.joy_likelihood = vision.Likelihood.UNKNOWN
     face1.detection_confidence = 0.5  # No bonus (0.5 is neutral)
     face1.bounding_poly = mock_bounding_poly
 
     face2 = Mock()
-    face2.joy_likelihood = vision.Likelihood.VERY_LIKELY  # = 95.0 base points
+    face2.joy_likelihood = vision.Likelihood.UNKNOWN
     face2.detection_confidence = 0.5  # No bonus (0.5 is neutral)
     face2.bounding_poly = mock_bounding_poly
 
@@ -193,6 +193,19 @@ def mock_genai_client_integration():
     mock_instance = Mock()
     mock_response = Mock()
     mock_response.text = '{"score": 85, "comment": "素晴らしい笑顔です！結婚式の雰囲気にぴったりです。"}'
+    mock_instance.models.generate_content = Mock(return_value=mock_response)
+
+    yield mock_instance
+
+
+@pytest.fixture
+def mock_smile_genai_client_integration():
+    """
+    Mock Gen AI client that judges both faces from mock_vision_client_integration as VERY_LIKELY.
+    """
+    mock_instance = Mock()
+    mock_response = Mock()
+    mock_response.text = '{"faces": [{"index": 1, "joy": "VERY_LIKELY"}, {"index": 2, "joy": "VERY_LIKELY"}]}'
     mock_instance.models.generate_content = Mock(return_value=mock_response)
 
     yield mock_instance
