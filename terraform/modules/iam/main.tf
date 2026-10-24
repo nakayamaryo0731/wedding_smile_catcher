@@ -16,6 +16,14 @@ resource "google_service_account" "scoring_function" {
   project      = var.project_id
 }
 
+# Service account Cloud Scheduler uses to call the scoring canary
+resource "google_service_account" "canary_scheduler" {
+  account_id   = "canary-scheduler-sa"
+  display_name = "Scoring Canary Scheduler Service Account"
+  description  = "Service account for Cloud Scheduler to invoke the scoring canary function"
+  project      = var.project_id
+}
+
 # IAM Bindings for Webhook Function
 
 # Firestore access for user registration

@@ -19,3 +19,15 @@ variable "scoring_function_name" {
   type        = string
   default     = "scoring"
 }
+
+variable "canary_function_name" {
+  description = "Name of the scoring canary Cloud Function"
+  type        = string
+  default     = "scoring-canary"
+}
+
+variable "canary_scheduler_job_name" {
+  description = "Name of the Cloud Scheduler job that runs the scoring canary"
+  type        = string
+  default     = "scoring-canary"
+}
