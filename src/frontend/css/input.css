@@ -1378,6 +1378,148 @@
     margin-top: 0.15rem;
 }
 
+/* Top 10 Photo Grid (events with features.top10_photo_grid) */
+.ranking-page .top10-list-content--photo {
+    width: 100%;
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* The container is capped at 1536px and clips overflow, so pin the grid to the viewport to use the full screen width.
+   Above 1100px the header stays on one line and is 80px tall, as top10-list-content's height already assumes. */
+@media (min-width: 1101px) {
+    .ranking-page .top10-list-content--photo {
+        position: fixed;
+        top: 80px;
+        left: 1.5rem;
+        right: 1.5rem;
+        bottom: 0;
+        width: auto;
+        height: auto;
+        padding-bottom: 1rem;
+    }
+}
+
+.ranking-page .top10-list--photo {
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    grid-auto-flow: row;
+    gap: 0.75rem;
+}
+
+.ranking-page .top10-photo-card {
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3a3a3a, #1f1f1f);
+    box-shadow: 0 4px 12px var(--shadow-medium);
+}
+
+.ranking-page .top10-photo-card--rank1 {
+    border: 4px solid #d4af37;
+}
+
+.ranking-page .top10-photo-card--rank2 {
+    border: 4px solid #b8bcc2;
+}
+
+.ranking-page .top10-photo-card--rank3 {
+    border: 4px solid #c08250;
+}
+
+.ranking-page .top10-photo-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ranking-page .top10-photo-rank {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    width: 2.8rem;
+    height: 2.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.ranking-page .top10-photo-card--rank1 .top10-photo-rank {
+    background: #d4af37;
+}
+
+.ranking-page .top10-photo-card--rank2 .top10-photo-rank {
+    background: #9ea3aa;
+}
+
+.ranking-page .top10-photo-card--rank3 .top10-photo-rank {
+    background: #b0703e;
+}
+
+.ranking-page .top10-photo-info {
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    padding: 0.5rem 0.8rem 0.6rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(10px);
+    color: #ffffff;
+}
+
+.ranking-page .top10-photo-name-score {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.ranking-page .top10-photo-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.ranking-page .top10-photo-score {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    flex-shrink: 0;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.ranking-page .top10-photo-comment {
+    margin-top: 0.2rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    /* Always two lines tall so panels line up when a comment fits on one line */
+    height: 2.8em;
+    color: rgba(255, 255, 255, 0.9);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 /* Empty State */
 .ranking-page .ranking-card.empty .image-container {
     display: flex;
@@ -2286,6 +2428,7 @@
     .ranking-page .photo-item { width: 40vw; max-width: 280px; min-width: 150px; padding: 6px 6px 4px 6px; }
     .ranking-page .photo-name { font-size: 0.85rem; padding: 6px 2px 2px; }
     .ranking-page .settings-modal-content { width: 95%; padding: 1.5rem; max-height: 90vh; }
+    .ranking-page .top10-list--photo { grid-template-columns: repeat(2, 1fr); grid-template-rows: none; grid-auto-rows: 240px; overflow-y: auto; }
 }
 
 @media (max-width: 1200px) {

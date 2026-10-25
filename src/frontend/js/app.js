@@ -242,40 +242,77 @@ function hideTop10ListView() {
   }
 }
 
+// Per-event flag; events without it keep the list layout their customers expect
+function isTop10PhotoGridEnabled() {
+  return currentEventData?.features?.top10_photo_grid === true;
+}
+
 function renderTop10List(images) {
   const listContainer = document.getElementById("top10-list");
   if (!listContainer) return;
 
+  const photoGrid = isTop10PhotoGridEnabled();
+  document.getElementById("top10-list-content")?.classList.toggle("top10-list-content--photo", photoGrid);
+  listContainer.classList.toggle("top10-list--photo", photoGrid);
   listContainer.innerHTML = "";
 
   images.forEach((imageData, index) => {
     const rank = index + 1;
-    const imageUrl = getImageUrl(imageData);
-    const userName = imageData.user_name || imageData.user_id || "ゲスト";
-    const score = Math.round(imageData.total_score);
-    const comment = getAiComment(imageData);
-
-    const itemEl = document.createElement("div");
-    itemEl.className = `top10-item ${rank <= 3 ? "top10-item--top3" : ""}`;
-    itemEl.innerHTML = `
-      <div class="top10-rank ${rank <= 3 ? "top10-rank--top3" : ""}">${rank}</div>
-      <div class="top10-image-container">
-        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(userName)}" class="top10-image">
-      </div>
-      <div class="top10-details">
-        <div class="top10-name-score">
-          <span class="top10-name">${escapeHtml(userName)}</span>
-          <span class="top10-score">${score}</span>
-        </div>
-        <p class="top10-comment">${escapeHtml(comment)}</p>
-      </div>
-    `;
-    listContainer.appendChild(itemEl);
-
-    const imgEl = itemEl.querySelector(".top10-image");
-    imgEl.onerror = () => { imgEl.style.display = "none"; };
-    applyImageOrientation(imgEl);
+    listContainer.appendChild(photoGrid ? createTop10PhotoCard(imageData, rank) : createTop10Item(imageData, rank));
   });
+}
+
+function createTop10Item(imageData, rank) {
+  const imageUrl = getImageUrl(imageData);
+  const userName = imageData.user_name || imageData.user_id || "ゲスト";
+  const score = Math.round(imageData.total_score);
+  const comment = getAiComment(imageData);
+
+  const itemEl = document.createElement("div");
+  itemEl.className = `top10-item ${rank <= 3 ? "top10-item--top3" : ""}`;
+  itemEl.innerHTML = `
+    <div class="top10-rank ${rank <= 3 ? "top10-rank--top3" : ""}">${rank}</div>
+    <div class="top10-image-container">
+      <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(userName)}" class="top10-image">
+    </div>
+    <div class="top10-details">
+      <div class="top10-name-score">
+        <span class="top10-name">${escapeHtml(userName)}</span>
+        <span class="top10-score">${score}</span>
+      </div>
+      <p class="top10-comment">${escapeHtml(comment)}</p>
+    </div>
+  `;
+
+  const imgEl = itemEl.querySelector(".top10-image");
+  imgEl.onerror = () => { imgEl.style.display = "none"; };
+  applyImageOrientation(imgEl);
+  return itemEl;
+}
+
+function createTop10PhotoCard(imageData, rank) {
+  const imageUrl = getImageUrl(imageData);
+  const userName = imageData.user_name || imageData.user_id || "ゲスト";
+  const score = Math.round(imageData.total_score);
+  const comment = getAiComment(imageData);
+
+  const cardEl = document.createElement("div");
+  cardEl.className = `top10-photo-card ${rank <= 3 ? `top10-photo-card--rank${rank}` : ""}`;
+  cardEl.innerHTML = `
+    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(userName)}" class="top10-photo-image">
+    <div class="top10-photo-rank">${rank}</div>
+    <div class="top10-photo-info">
+      <div class="top10-photo-name-score">
+        <span class="top10-photo-name">${escapeHtml(userName)}</span>
+        <span class="top10-photo-score">${score}</span>
+      </div>
+      <p class="top10-photo-comment">${escapeHtml(comment)}</p>
+    </div>
+  `;
+
+  const imgEl = cardEl.querySelector(".top10-photo-image");
+  imgEl.onerror = () => { imgEl.style.display = "none"; };
+  return cardEl;
 }
 
 /**
