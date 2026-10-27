@@ -5,7 +5,7 @@ google-cloud-vision>=3.16.0
 google-cloud-firestore>=2.34.1
 google-cloud-storage>=3.15.0
 google-cloud-logging>=3.17.0
-google-genai>=2.29.0
+google-genai>=2.33.0
 
 # Image processing
 Pillow>=12.3.0
