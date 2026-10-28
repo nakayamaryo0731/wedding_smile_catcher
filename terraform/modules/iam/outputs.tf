@@ -17,3 +17,8 @@ output "scoring_service_account_id" {
   description = "ID of the scoring function service account"
   value       = google_service_account.scoring_function.id
 }
+
+output "canary_scheduler_service_account_email" {
+  description = "Email address of the service account Cloud Scheduler uses to call the scoring canary"
+  value       = google_service_account.canary_scheduler.email
+}
