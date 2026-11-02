@@ -12,7 +12,7 @@ Pillow>=12.3.0
 imagehash>=4.3.1
 
 # LINE Bot SDK
-line-bot-sdk>=3.25.0
+line-bot-sdk>=3.27.0
 
 # Cloud Functions
 functions-framework>=3.10.2
