@@ -8,6 +8,7 @@
     "test:emulator": "firebase emulators:exec --only firestore 'npm test'"
   },
   "overrides": {
+    "@grpc/grpc-js": "^1.13.6",
     "csv-parse": "^7.0.2"
   },
   "devDependencies": {
