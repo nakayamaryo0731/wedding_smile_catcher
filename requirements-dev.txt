@@ -4,7 +4,7 @@
 pytest>=9.1.1
 pytest-cov>=7.1.0           # Code coverage
 pytest-mock>=3.17.0         # Mocking utilities
-pytest-asyncio>=1.4.1      # Async testing support
+pytest-asyncio>=1.4.1.post1      # Async testing support
 
 # Mocking and testing utilities
 responses>=0.26.3           # Mock HTTP requests
